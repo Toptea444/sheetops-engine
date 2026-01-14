@@ -71,168 +71,84 @@ export function useGoogleSheets() {
   const searchWorker = useCallback((data: SheetData, workerId: string): WorkerData | null => {
     if (!data || data.rows.length === 0) return null;
 
-    const headers = data.headers;
+    const sheetName = data.sheetName.toUpperCase();
     const normalizedWorkerId = normalizeComparable(workerId);
 
-    // Strategy 1: Block layout for RANKING BONUS style sheets
-    // Headers contain dates (e.g., "1ST JAN 2026"), row 0 has field labels repeating per block
-    if (data.rows.length >= 1) {
-      const labelRow = data.rows[0];
-      const blocks = extractDateBlocks(headers);
-      
-      if (blocks.length > 0) {
-        const dailyData: DailyBonus[] = [];
-        let matchedId: string | null = null;
-
-        for (const block of blocks) {
-          // Find USERNAMES/username column within this block
-          const usernameCol = findLabelIndex(labelRow, block.start, block.end, ['usernames', 'username', 'user id', 'user_id', 'id', 'name']);
-          // Find value column: prioritize "ranking bonus", fallback to "total", then "bonus"
-          const rankingBonusCol = findLabelIndex(labelRow, block.start, block.end, ['ranking bonus']);
-          const totalCol = findLabelIndex(labelRow, block.start, block.end, ['total']);
-          const bonusCol = rankingBonusCol >= 0 ? rankingBonusCol : (totalCol >= 0 ? totalCol : findLabelIndex(labelRow, block.start, block.end, ['bonus']));
-
-          if (usernameCol < 0 || bonusCol < 0) continue;
-
-          // Search all data rows for this worker in this block
-          for (const row of data.rows.slice(1)) {
-            if (normalizeComparable(row[usernameCol]) === normalizedWorkerId) {
-              matchedId = matchedId ?? (row[usernameCol] || workerId);
-              const value = parseNumberLike(row[bonusCol]);
-              if (value > 0) {
-                dailyData.push({ date: block.date, value });
-              }
-              break; // Found worker in this block
-            }
-          }
-        }
-
-        if (matchedId && dailyData.length > 0) {
-          return {
-            workerId,
-            userName: matchedId,
-            bucket: 'N/A',
-            dailyData,
-            valueType: 'amount', // Ranking bonus is always amount
-          };
-        }
-      }
-    }
-
-    // Strategy 2: WEEKLY BONUS style - Headers are "WEEK 1", "WEEK 2", sub-rows have dates and user_name columns
-    if (data.rows.length >= 3) {
-      const result = searchWeeklyBlocks(data, headers, normalizedWorkerId, workerId);
+    // Try DAILY & PERFORMANCE style parser first (horizontal blocks with day numbers)
+    if (sheetName.includes('DAILY') || sheetName.includes('PERFORMANCE')) {
+      const result = parseDailyPerformanceSheet(data, normalizedWorkerId, workerId);
       if (result) return result;
     }
 
-    // Strategy 3: Horizontal repeating blocks (DAILY & PERFORMANCE style)
-    // Each row has multiple day blocks side-by-side: [Stage, WorkerID, Rate, Bonus, Day#, %, Amount, Total, "", ...]
-    // We detect this by looking for repeated patterns in the first data row
-    if (data.rows.length >= 2) {
-      const result = searchHorizontalBlocks(data, normalizedWorkerId, workerId);
+    // Try RANKING BONUS style parser (date headers with vertical data)
+    if (sheetName.includes('RANKING')) {
+      const result = parseRankingBonusSheet(data, normalizedWorkerId, workerId);
       if (result) return result;
     }
 
-    // Strategy 3: Standard tabular layout (ID column + date headers)
-    const workerIdIndex = findHeaderIndex(headers, [
-      'user_id',
-      'worker',
-      'id',
-      'username',
-      'usernames',
-      'stage',
-      'stages',
-      'user_name',
-      'name',
-    ]);
-
-    if (workerIdIndex >= 0) {
-      const userNameIndex = findHeaderIndex(headers, ['user_name', 'name', 'username', 'usernames']);
-      const bucketIndex = findHeaderIndex(headers, ['bucket']);
-
-      const dateColumns: { index: number; date: string }[] = [];
-      headers.forEach((header, index) => {
-        if (isDateLike(header)) dateColumns.push({ index, date: header });
-      });
-
-      const workerRow = data.rows.find((row) => normalizeComparable(row[workerIdIndex]) === normalizedWorkerId);
-      if (!workerRow) return null;
-
-      const dailyData: DailyBonus[] = dateColumns.map(({ index, date }) => ({
-        date,
-        value: parseNumberLike(workerRow[index]),
-      }));
-
-      return {
-        workerId: workerRow[workerIdIndex] || workerId,
-        userName: (userNameIndex >= 0 ? workerRow[userNameIndex] : workerRow[workerIdIndex]) || workerId,
-        bucket: bucketIndex >= 0 ? (workerRow[bucketIndex] || 'N/A') : 'N/A',
-        dailyData,
-        valueType: inferValueTypeFromCells(dailyData),
-      };
+    // Try WEEKLY BONUS style parser
+    if (sheetName.includes('WEEKLY')) {
+      const result = parseWeeklyBonusSheet(data, normalizedWorkerId, workerId);
+      if (result) return result;
     }
 
-    // Strategy 4: Scan all rows for worker ID match in any column and extract "Total" value
-    const dailyData: DailyBonus[] = [];
-    let matchedUserName: string | null = null;
+    // Generic fallback: try all parsers
+    const dailyResult = parseDailyPerformanceSheet(data, normalizedWorkerId, workerId);
+    if (dailyResult) return dailyResult;
 
-    for (let rowIdx = 0; rowIdx < data.rows.length; rowIdx++) {
-      const row = data.rows[rowIdx];
-      for (let colIdx = 0; colIdx < row.length; colIdx++) {
-        if (normalizeComparable(row[colIdx]) === normalizedWorkerId) {
-          matchedUserName = matchedUserName ?? row[colIdx];
-          // Look for a "total" or numeric bonus value near this match
-          // Check the labelRow (first data row) to find which columns are "Total" or "Weekly bonus"
-          const labelRow = data.rows[0] || [];
-          for (let searchCol = colIdx; searchCol < Math.min(colIdx + 10, row.length); searchCol++) {
-            const label = normalizeLabel(labelRow[searchCol]);
-            if (label.includes('total') || label.includes('weekly bonus')) {
-              const value = parseNumberLike(row[searchCol]);
-              if (value > 0) {
-                // Try to determine date from nearby columns or row position
-                const dayNum = findNearbyDayNumber(row, colIdx, searchCol);
-                const dateStr = dayNum ? `Day ${dayNum}` : `Entry ${dailyData.length + 1}`;
-                dailyData.push({ date: dateStr, value });
-              }
-              break;
-            }
-          }
-        }
-      }
-    }
+    const rankingResult = parseRankingBonusSheet(data, normalizedWorkerId, workerId);
+    if (rankingResult) return rankingResult;
 
-    if (matchedUserName && dailyData.length > 0) {
-      return {
-        workerId,
-        userName: matchedUserName,
-        bucket: 'N/A',
-        dailyData,
-        valueType: 'amount',
-      };
-    }
+    const weeklyResult = parseWeeklyBonusSheet(data, normalizedWorkerId, workerId);
+    if (weeklyResult) return weeklyResult;
 
     return null;
   }, []);
 
   const calculateBonus = useCallback((worker: WorkerData, startDate: Date, endDate: Date): BonusResult => {
-    const filteredData = worker.dailyData
-      .map((d) => ({ ...d, parsed: parseDate(d.date) }))
-      .filter((d) => d.parsed && d.parsed >= startDate && d.parsed <= endDate)
-      .map(({ parsed: _parsed, ...rest }) => rest);
+    // Generate all dates in range
+    const allDatesInRange: Date[] = [];
+    const current = new Date(startDate);
+    while (current <= endDate) {
+      allDatesInRange.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
 
-    const totalBonus = filteredData.reduce((sum, d) => sum + d.value, 0);
+    // Create a map of day number to bonus value from worker data
+    const bonusMap = new Map<number, { date: string; value: number }>();
+    for (const d of worker.dailyData) {
+      if (d.dayNumber !== undefined) {
+        bonusMap.set(d.dayNumber, { date: d.date, value: d.value });
+      }
+    }
+
+    // Build daily breakdown with all dates (0 for missing)
+    const dailyBreakdown: DailyBonus[] = allDatesInRange.map(date => {
+      const dayNum = date.getDate();
+      const existing = bonusMap.get(dayNum);
+      const formattedDate = formatDateForDisplay(date);
+      
+      return {
+        date: existing?.date || formattedDate,
+        dayNumber: dayNum,
+        value: existing?.value ?? 0,
+      };
+    });
+
+    const totalBonus = dailyBreakdown.reduce((sum, d) => sum + d.value, 0);
 
     return {
       workerId: worker.workerId,
       userName: worker.userName,
+      stage: worker.stage,
       bucket: worker.bucket,
       totalBonus,
-      dailyBreakdown: filteredData,
+      dailyBreakdown,
       dateRange: {
         start: startDate.toLocaleDateString(),
         end: endDate.toLocaleDateString(),
       },
-      valueType: worker.valueType ?? inferValueTypeFromCells(filteredData),
+      valueType: worker.valueType ?? 'amount',
     };
   }, []);
 
@@ -248,8 +164,275 @@ export function useGoogleSheets() {
   };
 }
 
+// ============================================================================
+// PARSER: DAILY & PERFORMANCE style sheets
+// Structure: Each row contains multiple blocks horizontally
+// Block format: [STAGE, WorkerID, Rate%, RecoveryBonus, DayNum, RankRate%, RankingBonus, WeeklyBonus/Total, "", ...]
+// ============================================================================
+function parseDailyPerformanceSheet(
+  data: SheetData,
+  normalizedWorkerId: string,
+  originalWorkerId: string
+): WorkerData | null {
+  const labelRow = data.rows[0] || [];
+  
+  // Find all "STAGE" positions in the label row - these mark block starts
+  const blockStarts: number[] = [];
+  for (let i = 0; i < labelRow.length; i++) {
+    const label = normalizeLabel(labelRow[i]);
+    if (label === 'stage' || label === 'stages') {
+      blockStarts.push(i);
+    }
+  }
+
+  if (blockStarts.length === 0) return null;
+
+  // Determine block width by finding pattern
+  const blockWidth = blockStarts.length > 1 
+    ? blockStarts[1] - blockStarts[0] 
+    : findBlockWidth(labelRow, blockStarts[0]);
+
+  const dailyData: DailyBonus[] = [];
+  let foundStage = '';
+  let foundUserName = '';
+
+  // Search all data rows (skip header rows)
+  for (let rowIdx = 1; rowIdx < data.rows.length; rowIdx++) {
+    const row = data.rows[rowIdx];
+    
+    // Check each block in this row
+    for (let blockIdx = 0; blockIdx < blockStarts.length; blockIdx++) {
+      const blockStart = blockStarts[blockIdx];
+      const blockEnd = blockStarts[blockIdx + 1] ?? (blockStart + blockWidth);
+      
+      // Find Worker ID column (column index 1 within block - "PRODUCT" column)
+      const workerIdCol = blockStart + 1;
+      
+      // Check if this block contains our worker
+      if (normalizeComparable(row[workerIdCol]) === normalizedWorkerId) {
+        foundUserName = row[workerIdCol] || originalWorkerId;
+        foundStage = row[blockStart] || foundStage || 'N/A'; // STAGE column
+        
+        // Find the day number - look for a number between 1-31 in the block
+        let dayNumber: number | null = null;
+        let totalValue = 0;
+        
+        // Parse block columns based on structure:
+        // [STAGE(0), WorkerID(1), Rate%(2), RecoveryBonus(3), DayNum(4), RankRate%(5), RankingBonus(6), WeeklyBonus/Total(7)]
+        for (let col = blockStart + 2; col < blockEnd && col < row.length; col++) {
+          const cellValue = row[col]?.trim() || '';
+          const labelValue = normalizeLabel(labelRow[col] || '');
+          
+          // Look for day number (pure number 1-31)
+          if (/^\d{1,2}$/.test(cellValue)) {
+            const num = parseInt(cellValue, 10);
+            if (num >= 1 && num <= 31) {
+              dayNumber = num;
+            }
+          }
+          
+          // Look for Weekly bonus / Total column (the last meaningful value before empty separator)
+          if (labelValue.includes('weekly') || labelValue === 'total' || labelValue.includes('weekly bonus')) {
+            totalValue = parseNumberLike(cellValue);
+          }
+        }
+        
+        // If we didn't find labeled "weekly bonus", get the last non-empty numeric value in block
+        if (totalValue === 0) {
+          for (let col = Math.min(blockEnd - 1, row.length - 1); col > blockStart + 2; col--) {
+            const cellValue = row[col]?.trim() || '';
+            if (cellValue && !cellValue.includes('%')) {
+              const parsed = parseNumberLike(cellValue);
+              if (parsed > 0) {
+                totalValue = parsed;
+                break;
+              }
+            }
+          }
+        }
+
+        if (dayNumber !== null && totalValue > 0) {
+          // Format date as "Jan X" based on sheet name context
+          const monthName = extractMonthFromSheetName(data.sheetName) || 'Jan';
+          const dateStr = `${monthName} ${dayNumber}`;
+          
+          dailyData.push({
+            date: dateStr,
+            dayNumber,
+            value: totalValue,
+          });
+        }
+      }
+    }
+  }
+
+  if (dailyData.length > 0) {
+    // Sort by day number and remove duplicates (keep highest value per day)
+    const dayMap = new Map<number, DailyBonus>();
+    for (const d of dailyData) {
+      if (d.dayNumber !== undefined) {
+        const existing = dayMap.get(d.dayNumber);
+        if (!existing || d.value > existing.value) {
+          dayMap.set(d.dayNumber, d);
+        }
+      }
+    }
+    
+    const sortedData = Array.from(dayMap.values()).sort((a, b) => 
+      (a.dayNumber ?? 0) - (b.dayNumber ?? 0)
+    );
+
+    return {
+      workerId: originalWorkerId,
+      userName: foundUserName,
+      stage: foundStage,
+      bucket: 'N/A',
+      dailyData: sortedData,
+      valueType: 'amount',
+    };
+  }
+
+  return null;
+}
+
+// ============================================================================
+// PARSER: RANKING BONUS style sheets
+// Structure: Headers contain dates (e.g., "1ST JAN 2026"), row 0 has field labels repeating per block
+// ============================================================================
+function parseRankingBonusSheet(
+  data: SheetData,
+  normalizedWorkerId: string,
+  originalWorkerId: string
+): WorkerData | null {
+  const headers = data.headers;
+  const labelRow = data.rows[0] || [];
+  
+  // Find date blocks in headers
+  const blocks = extractDateBlocks(headers);
+  if (blocks.length === 0) return null;
+
+  const dailyData: DailyBonus[] = [];
+  let foundStage = '';
+  let foundUserName = '';
+
+  for (const block of blocks) {
+    // Find USERNAMES column within this block
+    const usernameCol = findLabelIndex(labelRow, block.start, block.end, ['usernames', 'username', 'user id', 'user_id', 'id', 'name']);
+    // Find STAGES column
+    const stageCol = findLabelIndex(labelRow, block.start, block.end, ['stage', 'stages']);
+    // Find value column: prioritize "ranking bonus"
+    const rankingBonusCol = findLabelIndex(labelRow, block.start, block.end, ['ranking bonus']);
+
+    if (usernameCol < 0 || rankingBonusCol < 0) continue;
+
+    // Search all data rows for this worker in this block
+    for (const row of data.rows.slice(1)) {
+      if (normalizeComparable(row[usernameCol]) === normalizedWorkerId) {
+        foundUserName = row[usernameCol] || originalWorkerId;
+        if (stageCol >= 0 && row[stageCol]) {
+          foundStage = row[stageCol];
+        }
+        
+        const value = parseNumberLike(row[rankingBonusCol]);
+        const dayNumber = extractDayFromDateString(block.date);
+        
+        dailyData.push({ 
+          date: block.date, 
+          dayNumber: dayNumber ?? undefined,
+          value 
+        });
+        break;
+      }
+    }
+  }
+
+  if (dailyData.length > 0) {
+    return {
+      workerId: originalWorkerId,
+      userName: foundUserName,
+      stage: foundStage || 'N/A',
+      bucket: 'N/A',
+      dailyData,
+      valueType: 'amount',
+    };
+  }
+
+  return null;
+}
+
+// ============================================================================
+// PARSER: WEEKLY BONUS style sheets
+// ============================================================================
+function parseWeeklyBonusSheet(
+  data: SheetData,
+  normalizedWorkerId: string,
+  originalWorkerId: string
+): WorkerData | null {
+  if (data.rows.length < 3) return null;
+
+  const labelRow = data.rows[1]; // Row with "bucket", "user_name", dates
+  if (!labelRow) return null;
+
+  const weekBlocks: Array<{ userNameCol: number; dateColumns: Array<{ col: number; date: string }> }> = [];
+
+  for (let i = 0; i < labelRow.length; i++) {
+    const label = normalizeLabel(labelRow[i]);
+    if (label === 'user_name' || label === 'username' || label === 'name') {
+      const dateColumns: Array<{ col: number; date: string }> = [];
+      for (let j = i + 1; j < labelRow.length; j++) {
+        const nextLabel = normalizeLabel(labelRow[j]);
+        if (nextLabel === 'user_name' || nextLabel === 'username' || nextLabel === 'name' || nextLabel === 'bucket') {
+          break;
+        }
+        if (isDateLike(labelRow[j])) {
+          dateColumns.push({ col: j, date: labelRow[j] });
+        }
+      }
+      if (dateColumns.length > 0) {
+        weekBlocks.push({ userNameCol: i, dateColumns });
+      }
+    }
+  }
+
+  if (weekBlocks.length === 0) return null;
+
+  const dailyData: DailyBonus[] = [];
+  let foundUserName = '';
+
+  for (const block of weekBlocks) {
+    for (const row of data.rows.slice(2)) {
+      if (normalizeComparable(row[block.userNameCol]) === normalizedWorkerId) {
+        foundUserName = row[block.userNameCol] || originalWorkerId;
+        for (const { col, date } of block.dateColumns) {
+          const value = parseNumberLike(row[col]);
+          dailyData.push({ date, value });
+        }
+        break;
+      }
+    }
+  }
+
+  if (dailyData.length > 0) {
+    const valueType: BonusValueType = dailyData.every(d => d.value <= 100) ? 'percent' : 'amount';
+    
+    return {
+      workerId: originalWorkerId,
+      userName: foundUserName,
+      stage: 'N/A',
+      bucket: 'N/A',
+      dailyData,
+      valueType,
+    };
+  }
+
+  return null;
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
 function normalizeComparable(value: unknown): string {
-  // Preserve hyphens and other characters; only normalize whitespace + case.
   return String(value ?? '').trim().toUpperCase();
 }
 
@@ -257,21 +440,30 @@ function normalizeLabel(value: unknown): string {
   return String(value ?? '').trim().toLowerCase();
 }
 
-function findHeaderIndex(headers: string[], needles: string[]): number {
-  const normalized = headers.map((h) => normalizeLabel(h));
-  return normalized.findIndex((h) => needles.some((n) => h === n || h.includes(n)));
+function parseNumberLike(value: unknown): number {
+  const raw = String(value ?? '').trim();
+  if (!raw) return 0;
+  const cleaned = raw.replace(/,/g, '').replace(/%/g, '').replace(/[^0-9.\-]/g, '');
+  const num = Number.parseFloat(cleaned);
+  return Number.isFinite(num) ? num : 0;
 }
 
 function isDateLike(value: unknown): boolean {
   const s = String(value ?? '').trim();
   if (!s) return false;
-  return /\b\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?\b/.test(s) || /\b\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}\b/.test(s);
+  // Match various date formats
+  return /\b\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?\b/.test(s) 
+    || /\b\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}\b/.test(s)
+    || /\d{1,2}(st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(s);
 }
 
 function extractDateBlocks(headers: string[]): Array<{ start: number; end: number; date: string }> {
   const starts: number[] = [];
   headers.forEach((h, i) => {
-    if (isDateLike(h)) starts.push(i);
+    // Look for date-like patterns in headers
+    if (/\d{1,2}(st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(h) || isDateLike(h)) {
+      starts.push(i);
+    }
   });
 
   return starts.map((start, idx) => ({
@@ -290,278 +482,38 @@ function findLabelIndex(labelRow: string[], start: number, end: number, needles:
   return -1;
 }
 
-function parseNumberLike(value: unknown): number {
-  const raw = String(value ?? '').trim();
-  if (!raw) return 0;
-
-  // Keep digits, dot, minus; drop commas, percent, currency symbols, spaces.
-  const cleaned = raw.replace(/,/g, '').replace(/%/g, '').replace(/[^0-9.\-]/g, '');
-  const num = Number.parseFloat(cleaned);
-  return Number.isFinite(num) ? num : 0;
-}
-
-function inferValueTypeFromCells(values: Array<{ value: number }>): BonusValueType {
-  // Best-effort default; UI formatting can still be overridden by sheetName heuristics.
-  const maxAbs = values.reduce((m, v) => Math.max(m, Math.abs(v.value)), 0);
-  return maxAbs > 100 ? 'amount' : 'percent';
-}
-
-function parseDate(dateStr: string): Date | null {
-  // Handle "Day X" format (from our parsed data)
-  const dayMatch = dateStr.match(/^Day\s+(\d{1,2})$/i);
-  if (dayMatch) {
-    // For "Day X" format, create a date in the current month
-    const day = parseInt(dayMatch[1], 10);
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), day);
-  }
-
-  // Handle "Entry X" format (fallback entries without real dates)
-  if (/^Entry\s+\d+$/i.test(dateStr)) {
-    // Return a sequential date based on entry number
-    const entryMatch = dateStr.match(/^Entry\s+(\d+)$/i);
-    if (entryMatch) {
-      const entryNum = parseInt(entryMatch[1], 10);
-      const now = new Date();
-      return new Date(now.getFullYear(), now.getMonth(), entryNum);
-    }
-  }
-
-  // Try various date formats
-  const formats = [
-    /(\d{1,2})\/(\d{1,2})\/(\d{4})/, // MM/DD/YYYY or DD/MM/YYYY
-    /(\d{1,2})\/(\d{1,2})/, // MM/DD or DD/MM (assume current year)
-    /(\d{4})-(\d{1,2})-(\d{1,2})/, // YYYY-MM-DD
-  ];
-
-  for (const format of formats) {
-    const match = dateStr.match(format);
-    if (match) {
-      if (format === formats[2]) {
-        return new Date(Number.parseInt(match[1], 10), Number.parseInt(match[2], 10) - 1, Number.parseInt(match[3], 10));
-      }
-
-      if (format === formats[1]) {
-        const year = new Date().getFullYear();
-        return new Date(year, Number.parseInt(match[1], 10) - 1, Number.parseInt(match[2], 10));
-      }
-
-      return new Date(Number.parseInt(match[3], 10), Number.parseInt(match[1], 10) - 1, Number.parseInt(match[2], 10));
-    }
-  }
-
-  return null;
-}
-
-/**
- * Search for worker in horizontal block layout (DAILY & PERFORMANCE style sheets)
- * Structure: Each row has multiple day blocks side-by-side with format:
- * [Stage, WorkerID, Rate%, Bonus, DayNum, Rate%, RankingBonus, Total, "", ...]
- */
-function searchHorizontalBlocks(data: SheetData, normalizedWorkerId: string, originalWorkerId: string): WorkerData | null {
-  const labelRow = data.rows[0] || [];
-  const dailyData: DailyBonus[] = [];
-  let matchedUserName: string | null = null;
-
-  // Detect block boundaries by finding repeating "STAGE" labels in row 0
-  const blockStarts: number[] = [];
-  for (let i = 0; i < labelRow.length; i++) {
+function findBlockWidth(labelRow: string[], blockStart: number): number {
+  // Find width by looking for empty cells or repeated STAGE label
+  for (let i = blockStart + 1; i < labelRow.length; i++) {
     const label = normalizeLabel(labelRow[i]);
     if (label === 'stage' || label === 'stages') {
-      blockStarts.push(i);
+      return i - blockStart;
     }
   }
+  // Default block width
+  return 9;
+}
 
-  // If no STAGE labels found, try to detect blocks by finding "COLLECTOR BONUS STANDARDS" in headers
-  if (blockStarts.length === 0) {
-    const headers = data.headers || [];
-    let lastHeaderIdx = -20; // Track to avoid adjacent duplicates
-    for (let i = 0; i < headers.length; i++) {
-      const h = normalizeLabel(headers[i]);
-      if (h.includes('collector bonus') || h.includes('bonus standards')) {
-        if (i - lastHeaderIdx > 5) { // Minimum block width
-          blockStarts.push(i);
-          lastHeaderIdx = i;
-        }
-      }
-    }
+function extractMonthFromSheetName(sheetName: string): string | null {
+  const monthMatch = sheetName.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i);
+  if (monthMatch) {
+    const month = monthMatch[1].toLowerCase();
+    return month.charAt(0).toUpperCase() + month.slice(1);
   }
-
-  if (blockStarts.length === 0) return null;
-
-  // Process each block
-  for (let blockIdx = 0; blockIdx < blockStarts.length; blockIdx++) {
-    const blockStart = blockStarts[blockIdx];
-    const blockEnd = blockStarts[blockIdx + 1] ?? labelRow.length;
-
-    // Find relevant column indices within this block
-    // For DAILY & PERFORMANCE: columns are [Stage, Product/WorkerID, Rate, Recovery bonus, Rank rate, Rank rate, Ranking bonus, Weekly bonus, ...]
-    // Worker ID is typically in column 1 or 2 of the block
-    
-    // Find column positions relative to block start
-    let workerIdCol = -1;
-    let totalBonusCol = -1;
-
-    for (let i = blockStart; i < blockEnd; i++) {
-      const label = normalizeLabel(labelRow[i]);
-      if (label === 'product' || label.includes('user') || label.includes('name')) {
-        workerIdCol = i;
-      }
-      if (label === 'weekly bonus' || label === 'total' || (label.includes('bonus') && label.includes('total'))) {
-        totalBonusCol = i;
-      }
-    }
-
-    // If we couldn't find labeled columns, use position-based heuristics
-    // Block structure is typically: [Stage(0), WorkerID(1), Rate(2), Bonus(3), ..., Total(last-1)]
-    if (workerIdCol === -1) {
-      workerIdCol = blockStart + 1; // Second column in block
-    }
-    if (totalBonusCol === -1) {
-      // Look for the last numeric-looking column before the empty separator
-      for (let i = blockEnd - 1; i >= blockStart; i--) {
-        const label = normalizeLabel(labelRow[i]);
-        if (label.includes('bonus') || label.includes('total')) {
-          totalBonusCol = i;
-          break;
-        }
-      }
-      if (totalBonusCol === -1) {
-        totalBonusCol = blockEnd - 2; // Second to last column typically has total
-      }
-    }
-
-    // Search all data rows for worker ID in this block
-    for (const row of data.rows.slice(1)) {
-      if (normalizeComparable(row[workerIdCol]) === normalizedWorkerId) {
-        matchedUserName = matchedUserName ?? row[workerIdCol];
-        const bonusValue = parseNumberLike(row[totalBonusCol]);
-        
-        // Determine date/day from the block (could be from header or row data)
-        // Try to find a day number in nearby columns
-        let dayNum = findNearbyDayNumber(row, blockStart, blockEnd);
-        if (!dayNum) {
-          // Use block index as fallback
-          dayNum = blockIdx + 1;
-        }
-        
-        if (bonusValue > 0) {
-          dailyData.push({
-            date: `Day ${dayNum}`,
-            value: bonusValue,
-          });
-        }
-        break; // Found worker in this block, move to next block
-      }
-    }
-  }
-
-  if (matchedUserName && dailyData.length > 0) {
-    return {
-      workerId: originalWorkerId,
-      userName: matchedUserName,
-      bucket: 'N/A',
-      dailyData,
-      valueType: 'amount',
-    };
-  }
-
   return null;
 }
 
-/**
- * Search for worker in WEEKLY BONUS style sheets
- * Structure:
- * - Headers: "WEEK 1", "WEEK 2", etc. (or empty with week labels below)
- * - Row 0: Sub-headers like "Average of Recovery rate case"
- * - Row 1: Column labels like "bucket", "user_name", dates like "9/16/2025", "Grand Total"
- * - Row 2+: Data with worker IDs in user_name columns
- */
-function searchWeeklyBlocks(
-  data: SheetData,
-  headers: string[],
-  normalizedWorkerId: string,
-  originalWorkerId: string
-): WorkerData | null {
-  if (data.rows.length < 3) return null;
-
-  const labelRow = data.rows[1]; // Row with "bucket", "user_name", dates
-  if (!labelRow) return null;
-
-  // Find all weekly blocks by looking for "user_name" columns
-  const weekBlocks: Array<{ userNameCol: number; dateColumns: Array<{ col: number; date: string }> }> = [];
-
-  for (let i = 0; i < labelRow.length; i++) {
-    const label = normalizeLabel(labelRow[i]);
-    if (label === 'user_name' || label === 'username' || label === 'name') {
-      // Found a user_name column - find date columns after it until next user_name or end
-      const dateColumns: Array<{ col: number; date: string }> = [];
-      for (let j = i + 1; j < labelRow.length; j++) {
-        const nextLabel = normalizeLabel(labelRow[j]);
-        if (nextLabel === 'user_name' || nextLabel === 'username' || nextLabel === 'name' || nextLabel === 'bucket') {
-          break; // Hit next block
-        }
-        if (isDateLike(labelRow[j])) {
-          dateColumns.push({ col: j, date: labelRow[j] });
-        }
-      }
-      if (dateColumns.length > 0) {
-        weekBlocks.push({ userNameCol: i, dateColumns });
-      }
-    }
+function extractDayFromDateString(dateStr: string): number | null {
+  // Try to extract day number from strings like "1ST JAN 2026", "Jan 15", etc.
+  const match = dateStr.match(/(\d{1,2})(st|nd|rd|th)?/i);
+  if (match) {
+    const day = parseInt(match[1], 10);
+    if (day >= 1 && day <= 31) return day;
   }
-
-  if (weekBlocks.length === 0) return null;
-
-  // Search for worker in each block
-  const dailyData: DailyBonus[] = [];
-  let matchedUserName: string | null = null;
-
-  for (const block of weekBlocks) {
-    // Search data rows (starting from row 2)
-    for (const row of data.rows.slice(2)) {
-      if (normalizeComparable(row[block.userNameCol]) === normalizedWorkerId) {
-        matchedUserName = matchedUserName ?? row[block.userNameCol];
-        // Extract values for each date column in this block
-        for (const { col, date } of block.dateColumns) {
-          const value = parseNumberLike(row[col]);
-          // For weekly sheets, values are percentages, but we store them as-is
-          dailyData.push({ date, value });
-        }
-        break; // Found worker in this block
-      }
-    }
-  }
-
-  if (matchedUserName && dailyData.length > 0) {
-    // Determine if values are percentages (typically < 1 or have % in original)
-    const valueType: BonusValueType = dailyData.every(d => d.value <= 100) ? 'percent' : 'amount';
-    
-    return {
-      workerId: originalWorkerId,
-      userName: matchedUserName,
-      bucket: 'N/A',
-      dailyData,
-      valueType,
-    };
-  }
-
   return null;
 }
 
-/**
- * Find a day number in nearby columns of a row
- */
-function findNearbyDayNumber(row: string[], startCol: number, endCol: number): number | null {
-  for (let i = startCol; i < Math.min(endCol, row.length); i++) {
-    const val = row[i]?.trim();
-    // Look for pure numbers between 1-31 (day of month)
-    if (/^\d{1,2}$/.test(val)) {
-      const num = parseInt(val, 10);
-      if (num >= 1 && num <= 31) {
-        return num;
-      }
-    }
-  }
-  return null;
+function formatDateForDisplay(date: Date): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${months[date.getMonth()]} ${date.getDate()}`;
 }

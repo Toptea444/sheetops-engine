@@ -10,6 +10,8 @@ export type BonusValueType = 'percent' | 'amount';
 export interface WorkerData {
   workerId: string;
   userName: string;
+  /** Stage like T-1, S3, etc. */
+  stage: string;
   bucket: string;
   dailyData: DailyBonus[];
   /** How to display/interpret values in dailyData (defaults to percent). */
@@ -18,12 +20,16 @@ export interface WorkerData {
 
 export interface DailyBonus {
   date: string;
+  /** Day number (1-31) for sorting/filtering */
+  dayNumber?: number;
   value: number;
 }
 
 export interface BonusResult {
   workerId: string;
   userName: string;
+  /** Stage like T-1, S3, etc. */
+  stage: string;
   bucket: string;
   totalBonus: number;
   dailyBreakdown: DailyBonus[];
