@@ -26,7 +26,7 @@ export function SheetTabs({ sheets, activeSheet, onSheetChange, isLoading }: She
           <TabsTrigger
             key={sheet.id}
             value={sheet.name}
-            disabled={isLoading}
+            disabled={isLoading || !!sheet.disabled}
             className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             <FileSpreadsheet className="h-4 w-4" />
