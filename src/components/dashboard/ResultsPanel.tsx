@@ -9,19 +9,30 @@ interface ResultsPanelProps {
   sheetName: string;
 }
 
+function formatValue(value: number, valueType?: 'percent' | 'amount') {
+  if (valueType === 'amount') {
+    return new Intl.NumberFormat(undefined, {
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+  return `${value.toFixed(2)}%`;
+}
+
 export function ResultsPanel({ result, sheetName }: ResultsPanelProps) {
   if (!result) {
     return (
       <Card className="corporate-shadow">
         <CardContent className="flex min-h-[300px] flex-col items-center justify-center text-muted-foreground">
           <TrendingUp className="mb-4 h-12 w-12 opacity-50" />
-          <p className="text-center">
-            Enter your Worker ID and select a date range to calculate your bonus
-          </p>
+          <p className="text-center">Enter your Worker ID and select a date range to calculate your bonus</p>
         </CardContent>
       </Card>
     );
   }
+
+  const valueType = result.valueType;
+  const dailyColumnLabel = valueType === 'amount' ? 'Amount' : 'Bonus %';
+  const totalLabel = valueType === 'amount' ? 'Total Ranking Bonus' : 'Total Bonus';
 
   return (
     <div className="space-y-4">
@@ -61,8 +72,8 @@ export function ResultsPanel({ result, sheetName }: ResultsPanelProps) {
         <CardContent className="py-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/80">Total Bonus</p>
-              <p className="text-4xl font-bold">{result.totalBonus.toFixed(2)}%</p>
+              <p className="text-sm text-white/80">{totalLabel}</p>
+              <p className="text-4xl font-bold">{formatValue(result.totalBonus, valueType)}</p>
             </div>
             <div className="rounded-lg bg-white/10 p-3">
               <DollarSign className="h-8 w-8" />
@@ -90,7 +101,7 @@ export function ResultsPanel({ result, sheetName }: ResultsPanelProps) {
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Bonus %</TableHead>
+                    <TableHead className="text-right">{dailyColumnLabel}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -98,11 +109,8 @@ export function ResultsPanel({ result, sheetName }: ResultsPanelProps) {
                     <TableRow key={index} className="even:bg-muted/30">
                       <TableCell className="font-medium">{day.date}</TableCell>
                       <TableCell className="text-right font-mono">
-                        <Badge 
-                          variant={day.value > 0 ? 'default' : 'secondary'}
-                          className={day.value > 0 ? 'bg-success' : ''}
-                        >
-                          {day.value.toFixed(2)}%
+                        <Badge variant={day.value > 0 ? 'default' : 'secondary'} className={day.value > 0 ? 'bg-success' : ''}>
+                          {formatValue(day.value, valueType)}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -112,9 +120,7 @@ export function ResultsPanel({ result, sheetName }: ResultsPanelProps) {
             </div>
             <div className="mt-4 flex justify-between rounded-lg bg-muted p-3">
               <span className="font-semibold">Total ({result.dailyBreakdown.length} days)</span>
-              <span className="font-mono font-bold text-primary">
-                {result.totalBonus.toFixed(2)}%
-              </span>
+              <span className="font-mono font-bold text-primary">{formatValue(result.totalBonus, valueType)}</span>
             </div>
           </CardContent>
         </Card>
