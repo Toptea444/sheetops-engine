@@ -10,20 +10,17 @@ interface ResultsPanelProps {
   sheetName: string;
 }
 
+const CURRENCY_SYMBOL = '₦'; // Nigerian Naira
+
 function formatValue(value: number, valueType?: 'percent' | 'amount') {
   if (valueType === 'amount') {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'GHS',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
+    return `${CURRENCY_SYMBOL}${formatNumber(value)}`;
   }
   return `${value.toFixed(2)}%`;
 }
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('en-US', {
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('en-NG', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
@@ -59,8 +56,7 @@ export function ResultsPanel({ result, sheetName }: ResultsPanelProps) {
             <div>
               <p className="text-sm text-white/70 mb-1">Total Bonus Earned</p>
               <p className="text-4xl font-bold tracking-tight">
-                {valueType === 'amount' ? 'GHS ' : ''}{formatCurrency(result.totalBonus)}
-                {valueType === 'percent' && '%'}
+                {formatValue(result.totalBonus, valueType)}
               </p>
             </div>
             <div className="rounded-xl bg-white/10 p-3">
@@ -147,15 +143,7 @@ export function ResultsPanel({ result, sheetName }: ResultsPanelProps) {
                         "font-mono font-semibold text-lg",
                         day.value > 0 ? "text-success" : "text-muted-foreground"
                       )}>
-                        {day.value > 0 ? (
-                          <>
-                            {valueType === 'amount' && 'GHS '}
-                            {formatCurrency(day.value)}
-                            {valueType === 'percent' && '%'}
-                          </>
-                        ) : (
-                          '—'
-                        )}
+                        {day.value > 0 ? formatValue(day.value, valueType) : '—'}
                       </span>
                       {day.value > 0 && (
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -180,9 +168,7 @@ export function ResultsPanel({ result, sheetName }: ResultsPanelProps) {
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-primary">
-                    {valueType === 'amount' && 'GHS '}
-                    {formatCurrency(result.totalBonus)}
-                    {valueType === 'percent' && '%'}
+                    {formatValue(result.totalBonus, valueType)}
                   </p>
                 </div>
               </div>

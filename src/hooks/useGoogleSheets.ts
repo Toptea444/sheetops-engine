@@ -126,10 +126,14 @@ export function useGoogleSheets() {
     const dailyBreakdown: DailyBonus[] = allDatesInRange.map(date => {
       const dayNum = date.getDate();
       const existing = bonusMap.get(dayNum);
-      const formattedDate = formatDateForDisplay(date);
+      
+      // Format date with day of week: "Jan 16, Thu"
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const formattedDate = `${months[date.getMonth()]} ${date.getDate()}, ${days[date.getDay()]}`;
       
       return {
-        date: existing?.date || formattedDate,
+        date: formattedDate,
         dayNumber: dayNum,
         value: existing?.value ?? 0,
       };
@@ -166,17 +170,19 @@ export function useGoogleSheets() {
 
 // ============================================================================
 // PARSER: DAILY & PERFORMANCE style sheets
-// Structure: Each row contains multiple blocks horizontally
-// Block format: [STAGE, WorkerID, Rate%, RecoveryBonus, DayNum, RankRate%, RankingBonus, WeeklyBonus/Total, "", ...]
+// Structure: Each block has a date header (e.g., "1/1/2026") at top
+// Block columns: STAGES, USERNAMES, Recovery Rate, Bonus, Rank, Rate, Ranking Bonus, Total
+// We need "Total" column value for each block where worker is found
 // ============================================================================
 function parseDailyPerformanceSheet(
   data: SheetData,
   normalizedWorkerId: string,
   originalWorkerId: string
 ): WorkerData | null {
+  const headers = data.headers;
   const labelRow = data.rows[0] || [];
   
-  // Find all "STAGE" positions in the label row - these mark block starts
+  // Find all block starts by looking for "STAGES" or "STAGE" in the label row
   const blockStarts: number[] = [];
   for (let i = 0; i < labelRow.length; i++) {
     const label = normalizeLabel(labelRow[i]);
@@ -187,62 +193,50 @@ function parseDailyPerformanceSheet(
 
   if (blockStarts.length === 0) return null;
 
-  // Determine block width by finding pattern
-  const blockWidth = blockStarts.length > 1 
-    ? blockStarts[1] - blockStarts[0] 
-    : findBlockWidth(labelRow, blockStarts[0]);
-
   const dailyData: DailyBonus[] = [];
   let foundStage = '';
   let foundUserName = '';
 
-  // Search all data rows (skip header rows)
-  for (let rowIdx = 1; rowIdx < data.rows.length; rowIdx++) {
-    const row = data.rows[rowIdx];
+  // Process each block
+  for (let blockIdx = 0; blockIdx < blockStarts.length; blockIdx++) {
+    const blockStart = blockStarts[blockIdx];
+    const blockEnd = blockStarts[blockIdx + 1] ?? labelRow.length;
     
-    // Check each block in this row
-    for (let blockIdx = 0; blockIdx < blockStarts.length; blockIdx++) {
-      const blockStart = blockStarts[blockIdx];
-      const blockEnd = blockStarts[blockIdx + 1] ?? (blockStart + blockWidth);
+    // Extract date from header row at blockStart position
+    const dateHeader = headers[blockStart] || '';
+    const parsedDate = parseDateFromHeader(dateHeader, data.sheetName);
+    
+    // Find column indices within this block
+    const usernameCol = findLabelInRange(labelRow, blockStart, blockEnd, ['usernames', 'username', 'user id', 'product']);
+    const totalCol = findLabelInRange(labelRow, blockStart, blockEnd, ['total']);
+    
+    if (usernameCol < 0) continue;
+
+    // Search data rows for worker
+    for (let rowIdx = 1; rowIdx < data.rows.length; rowIdx++) {
+      const row = data.rows[rowIdx];
+      const cellValue = normalizeComparable(row[usernameCol]);
       
-      // Find Worker ID column (column index 1 within block - "PRODUCT" column)
-      const workerIdCol = blockStart + 1;
-      
-      // Check if this block contains our worker
-      if (normalizeComparable(row[workerIdCol]) === normalizedWorkerId) {
-        foundUserName = row[workerIdCol] || originalWorkerId;
-        foundStage = row[blockStart] || foundStage || 'N/A'; // STAGE column
+      if (cellValue === normalizedWorkerId) {
+        foundUserName = row[usernameCol] || originalWorkerId;
         
-        // Find the day number - look for a number between 1-31 in the block
-        let dayNumber: number | null = null;
-        let totalValue = 0;
-        
-        // Parse block columns based on structure:
-        // [STAGE(0), WorkerID(1), Rate%(2), RecoveryBonus(3), DayNum(4), RankRate%(5), RankingBonus(6), WeeklyBonus/Total(7)]
-        for (let col = blockStart + 2; col < blockEnd && col < row.length; col++) {
-          const cellValue = row[col]?.trim() || '';
-          const labelValue = normalizeLabel(labelRow[col] || '');
-          
-          // Look for day number (pure number 1-31)
-          if (/^\d{1,2}$/.test(cellValue)) {
-            const num = parseInt(cellValue, 10);
-            if (num >= 1 && num <= 31) {
-              dayNumber = num;
-            }
-          }
-          
-          // Look for Weekly bonus / Total column (the last meaningful value before empty separator)
-          if (labelValue.includes('weekly') || labelValue === 'total' || labelValue.includes('weekly bonus')) {
-            totalValue = parseNumberLike(cellValue);
-          }
+        // Get stage from the STAGES column (blockStart)
+        if (row[blockStart] && row[blockStart].trim()) {
+          foundStage = row[blockStart].trim();
         }
         
-        // If we didn't find labeled "weekly bonus", get the last non-empty numeric value in block
+        // Get Total value - if totalCol found, use it; otherwise find last numeric value in block
+        let totalValue = 0;
+        if (totalCol >= 0 && row[totalCol]) {
+          totalValue = parseNumberLike(row[totalCol]);
+        }
+        
+        // Fallback: find last non-percentage numeric value in block
         if (totalValue === 0) {
-          for (let col = Math.min(blockEnd - 1, row.length - 1); col > blockStart + 2; col--) {
-            const cellValue = row[col]?.trim() || '';
-            if (cellValue && !cellValue.includes('%')) {
-              const parsed = parseNumberLike(cellValue);
+          for (let col = blockEnd - 1; col > usernameCol; col--) {
+            const val = row[col]?.trim() || '';
+            if (val && !val.includes('%')) {
+              const parsed = parseNumberLike(val);
               if (parsed > 0) {
                 totalValue = parsed;
                 break;
@@ -251,17 +245,15 @@ function parseDailyPerformanceSheet(
           }
         }
 
-        if (dayNumber !== null && totalValue > 0) {
-          // Format date as "Jan X" based on sheet name context
-          const monthName = extractMonthFromSheetName(data.sheetName) || 'Jan';
-          const dateStr = `${monthName} ${dayNumber}`;
-          
+        if (parsedDate && totalValue > 0) {
           dailyData.push({
-            date: dateStr,
-            dayNumber,
+            date: parsedDate.formatted,
+            dayNumber: parsedDate.day,
             value: totalValue,
           });
         }
+        
+        break; // Found worker in this block, move to next block
       }
     }
   }
@@ -285,7 +277,7 @@ function parseDailyPerformanceSheet(
     return {
       workerId: originalWorkerId,
       userName: foundUserName,
-      stage: foundStage,
+      stage: foundStage || 'N/A',
       bucket: 'N/A',
       dailyData: sortedData,
       valueType: 'amount',
@@ -295,9 +287,80 @@ function parseDailyPerformanceSheet(
   return null;
 }
 
+// Find label index within a specific column range
+function findLabelInRange(labelRow: string[], start: number, end: number, needles: string[]): number {
+  for (let i = start; i < end && i < labelRow.length; i++) {
+    const cell = normalizeLabel(labelRow[i]);
+    if (!cell) continue;
+    if (needles.some((n) => cell === n || cell.includes(n))) return i;
+  }
+  return -1;
+}
+
+// Parse date from header like "1/1/2026", "12/28/2025", "1ST JAN 2026"
+function parseDateFromHeader(header: string, sheetName: string): { day: number; formatted: string } | null {
+  const trimmed = header.trim();
+  if (!trimmed) return null;
+  
+  // Try MM/DD/YYYY or M/D/YYYY format
+  const slashMatch = trimmed.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (slashMatch) {
+    const month = parseInt(slashMatch[1], 10);
+    const day = parseInt(slashMatch[2], 10);
+    const year = parseInt(slashMatch[3], 10);
+    const date = new Date(year, month - 1, day);
+    return {
+      day,
+      formatted: formatDateWithDay(date),
+    };
+  }
+  
+  // Try "1ST JAN 2026" format
+  const ordinalMatch = trimmed.match(/(\d{1,2})(st|nd|rd|th)?\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s*(\d{4})?/i);
+  if (ordinalMatch) {
+    const day = parseInt(ordinalMatch[1], 10);
+    const monthStr = ordinalMatch[3].toLowerCase();
+    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const month = months.indexOf(monthStr);
+    const year = ordinalMatch[4] ? parseInt(ordinalMatch[4], 10) : new Date().getFullYear();
+    const date = new Date(year, month, day);
+    return {
+      day,
+      formatted: formatDateWithDay(date),
+    };
+  }
+  
+  // Try to extract day from sheet name context
+  const dayOnlyMatch = trimmed.match(/^(\d{1,2})$/);
+  if (dayOnlyMatch) {
+    const day = parseInt(dayOnlyMatch[1], 10);
+    if (day >= 1 && day <= 31) {
+      const monthName = extractMonthFromSheetName(sheetName);
+      const monthStr = monthName || 'Jan';
+      const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      const month = months.indexOf(monthStr.toLowerCase());
+      const date = new Date(new Date().getFullYear(), month >= 0 ? month : 0, day);
+      return {
+        day,
+        formatted: formatDateWithDay(date),
+      };
+    }
+  }
+  
+  return null;
+}
+
+// Format date like "Jan 16, Thu"
+function formatDateWithDay(date: Date): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return `${months[date.getMonth()]} ${date.getDate()}, ${days[date.getDay()]}`;
+}
+
 // ============================================================================
 // PARSER: RANKING BONUS style sheets
 // Structure: Headers contain dates (e.g., "1ST JAN 2026"), row 0 has field labels repeating per block
+// Block columns: IDs(Stage), Names, Recovery rate, Rank, Rate, Ranking Bonus
 // ============================================================================
 function parseRankingBonusSheet(
   data: SheetData,
@@ -316,11 +379,11 @@ function parseRankingBonusSheet(
   let foundUserName = '';
 
   for (const block of blocks) {
-    // Find USERNAMES column within this block
-    const usernameCol = findLabelIndex(labelRow, block.start, block.end, ['usernames', 'username', 'user id', 'user_id', 'id', 'name']);
-    // Find STAGES column
-    const stageCol = findLabelIndex(labelRow, block.start, block.end, ['stage', 'stages']);
-    // Find value column: prioritize "ranking bonus"
+    // Find NAMES/USERNAMES column within this block (where worker IDs are listed)
+    const usernameCol = findLabelIndex(labelRow, block.start, block.end, ['names', 'usernames', 'username', 'user id', 'user_id', 'id', 'name']);
+    // Find STAGES/IDS column (like S1, S2, T-1)
+    const stageCol = findLabelIndex(labelRow, block.start, block.end, ['stage', 'stages', 'ids']);
+    // Find "Ranking Bonus" column - this is the value we need
     const rankingBonusCol = findLabelIndex(labelRow, block.start, block.end, ['ranking bonus']);
 
     if (usernameCol < 0 || rankingBonusCol < 0) continue;
@@ -329,16 +392,16 @@ function parseRankingBonusSheet(
     for (const row of data.rows.slice(1)) {
       if (normalizeComparable(row[usernameCol]) === normalizedWorkerId) {
         foundUserName = row[usernameCol] || originalWorkerId;
-        if (stageCol >= 0 && row[stageCol]) {
-          foundStage = row[stageCol];
+        if (stageCol >= 0 && row[stageCol] && row[stageCol].trim()) {
+          foundStage = row[stageCol].trim();
         }
         
         const value = parseNumberLike(row[rankingBonusCol]);
-        const dayNumber = extractDayFromDateString(block.date);
+        const parsedDate = parseDateFromHeader(block.date, data.sheetName);
         
         dailyData.push({ 
-          date: block.date, 
-          dayNumber: dayNumber ?? undefined,
+          date: parsedDate?.formatted || block.date, 
+          dayNumber: parsedDate?.day ?? extractDayFromDateString(block.date) ?? undefined,
           value 
         });
         break;
