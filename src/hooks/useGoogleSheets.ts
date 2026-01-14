@@ -170,9 +170,11 @@ export function useGoogleSheets() {
 
 // ============================================================================
 // PARSER: DAILY & PERFORMANCE style sheets
-// Structure: Each block has a date header (e.g., "1/1/2026") at top
-// Block columns: STAGES, USERNAMES, Recovery Rate, Bonus, Rank, Rate, Ranking Bonus, Total
-// We need "Total" column value for each block where worker is found
+// Structure: Each block has header "COLLECTOR BONUS STANDARDS" 
+// Label row: STAGE, PRODUCT, Recovery rate of amount, Recovery rate of case, Recovery bonus, 
+//            Ranking rate_Recovery rate of amount, Ranking rate_Recovery rate of case, Ranking bonus, Weekly bonus
+// Worker IDs are in "PRODUCT" column, value is in "Weekly bonus" column
+// Dates are determined by block position (Day 1, Day 2, etc. based on block index)
 // ============================================================================
 function parseDailyPerformanceSheet(
   data: SheetData,
@@ -182,7 +184,7 @@ function parseDailyPerformanceSheet(
   const headers = data.headers;
   const labelRow = data.rows[0] || [];
   
-  // Find all block starts by looking for "STAGES" or "STAGE" in the label row
+  // Find all block starts by looking for "STAGE" in the label row
   const blockStarts: number[] = [];
   for (let i = 0; i < labelRow.length; i++) {
     const label = normalizeLabel(labelRow[i]);
@@ -197,61 +199,76 @@ function parseDailyPerformanceSheet(
   let foundStage = '';
   let foundUserName = '';
 
-  // Process each block
+  // Get month from sheet name for date formatting
+  const monthName = extractMonthFromSheetName(data.sheetName);
+  const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  const monthIndex = monthName ? months.indexOf(monthName.toLowerCase()) : 0;
+  const year = new Date().getFullYear();
+
+  // Process each block (each block represents a day)
   for (let blockIdx = 0; blockIdx < blockStarts.length; blockIdx++) {
     const blockStart = blockStarts[blockIdx];
     const blockEnd = blockStarts[blockIdx + 1] ?? labelRow.length;
     
-    // Extract date from header row at blockStart position
-    const dateHeader = headers[blockStart] || '';
-    const parsedDate = parseDateFromHeader(dateHeader, data.sheetName);
+    // Day number is block index + 1 (first block = Day 1)
+    const dayNumber = blockIdx + 1;
     
     // Find column indices within this block
-    const usernameCol = findLabelInRange(labelRow, blockStart, blockEnd, ['usernames', 'username', 'user id', 'product']);
-    const totalCol = findLabelInRange(labelRow, blockStart, blockEnd, ['total']);
+    // PRODUCT column contains worker IDs (like NGDS-1001)
+    const productCol = findLabelInRange(labelRow, blockStart, blockEnd, ['product', 'usernames', 'username', 'user id']);
+    // Weekly bonus column contains the value we need
+    const weeklyBonusCol = findLabelInRange(labelRow, blockStart, blockEnd, ['weekly bonus', 'weekly']);
     
-    if (usernameCol < 0) continue;
+    // Fallback: if no weekly bonus found, try "total" or use last numeric column
+    let valueCol = weeklyBonusCol;
+    if (valueCol < 0) {
+      valueCol = findLabelInRange(labelRow, blockStart, blockEnd, ['total']);
+    }
+    
+    if (productCol < 0) continue;
 
-    // Search data rows for worker
+    // Search data rows for worker (skip labelRow, start from actual data rows)
     for (let rowIdx = 1; rowIdx < data.rows.length; rowIdx++) {
       const row = data.rows[rowIdx];
-      const cellValue = normalizeComparable(row[usernameCol]);
+      const cellValue = normalizeComparable(row[productCol]);
       
       if (cellValue === normalizedWorkerId) {
-        foundUserName = row[usernameCol] || originalWorkerId;
+        foundUserName = row[productCol] || originalWorkerId;
         
-        // Get stage from the STAGES column (blockStart)
+        // Get stage from the STAGE column (blockStart)
         if (row[blockStart] && row[blockStart].trim()) {
           foundStage = row[blockStart].trim();
         }
         
-        // Get Total value - if totalCol found, use it; otherwise find last numeric value in block
-        let totalValue = 0;
-        if (totalCol >= 0 && row[totalCol]) {
-          totalValue = parseNumberLike(row[totalCol]);
+        // Get Weekly bonus value
+        let bonusValue = 0;
+        if (valueCol >= 0 && row[valueCol]) {
+          bonusValue = parseNumberLike(row[valueCol]);
         }
         
-        // Fallback: find last non-percentage numeric value in block
-        if (totalValue === 0) {
-          for (let col = blockEnd - 1; col > usernameCol; col--) {
+        // Fallback: find last non-percentage numeric value in block if no value found
+        if (bonusValue === 0) {
+          for (let col = blockEnd - 1; col > productCol; col--) {
             const val = row[col]?.trim() || '';
-            if (val && !val.includes('%')) {
+            if (val && !val.includes('%') && !val.includes('≥') && !val.includes('TOP')) {
               const parsed = parseNumberLike(val);
               if (parsed > 0) {
-                totalValue = parsed;
+                bonusValue = parsed;
                 break;
               }
             }
           }
         }
 
-        if (parsedDate && totalValue > 0) {
-          dailyData.push({
-            date: parsedDate.formatted,
-            dayNumber: parsedDate.day,
-            value: totalValue,
-          });
-        }
+        // Format date with day of week
+        const date = new Date(year, monthIndex, dayNumber);
+        const formattedDate = formatDateWithDay(date);
+
+        dailyData.push({
+          date: formattedDate,
+          dayNumber,
+          value: bonusValue,
+        });
         
         break; // Found worker in this block, move to next block
       }
@@ -259,18 +276,8 @@ function parseDailyPerformanceSheet(
   }
 
   if (dailyData.length > 0) {
-    // Sort by day number and remove duplicates (keep highest value per day)
-    const dayMap = new Map<number, DailyBonus>();
-    for (const d of dailyData) {
-      if (d.dayNumber !== undefined) {
-        const existing = dayMap.get(d.dayNumber);
-        if (!existing || d.value > existing.value) {
-          dayMap.set(d.dayNumber, d);
-        }
-      }
-    }
-    
-    const sortedData = Array.from(dayMap.values()).sort((a, b) => 
+    // Sort by day number
+    const sortedData = dailyData.sort((a, b) => 
       (a.dayNumber ?? 0) - (b.dayNumber ?? 0)
     );
 
@@ -328,23 +335,6 @@ function parseDateFromHeader(header: string, sheetName: string): { day: number; 
       day,
       formatted: formatDateWithDay(date),
     };
-  }
-  
-  // Try to extract day from sheet name context
-  const dayOnlyMatch = trimmed.match(/^(\d{1,2})$/);
-  if (dayOnlyMatch) {
-    const day = parseInt(dayOnlyMatch[1], 10);
-    if (day >= 1 && day <= 31) {
-      const monthName = extractMonthFromSheetName(sheetName);
-      const monthStr = monthName || 'Jan';
-      const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-      const month = months.indexOf(monthStr.toLowerCase());
-      const date = new Date(new Date().getFullYear(), month >= 0 ? month : 0, day);
-      return {
-        day,
-        formatted: formatDateWithDay(date),
-      };
-    }
   }
   
   return null;
