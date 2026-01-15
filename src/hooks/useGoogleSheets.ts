@@ -180,22 +180,128 @@ function parseDailyPerformanceSheet(
   normalizedWorkerId: string,
   originalWorkerId: string
 ): WorkerData | null {
+  // NOTE:
+  // Some sheets (like "DAILY & PERFORMANCE JAN.") have a large "COLLECTOR BONUS STANDARDS" section at the top.
+  // The *real* daily data is in vertical blocks:
+  //   Row A: DATE (e.g., 1/1/2026)
+  //   Row B: STAGES | USERNAMES | ... | TOTAL
+  //   Rows below: stage divider rows + user rows
+  // So we must scan ROWS to find date blocks (not just data.headers).
+
+  const dailyData: DailyBonus[] = [];
+  let foundStage = '';
+  let foundUserName = '';
+
+  const looksLikeStage = (value: string) => {
+    const v = value.trim().toUpperCase();
+    return /^T-?\d+$/.test(v) || /^S\d+$/.test(v);
+  };
+
+  // Build a full matrix including the first header row from the API
+  const matrix: string[][] = [data.headers, ...data.rows];
+
+  // --------------------------------------------------------------------------
+  // PASS 1 (preferred): Find date blocks in ROWS (date row + header row)
+  // --------------------------------------------------------------------------
+  for (let rowIdx = 0; rowIdx < matrix.length - 2; rowIdx++) {
+    const row = matrix[rowIdx] || [];
+
+    // Collect all date-like cells on this row (each is a block start)
+    const starts: Array<{ col: number; dateRaw: string; parsed: { day: number; formatted: string } }> = [];
+
+    for (let col = 0; col < row.length; col++) {
+      const cell = String(row[col] ?? '').trim();
+      if (!cell) continue;
+
+      // Explicitly ignore the standards tables
+      if (cell.toUpperCase().includes('COLLECTOR BONUS')) continue;
+
+      const parsed = parseDateFromHeader(cell, data.sheetName);
+      if (parsed) starts.push({ col, dateRaw: cell, parsed });
+    }
+
+    if (starts.length === 0) continue;
+    starts.sort((a, b) => a.col - b.col);
+
+    const headerRow = matrix[rowIdx + 1] || [];
+
+    for (let sIdx = 0; sIdx < starts.length; sIdx++) {
+      const blockStart = starts[sIdx].col;
+      const blockEnd = starts[sIdx + 1]?.col ?? Math.max(row.length, headerRow.length);
+
+      // The *next* row after the date must contain the required headers
+      const stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage']);
+      const usernamesCol = findLabelInRange(headerRow, blockStart, blockEnd, [
+        'usernames',
+        'username',
+        'user_name',
+        'user name',
+        // Some sheets label this column as PRODUCT
+        'product',
+        'id',
+      ]);
+      const totalCol = findLabelInRange(headerRow, blockStart, blockEnd, ['total']);
+
+      // If we can't find these, this is not a real date block.
+      if (usernamesCol < 0 || totalCol < 0) continue;
+
+      // Scan the data rows under the header for this block
+      let currentStage = '';
+
+      for (let r = rowIdx + 2; r < matrix.length; r++) {
+        const dataRow = matrix[r] || [];
+        const stageCell = String(dataRow[stagesCol] ?? '').trim();
+        const userCell = String(dataRow[usernamesCol] ?? '').trim();
+
+        // Stage divider rows (blue rows in the sheet) usually have stage but no username
+        if (stageCell && !userCell && looksLikeStage(stageCell)) {
+          currentStage = stageCell;
+          continue;
+        }
+
+        if (normalizeComparable(userCell) === normalizedWorkerId) {
+          foundUserName = userCell || originalWorkerId;
+          const resolvedStage = stageCell || currentStage;
+          if (resolvedStage) foundStage = resolvedStage;
+
+          dailyData.push({
+            date: starts[sIdx].parsed.formatted,
+            dayNumber: starts[sIdx].parsed.day,
+            value: parseNumberLike(dataRow[totalCol]),
+          });
+          break; // found worker for this date block
+        }
+      }
+    }
+  }
+
+  if (dailyData.length > 0) {
+    const sorted = dailyData.sort((a, b) => (a.dayNumber ?? 0) - (b.dayNumber ?? 0));
+    return {
+      workerId: originalWorkerId,
+      userName: foundUserName || originalWorkerId,
+      stage: foundStage || 'N/A',
+      bucket: 'N/A',
+      dailyData: sorted,
+      valueType: 'amount',
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // PASS 2 (fallback): older format where dates are in `data.headers`
+  // --------------------------------------------------------------------------
   const headers = data.headers;
   const labelRow = data.rows[0] || [];
-  
-  // Find all DATE-based block starts in headers (IGNORE "COLLECTOR BONUS STANDARDS")
-  // A valid block starts with a date like "1/1/2026", "12/28/2025", "1ST JAN 2026"
+
   const dateBlocks: Array<{ start: number; date: string; parsedDate: { day: number; formatted: string } | null }> = [];
-  
+
   for (let i = 0; i < headers.length; i++) {
     const header = String(headers[i] ?? '').trim();
-    
-    // Skip "COLLECTOR BONUS STANDARDS" - this is NOT real data
+
     if (header.toUpperCase().includes('COLLECTOR BONUS') || header.toUpperCase().includes('GH_COLLECTOR')) {
       continue;
     }
-    
-    // Check if this header is a date
+
     const parsed = parseDateFromHeader(header, data.sheetName);
     if (parsed) {
       dateBlocks.push({ start: i, date: header, parsedDate: parsed });
@@ -204,87 +310,59 @@ function parseDailyPerformanceSheet(
 
   if (dateBlocks.length === 0) return null;
 
-  const dailyData: DailyBonus[] = [];
-  let foundStage = '';
-  let foundUserName = '';
+  const fallbackDailyData: DailyBonus[] = [];
+  let fallbackStage = '';
+  let fallbackUserName = '';
 
-  // Process each date block
   for (let blockIdx = 0; blockIdx < dateBlocks.length; blockIdx++) {
     const block = dateBlocks[blockIdx];
     const blockStart = block.start;
     const blockEnd = dateBlocks[blockIdx + 1]?.start ?? headers.length;
-    
-    // Find column indices within this block using the label row
-    // STAGES column (first column of block often, or look for "stages" label)
+
     const stagesCol = findLabelInRange(labelRow, blockStart, blockEnd, ['stages', 'stage']);
-    // USERNAMES column contains worker IDs
-    const usernamesCol = findLabelInRange(labelRow, blockStart, blockEnd, ['usernames', 'username', 'names', 'name', 'user id']);
-    // Total column contains the bonus value
+    const usernamesCol = findLabelInRange(labelRow, blockStart, blockEnd, ['usernames', 'username', 'names', 'name', 'user id', 'product']);
     const totalCol = findLabelInRange(labelRow, blockStart, blockEnd, ['total']);
-    
+
     if (usernamesCol < 0) continue;
 
-    // Search data rows for worker (skip labelRow)
     for (let rowIdx = 1; rowIdx < data.rows.length; rowIdx++) {
       const row = data.rows[rowIdx];
       const cellValue = normalizeComparable(row[usernamesCol]);
-      
+
       if (cellValue === normalizedWorkerId) {
-        foundUserName = row[usernamesCol] || originalWorkerId;
-        
-        // Get stage from the STAGES column
+        fallbackUserName = row[usernamesCol] || originalWorkerId;
+
         if (stagesCol >= 0 && row[stagesCol] && row[stagesCol].trim()) {
-          foundStage = row[stagesCol].trim();
+          fallbackStage = row[stagesCol].trim();
         }
-        
-        // Get Total value (the bonus)
+
         let bonusValue = 0;
         if (totalCol >= 0 && row[totalCol]) {
           bonusValue = parseNumberLike(row[totalCol]);
         }
-        
-        // Fallback: find last numeric value in block if no "Total" found
-        if (bonusValue === 0) {
-          for (let col = blockEnd - 1; col > usernamesCol; col--) {
-            const val = row[col]?.trim() || '';
-            if (val && !val.includes('%') && !val.includes('≥') && !val.includes('TOP')) {
-              const parsed = parseNumberLike(val);
-              if (parsed > 0) {
-                bonusValue = parsed;
-                break;
-              }
-            }
-          }
-        }
 
-        dailyData.push({
+        fallbackDailyData.push({
           date: block.parsedDate?.formatted || block.date,
           dayNumber: block.parsedDate?.day,
           value: bonusValue,
         });
-        
-        break; // Found worker in this block, move to next block
+
+        break;
       }
     }
   }
 
-  if (dailyData.length > 0) {
-    // Sort by day number
-    const sortedData = dailyData.sort((a, b) => 
-      (a.dayNumber ?? 0) - (b.dayNumber ?? 0)
-    );
+  if (fallbackDailyData.length === 0) return null;
 
-    return {
-      workerId: originalWorkerId,
-      userName: foundUserName,
-      stage: foundStage || 'N/A',
-      bucket: 'N/A',
-      dailyData: sortedData,
-      valueType: 'amount',
-    };
-  }
-
-  return null;
+  const sortedFallback = fallbackDailyData.sort((a, b) => (a.dayNumber ?? 0) - (b.dayNumber ?? 0));
+  return {
+    workerId: originalWorkerId,
+    userName: fallbackUserName || originalWorkerId,
+    stage: fallbackStage || 'N/A',
+    bucket: 'N/A',
+    dailyData: sortedFallback,
+    valueType: 'amount',
+  };
 }
 
 // Find label index within a specific column range
