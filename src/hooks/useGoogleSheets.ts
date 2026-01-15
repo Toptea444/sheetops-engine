@@ -491,6 +491,7 @@ function parseRankingBonusSheet(
   
   // Find date blocks in headers
   const blocks = extractDateBlocks(headers);
+  console.log('[RANKING DEBUG] Blocks found:', blocks.map(b => ({ date: b.date, start: b.start, end: b.end })));
   if (blocks.length === 0) return null;
 
   const dailyData: DailyBonus[] = [];
@@ -498,24 +499,31 @@ function parseRankingBonusSheet(
   let foundUserName = '';
 
   for (const block of blocks) {
+    // For the last block, ensure end doesn't exceed labelRow length
+    const effectiveEnd = Math.min(block.end, labelRow.length);
+    
     // Find NAMES/USERNAMES column within this block (where worker IDs are listed)
-    const usernameCol = findLabelIndex(labelRow, block.start, block.end, ['names', 'usernames', 'username', 'user id', 'user_id', 'id', 'name']);
+    const usernameCol = findLabelIndex(labelRow, block.start, effectiveEnd, ['names', 'usernames', 'username', 'user id', 'user_id', 'id', 'name']);
     // Find STAGES/IDS column (like S1, S2, T-1)
-    const stageCol = findLabelIndex(labelRow, block.start, block.end, ['stage', 'stages', 'ids']);
+    const stageCol = findLabelIndex(labelRow, block.start, effectiveEnd, ['stage', 'stages', 'ids']);
     // Find "Ranking Bonus" column - this is the value we need
-    const rankingBonusCol = findLabelIndex(labelRow, block.start, block.end, ['ranking bonus']);
+    const rankingBonusCol = findLabelIndex(labelRow, block.start, effectiveEnd, ['ranking bonus']);
 
-    if (usernameCol < 0 || rankingBonusCol < 0) continue;
+    // If we couldn't find required columns in the expected range, try a wider search from block.start
+    const finalUsernameCol = usernameCol >= 0 ? usernameCol : findLabelIndex(labelRow, block.start, labelRow.length, ['names', 'usernames', 'username', 'user id', 'user_id', 'id', 'name']);
+    const finalRankingBonusCol = rankingBonusCol >= 0 ? rankingBonusCol : findLabelIndex(labelRow, block.start, labelRow.length, ['ranking bonus']);
+
+    if (finalUsernameCol < 0 || finalRankingBonusCol < 0) continue;
 
     // Search all data rows for this worker in this block
     for (const row of data.rows.slice(1)) {
-      if (normalizeComparable(row[usernameCol]) === normalizedWorkerId) {
-        foundUserName = row[usernameCol] || originalWorkerId;
+      if (normalizeComparable(row[finalUsernameCol]) === normalizedWorkerId) {
+        foundUserName = row[finalUsernameCol] || originalWorkerId;
         if (stageCol >= 0 && row[stageCol] && row[stageCol].trim()) {
           foundStage = row[stageCol].trim();
         }
         
-        const value = parseNumberLike(row[rankingBonusCol]);
+        const value = parseNumberLike(row[finalRankingBonusCol]);
         const parsedDate = parseDateFromHeader(block.date, data.sheetName);
         
         dailyData.push({ 
