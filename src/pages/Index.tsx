@@ -1,13 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { Users } from 'lucide-react';
 import { Header } from '@/components/dashboard/Header';
 import { SheetTabs } from '@/components/dashboard/SheetTabs';
 import { SearchPanel } from '@/components/dashboard/SearchPanel';
 import { ResultsPanel } from '@/components/dashboard/ResultsPanel';
 import { ErrorAlert } from '@/components/dashboard/ErrorAlert';
 import { LoadingState } from '@/components/dashboard/LoadingState';
-import { Button } from '@/components/ui/button';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import type { BonusResult, WorkerData } from '@/types/bonus';
 import { toast } from 'sonner';
@@ -111,15 +108,6 @@ const Index = () => {
       <Header onRefresh={handleRefresh} isLoading={isLoading} />
       
       <main className="container mx-auto px-4 py-6">
-        {/* TL Dashboard Link */}
-        <div className="mb-6 flex justify-end">
-          <Link to="/tl">
-            <Button variant="outline" className="gap-2">
-              <Users className="h-4 w-4" />
-              TL Dashboard
-            </Button>
-          </Link>
-        </div>
         {/* Error Display */}
         {(error || searchError) && (
           <div className="mb-6">

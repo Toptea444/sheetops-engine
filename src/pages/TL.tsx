@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { Header } from '@/components/dashboard/Header';
 import { SheetTabs } from '@/components/dashboard/SheetTabs';
 import { SearchPanel } from '@/components/dashboard/SearchPanel';
@@ -8,7 +7,6 @@ import { ResultsPanel } from '@/components/dashboard/ResultsPanel';
 import { DaysNotWorkedPanel, DeductionSummary, type DeductionResult } from '@/components/dashboard/DaysNotWorkedPanel';
 import { ErrorAlert } from '@/components/dashboard/ErrorAlert';
 import { LoadingState } from '@/components/dashboard/LoadingState';
-import { Button } from '@/components/ui/button';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import type { BonusResult, WorkerData } from '@/types/bonus';
 import { toast } from 'sonner';
@@ -126,18 +124,10 @@ const TL = () => {
       <Header onRefresh={handleRefresh} isLoading={isLoading} />
       
       <main className="container mx-auto px-4 py-6">
-        {/* Back Link & Page Title */}
-        <div className="mb-6 flex items-center gap-4">
-          <Link to="/">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Calculator
-            </Button>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            <h1 className="text-xl font-semibold">TL Dashboard</h1>
-          </div>
+        {/* Page Title */}
+        <div className="mb-6 flex items-center gap-2">
+          <Users className="h-5 w-5 text-primary" />
+          <h1 className="text-xl font-semibold">TL Dashboard</h1>
         </div>
 
         {/* Error Display */}
