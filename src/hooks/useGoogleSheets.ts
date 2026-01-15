@@ -105,13 +105,51 @@ export function useGoogleSheets() {
     return null;
   }, []);
 
+  // Get available day numbers from worker data
+  const getAvailableDays = useCallback((worker: WorkerData): number[] => {
+    return worker.dailyData
+      .filter(d => d.dayNumber !== undefined)
+      .map(d => d.dayNumber as number)
+      .sort((a, b) => a - b);
+  }, []);
+
   const calculateBonus = useCallback((worker: WorkerData, startDate: Date, endDate: Date): BonusResult => {
-    // Generate all dates in range
-    const allDatesInRange: Date[] = [];
-    const current = new Date(startDate);
-    while (current <= endDate) {
-      allDatesInRange.push(new Date(current));
-      current.setDate(current.getDate() + 1);
+    // Get available days from worker data
+    const availableDays = worker.dailyData
+      .filter(d => d.dayNumber !== undefined)
+      .map(d => d.dayNumber as number)
+      .sort((a, b) => a - b);
+
+    const minAvailableDay = availableDays.length > 0 ? Math.min(...availableDays) : null;
+    const maxAvailableDay = availableDays.length > 0 ? Math.max(...availableDays) : null;
+
+    // Validate dates against available data
+    let adjustedStartDate = new Date(startDate);
+    let adjustedEndDate = new Date(endDate);
+    let dateWarning: string | undefined;
+
+    const requestedStartDay = startDate.getDate();
+    const requestedEndDay = endDate.getDate();
+
+    // Check if requested dates are outside available range
+    if (minAvailableDay !== null && maxAvailableDay !== null) {
+      let warnings: string[] = [];
+
+      // Adjust start date if before available data
+      if (requestedStartDay < minAvailableDay) {
+        adjustedStartDate.setDate(minAvailableDay);
+        warnings.push(`Start date adjusted to day ${minAvailableDay} (earliest available)`);
+      }
+
+      // Adjust end date if after available data
+      if (requestedEndDay > maxAvailableDay) {
+        adjustedEndDate.setDate(maxAvailableDay);
+        warnings.push(`Data ended on day ${maxAvailableDay}. Your end date (day ${requestedEndDay}) was not found in the sheet.`);
+      }
+
+      if (warnings.length > 0) {
+        dateWarning = warnings.join(' | ');
+      }
     }
 
     // Create a map of day number to bonus value from worker data
@@ -122,22 +160,29 @@ export function useGoogleSheets() {
       }
     }
 
-    // Build daily breakdown with all dates (0 for missing)
-    const dailyBreakdown: DailyBonus[] = allDatesInRange.map(date => {
-      const dayNum = date.getDate();
+    // Build daily breakdown ONLY for days that exist in the sheet
+    const dailyBreakdown: DailyBonus[] = [];
+    const current = new Date(adjustedStartDate);
+    
+    while (current <= adjustedEndDate) {
+      const dayNum = current.getDate();
       const existing = bonusMap.get(dayNum);
       
-      // Format date with day of week: "Jan 16, Thu"
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const formattedDate = `${months[date.getMonth()]} ${date.getDate()}, ${days[date.getDay()]}`;
+      // Only include days that exist in the sheet data
+      if (existing) {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const formattedDate = `${months[current.getMonth()]} ${current.getDate()}, ${days[current.getDay()]}`;
+        
+        dailyBreakdown.push({
+          date: formattedDate,
+          dayNumber: dayNum,
+          value: existing.value,
+        });
+      }
       
-      return {
-        date: formattedDate,
-        dayNumber: dayNum,
-        value: existing?.value ?? 0,
-      };
-    });
+      current.setDate(current.getDate() + 1);
+    }
 
     const totalBonus = dailyBreakdown.reduce((sum, d) => sum + d.value, 0);
 
@@ -152,6 +197,11 @@ export function useGoogleSheets() {
         start: startDate.toLocaleDateString(),
         end: endDate.toLocaleDateString(),
       },
+      actualDateRange: dateWarning ? {
+        start: adjustedStartDate.toLocaleDateString(),
+        end: adjustedEndDate.toLocaleDateString(),
+      } : undefined,
+      dateWarning,
       valueType: worker.valueType ?? 'amount',
     };
   }, []);
@@ -165,6 +215,7 @@ export function useGoogleSheets() {
     fetchSheetData,
     searchWorker,
     calculateBonus,
+    getAvailableDays,
   };
 }
 

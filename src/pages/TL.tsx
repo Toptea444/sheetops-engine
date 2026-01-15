@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Users } from 'lucide-react';
+import { ArrowLeft, Users } from 'lucide-react';
 import { Header } from '@/components/dashboard/Header';
 import { SheetTabs } from '@/components/dashboard/SheetTabs';
 import { SearchPanel } from '@/components/dashboard/SearchPanel';
 import { ResultsPanel } from '@/components/dashboard/ResultsPanel';
+import { DaysNotWorkedPanel, DeductionSummary, type DeductionResult } from '@/components/dashboard/DaysNotWorkedPanel';
 import { ErrorAlert } from '@/components/dashboard/ErrorAlert';
 import { LoadingState } from '@/components/dashboard/LoadingState';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import type { BonusResult, WorkerData } from '@/types/bonus';
 import { toast } from 'sonner';
 
-const Index = () => {
+const TL = () => {
   const { 
     isLoading, 
     error, 
@@ -28,6 +29,8 @@ const Index = () => {
   const [result, setResult] = useState<BonusResult | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [deductionResult, setDeductionResult] = useState<DeductionResult | null>(null);
+  const [searchDates, setSearchDates] = useState<{ start: Date; end: Date } | null>(null);
 
   // Initialize: fetch sheets list
   useEffect(() => {
@@ -47,6 +50,8 @@ const Index = () => {
     setActiveSheet(sheetName);
     setResult(null);
     setSearchError(null);
+    setDeductionResult(null);
+    setSearchDates(null);
     await fetchSheetData(sheetName);
   }, [fetchSheetData]);
 
@@ -54,6 +59,8 @@ const Index = () => {
   const handleRefresh = useCallback(async () => {
     setResult(null);
     setSearchError(null);
+    setDeductionResult(null);
+    setSearchDates(null);
     await fetchSheets();
     if (activeSheet) {
       await fetchSheetData(activeSheet);
@@ -65,6 +72,8 @@ const Index = () => {
   const handleSearch = useCallback((workerId: string, startDate: Date, endDate: Date) => {
     setSearchError(null);
     setResult(null);
+    setDeductionResult(null);
+    setSearchDates({ start: startDate, end: endDate });
 
     if (!sheetData) {
       setSearchError('No sheet data loaded. Please select a sheet first.');
@@ -96,6 +105,12 @@ const Index = () => {
     }
   }, [sheetData, activeSheet, searchWorker, calculateBonus]);
 
+  // Handle deduction calculation
+  const handleDeductionCalculate = useCallback((deduction: DeductionResult) => {
+    setDeductionResult(deduction);
+    toast.success(`Calculated deduction for ${deduction.deductedDays.length} days`);
+  }, []);
+
   const dismissError = () => setSearchError(null);
 
   if (isInitializing) {
@@ -111,15 +126,20 @@ const Index = () => {
       <Header onRefresh={handleRefresh} isLoading={isLoading} />
       
       <main className="container mx-auto px-4 py-6">
-        {/* TL Dashboard Link */}
-        <div className="mb-6 flex justify-end">
-          <Link to="/tl">
-            <Button variant="outline" className="gap-2">
-              <Users className="h-4 w-4" />
-              TL Dashboard
+        {/* Back Link & Page Title */}
+        <div className="mb-6 flex items-center gap-4">
+          <Link to="/">
+            <Button variant="ghost" size="sm" className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Calculator
             </Button>
           </Link>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            <h1 className="text-xl font-semibold">TL Dashboard</h1>
+          </div>
         </div>
+
         {/* Error Display */}
         {(error || searchError) && (
           <div className="mb-6">
@@ -152,11 +172,31 @@ const Index = () => {
           </div>
 
           {/* Right Panel: Results */}
-          <div>
+          <div className="space-y-6">
             {isLoading && !result ? (
               <LoadingState message="Loading sheet data..." />
             ) : (
-              <ResultsPanel result={result} sheetName={activeSheet} />
+              <>
+                <ResultsPanel result={result} sheetName={activeSheet} />
+                
+                {/* Days Not Worked Panel - Only show when we have results */}
+                {result && searchDates && (
+                  <DaysNotWorkedPanel
+                    result={result}
+                    startDate={searchDates.start}
+                    endDate={searchDates.end}
+                    onCalculate={handleDeductionCalculate}
+                  />
+                )}
+
+                {/* Deduction Summary */}
+                {deductionResult && (
+                  <DeductionSummary 
+                    deduction={deductionResult} 
+                    valueType={result?.valueType}
+                  />
+                )}
+              </>
             )}
           </div>
         </div>
@@ -164,10 +204,10 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
-        <p>Bonus Calculator System • Data synced from Google Sheets</p>
+        <p>TL Dashboard • Bonus Calculator with Deductions</p>
       </footer>
     </div>
   );
 };
 
-export default Index;
+export default TL;

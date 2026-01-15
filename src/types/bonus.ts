@@ -37,6 +37,13 @@ export interface BonusResult {
     start: string;
     end: string;
   };
+  /** Actual date range from sheet data (may differ from requested range) */
+  actualDateRange?: {
+    start: string;
+    end: string;
+  };
+  /** Warning message when dates were adjusted */
+  dateWarning?: string;
   /** How to display/interpret totalBonus + dailyBreakdown values (defaults to percent). */
   valueType?: BonusValueType;
 }
