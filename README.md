@@ -1,73 +1,57 @@
-# Welcome to your Lovable project
+# sheetops-engine
+
+A short description of the project — add a one-line summary of what sheetops-engine does.
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Repository: https://github.com/Toptea444/sheetops-engine
 
-## How can I edit this code?
+## Getting started
 
-There are several ways of editing your application.
+Prerequisites:
+- Node.js (recommended via nvm)
+- npm or yarn
 
-**Use Lovable**
+Install and run locally:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+# Clone the repository
+git clone https://github.com/Toptea444/sheetops-engine.git
 
-Changes made via Lovable will be committed automatically to this repo.
+# Enter project directory
+cd sheetops-engine
 
-**Use your preferred IDE**
+# Install dependencies
+npm install
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
-```
 
-**Edit a file directly in GitHub**
+## Build
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+# Build for production
+npm run build
 
-**Use GitHub Codespaces**
+## Technologies
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
+This project uses:
 - Vite
 - TypeScript
 - React
 - shadcn-ui
 - Tailwind CSS
 
-## How can I deploy this project?
+## Editing files
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+You can edit files locally in your preferred IDE, commit, and push changes. Alternatively, use the GitHub web editor or Codespaces.
 
-## Can I connect a custom domain to my Lovable project?
+## Deployment
 
-Yes, you can!
+Deploy using your preferred platform (Vercel, Netlify, Cloudflare Pages, etc.). Configure build command and publish directory according to your chosen host (for example: build with `npm run build` and publish the `dist` folder for Vite).
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Contributing
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Contributions are welcome. Please open issues or PRs with a description of proposed changes and rationale.
+
+## License
+
+Add your license information here (e.g., MIT).
