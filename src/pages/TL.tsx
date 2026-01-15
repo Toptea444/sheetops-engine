@@ -120,10 +120,10 @@ const TL = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header onRefresh={handleRefresh} isLoading={isLoading} />
       
-      <main className="container mx-auto px-4 py-6">
+      <main className="flex-1 container mx-auto px-4 py-6 max-w-7xl">
         {/* Page Title */}
         <div className="mb-6 flex items-center gap-2">
           <Users className="h-5 w-5 text-primary" />
@@ -150,10 +150,10 @@ const TL = () => {
           />
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid gap-6 lg:grid-cols-[350px_1fr]">
-          {/* Left Panel: Search */}
-          <div>
+        {/* Main Content Grid - Improved Desktop Layout */}
+        <div className="grid gap-6 lg:grid-cols-[380px_1fr] xl:grid-cols-[400px_1fr]">
+          {/* Left Panel: Search - Sticky on desktop */}
+          <div className="lg:sticky lg:top-6 lg:self-start">
             <SearchPanel
               onSearch={handleSearch}
               isLoading={isLoading}
@@ -161,8 +161,8 @@ const TL = () => {
             />
           </div>
 
-          {/* Right Panel: Results */}
-          <div className="space-y-6">
+          {/* Right Panel: Results - Takes remaining space */}
+          <div className="space-y-6 min-w-0">
             {isLoading && !result ? (
               <LoadingState message="Loading sheet data..." />
             ) : (
@@ -193,7 +193,7 @@ const TL = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
+      <footer className="border-t bg-card py-4 text-center text-sm text-muted-foreground mt-auto">
         <p>TL Dashboard • Bonus Calculator with Deductions</p>
       </footer>
     </div>
