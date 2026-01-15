@@ -1,7 +1,8 @@
-import { TrendingUp, User, Calendar, Award, Coins, ChevronRight } from 'lucide-react';
+import { TrendingUp, User, Calendar, Award, Coins, ChevronRight, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { BonusResult } from '@/types/bonus';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +50,21 @@ export function ResultsPanel({ result, sheetName }: ResultsPanelProps) {
 
   return (
     <div className="space-y-6">
+      {/* Date Warning Alert */}
+      {result.dateWarning && (
+        <Alert variant="default" className="border-amber-500/50 bg-amber-500/10">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800 dark:text-amber-200">
+            {result.dateWarning}
+            {result.actualDateRange && (
+              <span className="block mt-1 text-sm">
+                Showing data from <strong>{result.actualDateRange.start}</strong> to <strong>{result.actualDateRange.end}</strong>
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header Card with Total Bonus */}
       <Card className="overflow-hidden">
         <div className="corporate-gradient p-6 text-primary-foreground">
