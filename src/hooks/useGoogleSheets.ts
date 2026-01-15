@@ -114,37 +114,41 @@ export function useGoogleSheets() {
   }, []);
 
   const calculateBonus = useCallback((worker: WorkerData, startDate: Date, endDate: Date): BonusResult => {
-    // Get available days from worker data
-    const availableDays = worker.dailyData
-      .filter(d => d.dayNumber !== undefined)
-      .map(d => d.dayNumber as number)
+    // Normalize start/end dates to midnight for comparison
+    const startTime = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime();
+    const endTime = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime();
+
+    // Get available full dates from worker data
+    const availableDates = worker.dailyData
+      .filter(d => d.fullDate !== undefined)
+      .map(d => d.fullDate as number)
       .sort((a, b) => a - b);
 
-    const minAvailableDay = availableDays.length > 0 ? Math.min(...availableDays) : null;
-    const maxAvailableDay = availableDays.length > 0 ? Math.max(...availableDays) : null;
+    const minAvailableDate = availableDates.length > 0 ? Math.min(...availableDates) : null;
+    const maxAvailableDate = availableDates.length > 0 ? Math.max(...availableDates) : null;
 
     // Validate dates against available data
-    let adjustedStartDate = new Date(startDate);
-    let adjustedEndDate = new Date(endDate);
+    let adjustedStartTime = startTime;
+    let adjustedEndTime = endTime;
     let dateWarning: string | undefined;
 
-    const requestedStartDay = startDate.getDate();
-    const requestedEndDay = endDate.getDate();
-
     // Check if requested dates are outside available range
-    if (minAvailableDay !== null && maxAvailableDay !== null) {
+    if (minAvailableDate !== null && maxAvailableDate !== null) {
       let warnings: string[] = [];
 
       // Adjust start date if before available data
-      if (requestedStartDay < minAvailableDay) {
-        adjustedStartDate.setDate(minAvailableDay);
-        warnings.push(`Start date adjusted to day ${minAvailableDay} (earliest available)`);
+      if (startTime < minAvailableDate) {
+        adjustedStartTime = minAvailableDate;
+        const minDate = new Date(minAvailableDate);
+        warnings.push(`Start date adjusted to ${minDate.toLocaleDateString()} (earliest available)`);
       }
 
       // Adjust end date if after available data
-      if (requestedEndDay > maxAvailableDay) {
-        adjustedEndDate.setDate(maxAvailableDay);
-        warnings.push(`Data ended on day ${maxAvailableDay}. Your end date (day ${requestedEndDay}) was not found in the sheet.`);
+      if (endTime > maxAvailableDate) {
+        adjustedEndTime = maxAvailableDate;
+        const maxDate = new Date(maxAvailableDate);
+        const requestedEndStr = endDate.toLocaleDateString();
+        warnings.push(`Data ended on ${maxDate.toLocaleDateString()}. Your end date (${requestedEndStr}) was not found in the sheet.`);
       }
 
       if (warnings.length > 0) {
@@ -152,37 +156,25 @@ export function useGoogleSheets() {
       }
     }
 
-    // Create a map of day number to bonus value from worker data
-    const bonusMap = new Map<number, { date: string; value: number }>();
+    // Build daily breakdown for dates within the adjusted range that exist in the sheet
+    const dailyBreakdown: DailyBonus[] = [];
+    
     for (const d of worker.dailyData) {
-      if (d.dayNumber !== undefined) {
-        bonusMap.set(d.dayNumber, { date: d.date, value: d.value });
+      if (d.fullDate !== undefined) {
+        // Only include days that are within the adjusted range
+        if (d.fullDate >= adjustedStartTime && d.fullDate <= adjustedEndTime) {
+          dailyBreakdown.push({
+            date: d.date,
+            dayNumber: d.dayNumber,
+            fullDate: d.fullDate,
+            value: d.value,
+          });
+        }
       }
     }
 
-    // Build daily breakdown ONLY for days that exist in the sheet
-    const dailyBreakdown: DailyBonus[] = [];
-    const current = new Date(adjustedStartDate);
-    
-    while (current <= adjustedEndDate) {
-      const dayNum = current.getDate();
-      const existing = bonusMap.get(dayNum);
-      
-      // Only include days that exist in the sheet data
-      if (existing) {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const formattedDate = `${months[current.getMonth()]} ${current.getDate()}, ${days[current.getDay()]}`;
-        
-        dailyBreakdown.push({
-          date: formattedDate,
-          dayNumber: dayNum,
-          value: existing.value,
-        });
-      }
-      
-      current.setDate(current.getDate() + 1);
-    }
+    // Sort by date
+    dailyBreakdown.sort((a, b) => (a.fullDate ?? 0) - (b.fullDate ?? 0));
 
     const totalBonus = dailyBreakdown.reduce((sum, d) => sum + d.value, 0);
 
@@ -198,8 +190,8 @@ export function useGoogleSheets() {
         end: endDate.toLocaleDateString(),
       },
       actualDateRange: dateWarning ? {
-        start: adjustedStartDate.toLocaleDateString(),
-        end: adjustedEndDate.toLocaleDateString(),
+        start: new Date(adjustedStartTime).toLocaleDateString(),
+        end: new Date(adjustedEndTime).toLocaleDateString(),
       } : undefined,
       dateWarning,
       valueType: worker.valueType ?? 'amount',
@@ -258,7 +250,7 @@ function parseDailyPerformanceSheet(
     const row = matrix[rowIdx] || [];
 
     // Collect all date-like cells on this row (each is a block start)
-    const starts: Array<{ col: number; dateRaw: string; parsed: { day: number; formatted: string } }> = [];
+    const starts: Array<{ col: number; dateRaw: string; parsed: { day: number; formatted: string; timestamp: number } }> = [];
 
     for (let col = 0; col < row.length; col++) {
       const cell = String(row[col] ?? '').trim();
@@ -318,6 +310,7 @@ function parseDailyPerformanceSheet(
           dailyData.push({
             date: starts[sIdx].parsed.formatted,
             dayNumber: starts[sIdx].parsed.day,
+            fullDate: starts[sIdx].parsed.timestamp,
             value: parseNumberLike(dataRow[totalCol]),
           });
           break; // found worker for this date block
@@ -327,7 +320,7 @@ function parseDailyPerformanceSheet(
   }
 
   if (dailyData.length > 0) {
-    const sorted = dailyData.sort((a, b) => (a.dayNumber ?? 0) - (b.dayNumber ?? 0));
+    const sorted = dailyData.sort((a, b) => (a.fullDate ?? 0) - (b.fullDate ?? 0));
     return {
       workerId: originalWorkerId,
       userName: foundUserName || originalWorkerId,
@@ -344,7 +337,7 @@ function parseDailyPerformanceSheet(
   const headers = data.headers;
   const labelRow = data.rows[0] || [];
 
-  const dateBlocks: Array<{ start: number; date: string; parsedDate: { day: number; formatted: string } | null }> = [];
+  const dateBlocks: Array<{ start: number; date: string; parsedDate: { day: number; formatted: string; timestamp: number } | null }> = [];
 
   for (let i = 0; i < headers.length; i++) {
     const header = String(headers[i] ?? '').trim();
@@ -395,6 +388,7 @@ function parseDailyPerformanceSheet(
         fallbackDailyData.push({
           date: block.parsedDate?.formatted || block.date,
           dayNumber: block.parsedDate?.day,
+          fullDate: block.parsedDate?.timestamp,
           value: bonusValue,
         });
 
@@ -405,7 +399,7 @@ function parseDailyPerformanceSheet(
 
   if (fallbackDailyData.length === 0) return null;
 
-  const sortedFallback = fallbackDailyData.sort((a, b) => (a.dayNumber ?? 0) - (b.dayNumber ?? 0));
+  const sortedFallback = fallbackDailyData.sort((a, b) => (a.fullDate ?? 0) - (b.fullDate ?? 0));
   return {
     workerId: originalWorkerId,
     userName: fallbackUserName || originalWorkerId,
@@ -427,7 +421,7 @@ function findLabelInRange(labelRow: string[], start: number, end: number, needle
 }
 
 // Parse date from header like "1/1/2026", "12/28/2025", "1ST JAN 2026"
-function parseDateFromHeader(header: string, sheetName: string): { day: number; formatted: string } | null {
+function parseDateFromHeader(header: string, sheetName: string): { day: number; formatted: string; timestamp: number } | null {
   const trimmed = header.trim();
   if (!trimmed) return null;
   
@@ -441,6 +435,7 @@ function parseDateFromHeader(header: string, sheetName: string): { day: number; 
     return {
       day,
       formatted: formatDateWithDay(date),
+      timestamp: date.getTime(),
     };
   }
   
@@ -456,6 +451,7 @@ function parseDateFromHeader(header: string, sheetName: string): { day: number; 
     return {
       day,
       formatted: formatDateWithDay(date),
+      timestamp: date.getTime(),
     };
   }
   
@@ -514,6 +510,7 @@ function parseRankingBonusSheet(
         dailyData.push({ 
           date: parsedDate?.formatted || block.date, 
           dayNumber: parsedDate?.day ?? extractDayFromDateString(block.date) ?? undefined,
+          fullDate: parsedDate?.timestamp,
           value 
         });
         break;
@@ -548,19 +545,20 @@ function parseWeeklyBonusSheet(
   const labelRow = data.rows[1]; // Row with "bucket", "user_name", dates
   if (!labelRow) return null;
 
-  const weekBlocks: Array<{ userNameCol: number; dateColumns: Array<{ col: number; date: string }> }> = [];
+  const weekBlocks: Array<{ userNameCol: number; dateColumns: Array<{ col: number; date: string; parsed: { day: number; formatted: string; timestamp: number } | null }> }> = [];
 
   for (let i = 0; i < labelRow.length; i++) {
     const label = normalizeLabel(labelRow[i]);
     if (label === 'user_name' || label === 'username' || label === 'name') {
-      const dateColumns: Array<{ col: number; date: string }> = [];
+      const dateColumns: Array<{ col: number; date: string; parsed: { day: number; formatted: string; timestamp: number } | null }> = [];
       for (let j = i + 1; j < labelRow.length; j++) {
         const nextLabel = normalizeLabel(labelRow[j]);
         if (nextLabel === 'user_name' || nextLabel === 'username' || nextLabel === 'name' || nextLabel === 'bucket') {
           break;
         }
         if (isDateLike(labelRow[j])) {
-          dateColumns.push({ col: j, date: labelRow[j] });
+          const parsed = parseDateFromHeader(labelRow[j], data.sheetName);
+          dateColumns.push({ col: j, date: labelRow[j], parsed });
         }
       }
       if (dateColumns.length > 0) {
@@ -578,9 +576,14 @@ function parseWeeklyBonusSheet(
     for (const row of data.rows.slice(2)) {
       if (normalizeComparable(row[block.userNameCol]) === normalizedWorkerId) {
         foundUserName = row[block.userNameCol] || originalWorkerId;
-        for (const { col, date } of block.dateColumns) {
+        for (const { col, date, parsed } of block.dateColumns) {
           const value = parseNumberLike(row[col]);
-          dailyData.push({ date, value });
+          dailyData.push({ 
+            date: parsed?.formatted || date, 
+            dayNumber: parsed?.day,
+            fullDate: parsed?.timestamp,
+            value 
+          });
         }
         break;
       }

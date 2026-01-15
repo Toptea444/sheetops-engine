@@ -22,6 +22,8 @@ export interface DailyBonus {
   date: string;
   /** Day number (1-31) for sorting/filtering */
   dayNumber?: number;
+  /** Full date timestamp (ms since epoch) for date range validation */
+  fullDate?: number;
   value: number;
 }
 
