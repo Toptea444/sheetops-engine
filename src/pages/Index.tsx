@@ -104,10 +104,10 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header onRefresh={handleRefresh} isLoading={isLoading} />
       
-      <main className="container mx-auto px-4 py-6">
+      <main className="flex-1 container mx-auto px-4 py-6 max-w-7xl">
         {/* Error Display */}
         {(error || searchError) && (
           <div className="mb-6">
@@ -128,10 +128,10 @@ const Index = () => {
           />
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid gap-6 lg:grid-cols-[350px_1fr]">
-          {/* Left Panel: Search */}
-          <div>
+        {/* Main Content Grid - Improved Desktop Layout */}
+        <div className="grid gap-6 lg:grid-cols-[380px_1fr] xl:grid-cols-[400px_1fr]">
+          {/* Left Panel: Search - Sticky on desktop */}
+          <div className="lg:sticky lg:top-6 lg:self-start">
             <SearchPanel
               onSearch={handleSearch}
               isLoading={isLoading}
@@ -139,8 +139,8 @@ const Index = () => {
             />
           </div>
 
-          {/* Right Panel: Results */}
-          <div>
+          {/* Right Panel: Results - Takes remaining space */}
+          <div className="min-w-0">
             {isLoading && !result ? (
               <LoadingState message="Loading sheet data..." />
             ) : (
@@ -151,7 +151,7 @@ const Index = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
+      <footer className="border-t bg-card py-4 text-center text-sm text-muted-foreground mt-auto">
         <p>Bonus Calculator System • Data synced from Google Sheets</p>
       </footer>
     </div>

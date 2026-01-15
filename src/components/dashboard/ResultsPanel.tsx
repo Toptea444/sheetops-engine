@@ -30,8 +30,8 @@ function formatNumber(value: number) {
 export function ResultsPanel({ result, sheetName }: ResultsPanelProps) {
   if (!result) {
     return (
-      <Card className="border-dashed border-2 border-muted-foreground/20">
-        <CardContent className="flex min-h-[400px] flex-col items-center justify-center text-muted-foreground p-8">
+      <Card className="border-dashed border-2 border-muted-foreground/20 h-full">
+        <CardContent className="flex min-h-[300px] lg:min-h-[400px] flex-col items-center justify-center text-muted-foreground p-8">
           <div className="rounded-full bg-muted p-6 mb-6">
             <TrendingUp className="h-12 w-12 opacity-40" />
           </div>

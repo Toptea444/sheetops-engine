@@ -114,18 +114,27 @@ export function useGoogleSheets() {
   }, []);
 
   const calculateBonus = useCallback((worker: WorkerData, startDate: Date, endDate: Date): BonusResult => {
+    // Helper to normalize a timestamp to midnight UTC for consistent comparison
+    const normalizeToMidnight = (timestamp: number): number => {
+      const d = new Date(timestamp);
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    };
+
     // Normalize start/end dates to midnight for comparison
     const startTime = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime();
     const endTime = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime();
 
-    // Get available full dates from worker data
+    // Get available full dates from worker data, normalized to midnight
     const availableDates = worker.dailyData
       .filter(d => d.fullDate !== undefined)
-      .map(d => d.fullDate as number)
+      .map(d => normalizeToMidnight(d.fullDate as number))
       .sort((a, b) => a - b);
 
-    const minAvailableDate = availableDates.length > 0 ? Math.min(...availableDates) : null;
-    const maxAvailableDate = availableDates.length > 0 ? Math.max(...availableDates) : null;
+    // Remove duplicates
+    const uniqueAvailableDates = [...new Set(availableDates)];
+
+    const minAvailableDate = uniqueAvailableDates.length > 0 ? Math.min(...uniqueAvailableDates) : null;
+    const maxAvailableDate = uniqueAvailableDates.length > 0 ? Math.max(...uniqueAvailableDates) : null;
 
     // Validate dates against available data
     let adjustedStartTime = startTime;
@@ -161,8 +170,10 @@ export function useGoogleSheets() {
     
     for (const d of worker.dailyData) {
       if (d.fullDate !== undefined) {
-        // Only include days that are within the adjusted range
-        if (d.fullDate >= adjustedStartTime && d.fullDate <= adjustedEndTime) {
+        // Normalize the data's fullDate for comparison
+        const normalizedFullDate = normalizeToMidnight(d.fullDate);
+        // Only include days that are within the adjusted range (inclusive on both ends)
+        if (normalizedFullDate >= adjustedStartTime && normalizedFullDate <= adjustedEndTime) {
           dailyBreakdown.push({
             date: d.date,
             dayNumber: d.dayNumber,
