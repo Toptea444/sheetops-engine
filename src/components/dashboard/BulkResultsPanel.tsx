@@ -41,7 +41,7 @@ export function BulkResultsPanel({ results, sheetName }: BulkResultsPanelProps) 
           </div>
           <h3 className="text-xl font-semibold mb-2 text-foreground">No Results Yet</h3>
           <p className="text-center max-w-sm">
-            Enter Worker IDs and select a date range to compare bonuses
+            Enter Collector IDs and select a date range to compare bonuses
           </p>
         </CardContent>
       </Card>
