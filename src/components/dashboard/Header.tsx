@@ -18,7 +18,7 @@ export function Header({ onRefresh, isLoading }: HeaderProps) {
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Bonus Calculator</h1>
               <p className="text-sm text-white/80">
-                Professional Worker Bonus Tracking System
+                Collector Bonus Tracking System
               </p>
             </div>
           </div>
