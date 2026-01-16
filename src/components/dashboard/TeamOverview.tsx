@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Users, Award, AlertTriangle, Calendar, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, Calendar, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,13 +11,10 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { cn } from '@/lib/utils';
 
 export interface WorkerSummary {
@@ -45,9 +42,107 @@ interface TeamOverviewProps {
   sheetName: string;
   dateRange: { start: string; end: string } | null;
   isLoading?: boolean;
+  loadingPhase?: string;
 }
 
-export function TeamOverview({ workers, sheetName, dateRange, isLoading }: TeamOverviewProps) {
+// Expandable worker row component
+function ExpandableWorkerRow({ 
+  worker, 
+  rank, 
+  variant = 'default' 
+}: { 
+  worker: WorkerSummary; 
+  rank: number;
+  variant?: 'top' | 'low' | 'default';
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const bgClass = variant === 'top' 
+    ? 'bg-green-50 dark:bg-green-950/20 hover:bg-green-100 dark:hover:bg-green-950/30' 
+    : variant === 'low'
+    ? 'bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30'
+    : 'hover:bg-muted/50';
+  
+  const rankColorClass = variant === 'top' 
+    ? 'text-green-600' 
+    : variant === 'low' 
+    ? 'text-amber-600' 
+    : 'text-muted-foreground';
+
+  const amountColorClass = variant === 'top'
+    ? 'text-green-700 dark:text-green-300'
+    : variant === 'low'
+    ? 'text-amber-700 dark:text-amber-300'
+    : 'text-foreground';
+
+  // Sort daily data by date
+  const sortedDailyData = useMemo(() => {
+    return [...worker.dailyData].sort((a, b) => (a.fullDate ?? 0) - (b.fullDate ?? 0));
+  }, [worker.dailyData]);
+
+  return (
+    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+      <CollapsibleTrigger asChild>
+        <div className={cn(
+          "flex items-center justify-between rounded-md px-3 py-2 cursor-pointer transition-colors",
+          bgClass
+        )}>
+          <div className="flex items-center gap-2">
+            <span className={cn("text-xs font-bold w-6", rankColorClass)}>#{rank}</span>
+            <span className="font-mono text-sm">{worker.workerId}</span>
+            {isExpanded ? (
+              <EyeOff className="h-3 w-3 text-muted-foreground" />
+            ) : (
+              <Eye className="h-3 w-3 text-muted-foreground" />
+            )}
+          </div>
+          <div className="text-right">
+            <div className={cn("font-medium", amountColorClass)}>
+              ₦{worker.totalEarnings.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {worker.daysWorked} days
+            </div>
+          </div>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-1 ml-8 mr-2 mb-2 p-3 rounded-md bg-muted/30 border border-border/50">
+          <div className="text-xs font-medium text-muted-foreground mb-2">
+            Daily Breakdown ({sortedDailyData.length} entries)
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 max-h-40 overflow-y-auto">
+            {sortedDailyData.map((day, idx) => (
+              <div 
+                key={idx} 
+                className={cn(
+                  "flex justify-between items-center text-xs px-2 py-1 rounded",
+                  day.value > 0 ? "bg-background" : "bg-red-50 dark:bg-red-950/20"
+                )}
+              >
+                <span className="text-muted-foreground truncate mr-2">{day.date}</span>
+                <span className={cn(
+                  "font-mono font-medium",
+                  day.value > 0 ? "text-foreground" : "text-red-500"
+                )}>
+                  ₦{day.value.toLocaleString('en-NG')}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 pt-2 border-t border-border/50 flex justify-between text-xs">
+            <span className="text-muted-foreground">Average per day:</span>
+            <span className="font-medium">
+              ₦{worker.averageDaily.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+export function TeamOverview({ workers, sheetName, dateRange, isLoading, loadingPhase }: TeamOverviewProps) {
   const [expandedStages, setExpandedStages] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
 
@@ -104,29 +199,25 @@ export function TeamOverview({ workers, sheetName, dateRange, isLoading }: TeamO
     };
   }, [workers]);
 
-  const toggleStage = (stage: string) => {
-    setExpandedStages(prev => 
-      prev.includes(stage) 
-        ? prev.filter(s => s !== stage)
-        : [...prev, stage]
-    );
-  };
-
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'PHP',
+    return '₦' + value.toLocaleString('en-NG', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
-    }).format(value);
+    });
   };
 
   if (isLoading) {
     return (
       <Card className="border-dashed">
         <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-          <Loader2 className="h-10 w-10 animate-spin mb-4" />
-          <p>Loading team data...</p>
+          <div className="relative">
+            <Loader2 className="h-10 w-10 animate-spin mb-4" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-6 w-6 rounded-full bg-primary/20 animate-ping" />
+            </div>
+          </div>
+          <p className="font-medium">{loadingPhase || 'Loading team data...'}</p>
+          <p className="text-xs text-muted-foreground mt-1">This may take a moment for large teams</p>
         </CardContent>
       </Card>
     );
@@ -188,7 +279,7 @@ export function TeamOverview({ workers, sheetName, dateRange, isLoading }: TeamO
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-muted/50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-foreground">{overallStats.totalWorkers}</div>
-              <div className="text-xs text-muted-foreground">Total Workers</div>
+              <div className="text-xs text-muted-foreground">Total Collectors</div>
             </div>
             <div className="bg-muted/50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-foreground">{stageGroups.length}</div>
@@ -200,7 +291,7 @@ export function TeamOverview({ workers, sheetName, dateRange, isLoading }: TeamO
             </div>
             <div className="bg-muted/50 rounded-lg p-3 text-center">
               <div className="text-lg font-bold text-foreground">{formatCurrency(overallStats.averageEarnings)}</div>
-              <div className="text-xs text-muted-foreground">Avg per Worker</div>
+              <div className="text-xs text-muted-foreground">Avg per Collector</div>
             </div>
           </div>
 
@@ -247,7 +338,7 @@ export function TeamOverview({ workers, sheetName, dateRange, isLoading }: TeamO
                     {group.stage}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
-                    {group.workers.length} worker{group.workers.length !== 1 ? 's' : ''}
+                    {group.workers.length} collector{group.workers.length !== 1 ? 's' : ''}
                   </span>
                 </div>
                 <div className="flex items-center gap-4 text-sm">
@@ -271,23 +362,12 @@ export function TeamOverview({ workers, sheetName, dateRange, isLoading }: TeamO
                     </div>
                     <div className="space-y-1.5">
                       {group.topEarners.map((worker, idx) => (
-                        <div 
+                        <ExpandableWorkerRow 
                           key={worker.workerId}
-                          className="flex items-center justify-between bg-green-50 dark:bg-green-950/20 rounded-md px-3 py-2"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-green-600 w-4">#{idx + 1}</span>
-                            <span className="font-mono text-sm">{worker.workerId}</span>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-medium text-green-700 dark:text-green-300">
-                              {formatCurrency(worker.totalEarnings)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {worker.daysWorked} days
-                            </div>
-                          </div>
-                        </div>
+                          worker={worker}
+                          rank={idx + 1}
+                          variant="top"
+                        />
                       ))}
                     </div>
                   </div>
@@ -300,60 +380,31 @@ export function TeamOverview({ workers, sheetName, dateRange, isLoading }: TeamO
                     </div>
                     <div className="space-y-1.5">
                       {group.lowEarners.map((worker, idx) => (
-                        <div 
+                        <ExpandableWorkerRow 
                           key={worker.workerId}
-                          className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/20 rounded-md px-3 py-2"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-amber-600 w-4">#{group.workers.length - group.lowEarners.length + idx + 1}</span>
-                            <span className="font-mono text-sm">{worker.workerId}</span>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-medium text-amber-700 dark:text-amber-300">
-                              {formatCurrency(worker.totalEarnings)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {worker.daysWorked} days
-                            </div>
-                          </div>
-                        </div>
+                          worker={worker}
+                          rank={group.workers.length - group.lowEarners.length + idx + 1}
+                          variant="low"
+                        />
                       ))}
                     </div>
                   </div>
                 </div>
               ) : (
-                /* Detailed View - Full Table */
-                <ScrollArea className="h-[300px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">#</TableHead>
-                        <TableHead>Worker ID</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="text-right hidden sm:table-cell">Days</TableHead>
-                        <TableHead className="text-right hidden md:table-cell">Daily Avg</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {[...group.workers]
-                        .sort((a, b) => b.totalEarnings - a.totalEarnings)
-                        .map((worker, idx) => (
-                          <TableRow key={worker.workerId}>
-                            <TableCell className="font-medium">{idx + 1}</TableCell>
-                            <TableCell className="font-mono">{worker.workerId}</TableCell>
-                            <TableCell className="text-right font-medium">
-                              {formatCurrency(worker.totalEarnings)}
-                            </TableCell>
-                            <TableCell className="text-right hidden sm:table-cell">
-                              {worker.daysWorked}
-                            </TableCell>
-                            <TableCell className="text-right hidden md:table-cell text-muted-foreground">
-                              {formatCurrency(worker.averageDaily)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
+                /* Detailed View - Full Table with expandable rows */
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-1">
+                    {[...group.workers]
+                      .sort((a, b) => b.totalEarnings - a.totalEarnings)
+                      .map((worker, idx) => (
+                        <ExpandableWorkerRow
+                          key={worker.workerId}
+                          worker={worker}
+                          rank={idx + 1}
+                          variant="default"
+                        />
+                      ))}
+                  </div>
                 </ScrollArea>
               )}
             </AccordionContent>

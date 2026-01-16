@@ -301,30 +301,33 @@ function extractAllWorkerIds(data: SheetData): string[] {
   const matrix: string[][] = [data.headers, ...data.rows];
   
   // Common worker ID patterns: GHAS-XXXX, GHGH-XXXX, etc.
-  const workerIdPattern = /^[A-Z]{2,4}-?\d{3,5}$/i;
+  // Must have 2-4 letters followed by separator and 3-5 digits
+  const workerIdPattern = /^([A-Z]{2,4})[-\s]?(\d{3,5})$/i;
   
-  const looksLikeWorkerId = (value: string): boolean => {
+  const normalizeWorkerId = (value: string): string | null => {
     const trimmed = value.trim();
-    if (!trimmed || trimmed.length < 4) return false;
-    // Check for worker ID pattern
-    if (workerIdPattern.test(trimmed)) return true;
-    // Also check for IDs like "GHAS 1001" (with space)
-    if (/^[A-Z]{2,4}\s*\d{3,5}$/i.test(trimmed)) return true;
-    return false;
+    if (!trimmed || trimmed.length < 4) return null;
+    
+    const match = trimmed.match(workerIdPattern);
+    if (match) {
+      // Normalize to format: PREFIX-NUMBERS (e.g., GHAS-1001)
+      return `${match[1].toUpperCase()}-${match[2]}`;
+    }
+    return null;
   };
 
   // Scan all cells for worker ID patterns
   for (const row of matrix) {
     for (const cell of row) {
       const value = String(cell ?? '').trim();
-      if (looksLikeWorkerId(value)) {
-        // Normalize: GHAS 1001 -> GHAS-1001
-        const normalized = value.replace(/\s+/g, '-').toUpperCase();
+      const normalized = normalizeWorkerId(value);
+      if (normalized) {
         workerIds.add(normalized);
       }
     }
   }
 
+  console.log('[EXTRACT WORKERS] Found unique worker IDs:', workerIds.size, Array.from(workerIds).slice(0, 10));
   return Array.from(workerIds);
 }
 

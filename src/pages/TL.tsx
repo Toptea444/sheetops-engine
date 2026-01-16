@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Users, Search, LayoutGrid } from 'lucide-react';
 import { Header } from '@/components/dashboard/Header';
 import { SheetTabs } from '@/components/dashboard/SheetTabs';
@@ -34,6 +34,7 @@ const TL = () => {
   const [deductionResult, setDeductionResult] = useState<DeductionResult | null>(null);
   const [searchDates, setSearchDates] = useState<{ start: Date; end: Date } | null>(null);
   const [selectedWorkerForDeduction, setSelectedWorkerForDeduction] = useState<BonusResult | null>(null);
+  const [loadingPhase, setLoadingPhase] = useState('');
   const [activeTab, setActiveTab] = useState<'search' | 'overview'>('overview');
 
   // Initialize: fetch sheets list
@@ -49,55 +50,85 @@ const TL = () => {
     init();
   }, [fetchSheets, fetchSheetData]);
 
-  // Calculate team overview data from sheet
-  const teamData = useMemo((): { workers: WorkerSummary[]; dateRange: { start: string; end: string } | null } => {
-    if (!sheetData) return { workers: [], dateRange: null };
+  // Calculate team overview data from sheet with loading phases
+  const [teamData, setTeamData] = useState<{ workers: WorkerSummary[]; dateRange: { start: string; end: string } | null }>({ workers: [], dateRange: null });
+  const [isProcessingTeam, setIsProcessingTeam] = useState(false);
 
-    const allWorkers = getAllWorkers(sheetData);
-    const sheetDateRange = getSheetDateRange(sheetData);
+  // Process team data when sheet changes
+  useEffect(() => {
+    if (!sheetData) {
+      setTeamData({ workers: [], dateRange: null });
+      return;
+    }
 
-    if (allWorkers.length === 0) return { workers: [], dateRange: null };
-
-    // Convert to WorkerSummary format
-    const workerSummaries: WorkerSummary[] = allWorkers.map(worker => {
-      const totalEarnings = worker.dailyData.reduce((sum, d) => sum + d.value, 0);
-      const daysWorked = worker.dailyData.filter(d => d.value > 0).length;
+    const processTeamData = async () => {
+      setIsProcessingTeam(true);
+      setLoadingPhase('Extracting collector IDs...');
       
-      // Get date range for this worker
-      const dates = worker.dailyData
-        .filter(d => d.fullDate)
-        .map(d => d.fullDate as number)
-        .sort((a, b) => a - b);
+      // Use setTimeout to allow UI to update
+      await new Promise(resolve => setTimeout(resolve, 50));
       
-      const workerDateRange = dates.length > 0 
-        ? {
-            start: new Date(dates[0]).toLocaleDateString(),
-            end: new Date(dates[dates.length - 1]).toLocaleDateString(),
-          }
-        : { start: 'N/A', end: 'N/A' };
+      const allWorkers = getAllWorkers(sheetData);
+      
+      if (allWorkers.length === 0) {
+        setTeamData({ workers: [], dateRange: null });
+        setIsProcessingTeam(false);
+        setLoadingPhase('');
+        return;
+      }
 
-      return {
-        workerId: worker.workerId,
-        userName: worker.userName,
-        stage: worker.stage,
-        totalEarnings,
-        dailyData: worker.dailyData.map(d => ({
-          date: d.date,
-          value: d.value,
-          fullDate: d.fullDate,
-        })),
-        daysWorked,
-        averageDaily: daysWorked > 0 ? totalEarnings / daysWorked : 0,
-        dateRange: workerDateRange,
-      };
-    });
+      setLoadingPhase(`Processing ${allWorkers.length} collectors...`);
+      await new Promise(resolve => setTimeout(resolve, 50));
 
-    const dateRangeStr = sheetDateRange ? {
-      start: sheetDateRange.start.toLocaleDateString(),
-      end: sheetDateRange.end.toLocaleDateString(),
-    } : null;
+      // Convert to WorkerSummary format
+      const workerSummaries: WorkerSummary[] = allWorkers.map(worker => {
+        const totalEarnings = worker.dailyData.reduce((sum, d) => sum + d.value, 0);
+        const daysWorked = worker.dailyData.filter(d => d.value > 0).length;
+        
+        // Get date range for this worker
+        const dates = worker.dailyData
+          .filter(d => d.fullDate)
+          .map(d => d.fullDate as number)
+          .sort((a, b) => a - b);
+        
+        const workerDateRange = dates.length > 0 
+          ? {
+              start: new Date(dates[0]).toLocaleDateString(),
+              end: new Date(dates[dates.length - 1]).toLocaleDateString(),
+            }
+          : { start: 'N/A', end: 'N/A' };
 
-    return { workers: workerSummaries, dateRange: dateRangeStr };
+        return {
+          workerId: worker.workerId,
+          userName: worker.userName,
+          stage: worker.stage,
+          totalEarnings,
+          dailyData: worker.dailyData.map(d => ({
+            date: d.date,
+            value: d.value,
+            fullDate: d.fullDate,
+          })),
+          daysWorked,
+          averageDaily: daysWorked > 0 ? totalEarnings / daysWorked : 0,
+          dateRange: workerDateRange,
+        };
+      });
+
+      setLoadingPhase('Calculating date ranges...');
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const sheetDateRange = getSheetDateRange(sheetData);
+      const dateRangeStr = sheetDateRange ? {
+        start: sheetDateRange.start.toLocaleDateString(),
+        end: sheetDateRange.end.toLocaleDateString(),
+      } : null;
+
+      setTeamData({ workers: workerSummaries, dateRange: dateRangeStr });
+      setIsProcessingTeam(false);
+      setLoadingPhase('');
+    };
+
+    processTeamData();
   }, [sheetData, getAllWorkers, getSheetDateRange]);
 
   // Handle sheet tab change
@@ -253,7 +284,8 @@ const TL = () => {
               workers={teamData.workers}
               sheetName={activeSheet}
               dateRange={teamData.dateRange}
-              isLoading={isLoading}
+              isLoading={isLoading || isProcessingTeam}
+              loadingPhase={loadingPhase}
             />
           </TabsContent>
 
