@@ -299,15 +299,155 @@ export function useGoogleSheets() {
 
 // Extract all unique worker IDs from sheet data
 function extractAllWorkerIds(data: SheetData): string[] {
+  const sheetName = data.sheetName.toUpperCase();
+
+  if (sheetName.includes('DAILY') || sheetName.includes('PERFORMANCE')) {
+    return extractWorkerIdsFromDailyPerformance(data);
+  }
+
+  if (sheetName.includes('RANKING')) {
+    return extractWorkerIdsFromRanking(data);
+  }
+
+  if (sheetName.includes('WEEKLY')) {
+    return extractWorkerIdsFromWeekly(data);
+  }
+
+  // Fallback for unknown sheet layouts
+  return extractWorkerIdsByScanningAllCells(data);
+}
+
+function toWorkerIdDisplay(value: unknown): string | null {
+  // normalizeWorkerIdForDisplay returns a canonical *comparable* form like GHBS1002.
+  // For UI display, we enforce the hyphen so IDs show as GHBS-1002.
+  const canonical = normalizeWorkerIdForDisplay(value);
+  if (!canonical) return null;
+  const m = canonical.match(/^([A-Z]{2,6})(\d{2,8})$/i);
+  if (!m) return canonical;
+  return `${m[1].toUpperCase()}-${m[2]}`;
+}
+
+function extractWorkerIdsByScanningAllCells(data: SheetData): string[] {
   const workerIds = new Set<string>();
   const matrix: string[][] = [data.headers, ...data.rows];
 
-  // Scan all cells for worker ID patterns, but normalize to a single canonical form
-  // so variants like "GHAS1001" and "GHAS-1001" dedupe correctly.
   for (const row of matrix) {
     for (const cell of row) {
-      const normalized = normalizeWorkerIdForDisplay(cell);
+      const normalized = toWorkerIdDisplay(cell);
       if (normalized) workerIds.add(normalized);
+    }
+  }
+
+  return Array.from(workerIds);
+}
+
+function extractWorkerIdsFromDailyPerformance(data: SheetData): string[] {
+  const workerIds = new Set<string>();
+  const matrix: string[][] = [data.headers, ...data.rows];
+
+  for (let rowIdx = 0; rowIdx < matrix.length - 2; rowIdx++) {
+    const row = matrix[rowIdx] || [];
+
+    const starts: Array<{ col: number; parsed: { day: number; formatted: string; timestamp: number } }> = [];
+
+    for (let col = 0; col < row.length; col++) {
+      const cell = String(row[col] ?? '').trim();
+      if (!cell) continue;
+      if (cell.toUpperCase().includes('COLLECTOR BONUS')) continue;
+      const parsed = parseDateFromHeader(cell, data.sheetName);
+      if (parsed) starts.push({ col, parsed });
+    }
+
+    if (starts.length === 0) continue;
+    starts.sort((a, b) => a.col - b.col);
+
+    const headerRow = matrix[rowIdx + 1] || [];
+
+    for (let sIdx = 0; sIdx < starts.length; sIdx++) {
+      const blockStart = starts[sIdx].col;
+      const blockEnd = starts[sIdx + 1]?.col ?? Math.max(row.length, headerRow.length);
+
+      const usernamesCol = findLabelInRange(headerRow, blockStart, blockEnd, [
+        'usernames',
+        'username',
+        'user_name',
+        'user name',
+        'product',
+        'id',
+      ]);
+
+      if (usernamesCol < 0) continue;
+
+      for (let r = rowIdx + 2; r < matrix.length; r++) {
+        const dataRow = matrix[r] || [];
+        const userCell = String(dataRow[usernamesCol] ?? '').trim();
+        const normalized = toWorkerIdDisplay(userCell);
+        if (normalized) workerIds.add(normalized);
+      }
+    }
+  }
+
+  return Array.from(workerIds);
+}
+
+function extractWorkerIdsFromRanking(data: SheetData): string[] {
+  const workerIds = new Set<string>();
+  const headers = data.headers;
+  const labelRow = data.rows[0] || [];
+
+  const blocks = extractDateBlocks(headers);
+  if (blocks.length === 0) return [];
+
+  for (const block of blocks) {
+    const effectiveEnd = Math.min(block.end, labelRow.length);
+
+    const usernameCol = findLabelIndex(labelRow, block.start, effectiveEnd, [
+      'names',
+      'usernames',
+      'username',
+      'user id',
+      'user_id',
+      'id',
+      'name',
+    ]);
+
+    const finalUsernameCol =
+      usernameCol >= 0
+        ? usernameCol
+        : findLabelIndex(labelRow, block.start, labelRow.length, [
+            'names',
+            'usernames',
+            'username',
+            'user id',
+            'user_id',
+            'id',
+            'name',
+          ]);
+
+    if (finalUsernameCol < 0) continue;
+
+    for (const row of data.rows.slice(1)) {
+      const normalized = toWorkerIdDisplay(row[finalUsernameCol]);
+      if (normalized) workerIds.add(normalized);
+    }
+  }
+
+  return Array.from(workerIds);
+}
+
+function extractWorkerIdsFromWeekly(data: SheetData): string[] {
+  if (data.rows.length < 3) return [];
+
+  const labelRow = data.rows[1] || [];
+  const workerIds = new Set<string>();
+
+  for (let i = 0; i < labelRow.length; i++) {
+    const label = normalizeLabel(labelRow[i]);
+    if (label === 'user_name' || label === 'username' || label === 'name') {
+      for (const row of data.rows.slice(2)) {
+        const normalized = toWorkerIdDisplay(row[i]);
+        if (normalized) workerIds.add(normalized);
+      }
     }
   }
 
