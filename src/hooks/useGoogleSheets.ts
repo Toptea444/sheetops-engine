@@ -72,7 +72,7 @@ export function useGoogleSheets() {
     if (!data || data.rows.length === 0) return null;
 
     const sheetName = data.sheetName.toUpperCase();
-    const normalizedWorkerId = normalizeWorkerIdComparable(workerId);
+    const normalizedWorkerId = normalizeComparable(workerId);
 
     // Try DAILY & PERFORMANCE style parser first (horizontal blocks with day numbers)
     if (sheetName.includes('DAILY') || sheetName.includes('PERFORMANCE')) {
@@ -209,79 +209,6 @@ export function useGoogleSheets() {
     };
   }, []);
 
-  // Extract ALL workers from the sheet data (for Team Overview)
-  const getAllWorkers = useCallback((data: SheetData): WorkerData[] => {
-    if (!data || data.rows.length === 0) return [];
-
-    const sheetName = data.sheetName.toUpperCase();
-    const workers: WorkerData[] = [];
-    const seenWorkerIds = new Set<string>();
-
-    // Helper to add worker if not already seen
-    const addWorker = (worker: WorkerData | null) => {
-      if (!worker) return;
-      const key = normalizeWorkerIdComparable(worker.workerId);
-      if (!seenWorkerIds.has(key)) {
-        seenWorkerIds.add(key);
-        workers.push(worker);
-      }
-    };
-
-    // Extract all unique worker IDs from the sheet first
-    const workerIds = extractAllWorkerIds(data);
-    
-    // For each worker ID, use the existing search function to get their data
-    for (const workerId of workerIds) {
-      const normalizedId = normalizeWorkerIdComparable(workerId);
-      
-      if (sheetName.includes('DAILY') || sheetName.includes('PERFORMANCE')) {
-        addWorker(parseDailyPerformanceSheet(data, normalizedId, workerId));
-      } else if (sheetName.includes('RANKING')) {
-        addWorker(parseRankingBonusSheet(data, normalizedId, workerId));
-      } else if (sheetName.includes('WEEKLY')) {
-        addWorker(parseWeeklyBonusSheet(data, normalizedId, workerId));
-      } else {
-        // Try all parsers
-        addWorker(parseDailyPerformanceSheet(data, normalizedId, workerId));
-        if (!seenWorkerIds.has(normalizedId)) {
-          addWorker(parseRankingBonusSheet(data, normalizedId, workerId));
-        }
-        if (!seenWorkerIds.has(normalizedId)) {
-          addWorker(parseWeeklyBonusSheet(data, normalizedId, workerId));
-        }
-      }
-    }
-
-    return workers;
-  }, []);
-
-  // Get date range from sheet data
-  const getSheetDateRange = useCallback((data: SheetData): { start: Date; end: Date } | null => {
-    if (!data || data.rows.length === 0) return null;
-
-    const workers = getAllWorkers(data);
-    if (workers.length === 0) return null;
-
-    let minDate = Infinity;
-    let maxDate = -Infinity;
-
-    for (const worker of workers) {
-      for (const day of worker.dailyData) {
-        if (day.fullDate !== undefined) {
-          minDate = Math.min(minDate, day.fullDate);
-          maxDate = Math.max(maxDate, day.fullDate);
-        }
-      }
-    }
-
-    if (minDate === Infinity || maxDate === -Infinity) return null;
-
-    return {
-      start: new Date(minDate),
-      end: new Date(maxDate),
-    };
-  }, [getAllWorkers]);
-
   return {
     isLoading,
     error,
@@ -292,166 +219,7 @@ export function useGoogleSheets() {
     searchWorker,
     calculateBonus,
     getAvailableDays,
-    getAllWorkers,
-    getSheetDateRange,
   };
-}
-
-// Extract all unique worker IDs from sheet data
-function extractAllWorkerIds(data: SheetData): string[] {
-  const sheetName = data.sheetName.toUpperCase();
-
-  if (sheetName.includes('DAILY') || sheetName.includes('PERFORMANCE')) {
-    return extractWorkerIdsFromDailyPerformance(data);
-  }
-
-  if (sheetName.includes('RANKING')) {
-    return extractWorkerIdsFromRanking(data);
-  }
-
-  if (sheetName.includes('WEEKLY')) {
-    return extractWorkerIdsFromWeekly(data);
-  }
-
-  // Fallback for unknown sheet layouts
-  return extractWorkerIdsByScanningAllCells(data);
-}
-
-function toWorkerIdDisplay(value: unknown): string | null {
-  // normalizeWorkerIdForDisplay returns a canonical *comparable* form like GHBS1002.
-  // For UI display, we enforce the hyphen so IDs show as GHBS-1002.
-  const canonical = normalizeWorkerIdForDisplay(value);
-  if (!canonical) return null;
-  const m = canonical.match(/^([A-Z]{2,6})(\d{2,8})$/i);
-  if (!m) return canonical;
-  return `${m[1].toUpperCase()}-${m[2]}`;
-}
-
-function extractWorkerIdsByScanningAllCells(data: SheetData): string[] {
-  const workerIds = new Set<string>();
-  const matrix: string[][] = [data.headers, ...data.rows];
-
-  for (const row of matrix) {
-    for (const cell of row) {
-      const normalized = toWorkerIdDisplay(cell);
-      if (normalized) workerIds.add(normalized);
-    }
-  }
-
-  return Array.from(workerIds);
-}
-
-function extractWorkerIdsFromDailyPerformance(data: SheetData): string[] {
-  const workerIds = new Set<string>();
-  const matrix: string[][] = [data.headers, ...data.rows];
-
-  for (let rowIdx = 0; rowIdx < matrix.length - 2; rowIdx++) {
-    const row = matrix[rowIdx] || [];
-
-    const starts: Array<{ col: number; parsed: { day: number; formatted: string; timestamp: number } }> = [];
-
-    for (let col = 0; col < row.length; col++) {
-      const cell = String(row[col] ?? '').trim();
-      if (!cell) continue;
-      if (cell.toUpperCase().includes('COLLECTOR BONUS')) continue;
-      const parsed = parseDateFromHeader(cell, data.sheetName);
-      if (parsed) starts.push({ col, parsed });
-    }
-
-    if (starts.length === 0) continue;
-    starts.sort((a, b) => a.col - b.col);
-
-    const headerRow = matrix[rowIdx + 1] || [];
-
-    for (let sIdx = 0; sIdx < starts.length; sIdx++) {
-      const blockStart = starts[sIdx].col;
-      const blockEnd = starts[sIdx + 1]?.col ?? Math.max(row.length, headerRow.length);
-
-      const usernamesCol = findLabelInRange(headerRow, blockStart, blockEnd, [
-        'usernames',
-        'username',
-        'user_name',
-        'user name',
-        'product',
-        'id',
-      ]);
-
-      if (usernamesCol < 0) continue;
-
-      for (let r = rowIdx + 2; r < matrix.length; r++) {
-        const dataRow = matrix[r] || [];
-        const userCell = String(dataRow[usernamesCol] ?? '').trim();
-        const normalized = toWorkerIdDisplay(userCell);
-        if (normalized) workerIds.add(normalized);
-      }
-    }
-  }
-
-  return Array.from(workerIds);
-}
-
-function extractWorkerIdsFromRanking(data: SheetData): string[] {
-  const workerIds = new Set<string>();
-  const headers = data.headers;
-  const labelRow = data.rows[0] || [];
-
-  const blocks = extractDateBlocks(headers);
-  if (blocks.length === 0) return [];
-
-  for (const block of blocks) {
-    const effectiveEnd = Math.min(block.end, labelRow.length);
-
-    const usernameCol = findLabelIndex(labelRow, block.start, effectiveEnd, [
-      'names',
-      'usernames',
-      'username',
-      'user id',
-      'user_id',
-      'id',
-      'name',
-    ]);
-
-    const finalUsernameCol =
-      usernameCol >= 0
-        ? usernameCol
-        : findLabelIndex(labelRow, block.start, labelRow.length, [
-            'names',
-            'usernames',
-            'username',
-            'user id',
-            'user_id',
-            'id',
-            'name',
-          ]);
-
-    if (finalUsernameCol < 0) continue;
-
-    for (const row of data.rows.slice(1)) {
-      const normalized = toWorkerIdDisplay(row[finalUsernameCol]);
-      if (normalized) workerIds.add(normalized);
-    }
-  }
-
-  return Array.from(workerIds);
-}
-
-function extractWorkerIdsFromWeekly(data: SheetData): string[] {
-  if (data.rows.length < 3) return [];
-
-  const labelRow = data.rows[1] || [];
-  const workerIds = new Set<string>();
-
-  for (let i = 0; i < labelRow.length; i++) {
-    const label = normalizeLabel(labelRow[i]);
-    if (label === 'user_name' || label === 'username' || label === 'name') {
-      for (const row of data.rows.slice(2)) {
-        const normalized = toWorkerIdDisplay(row[i]);
-        if (normalized) workerIds.add(normalized);
-      }
-    }
-  }
-
-  return Array.from(workerIds);
 }
 
 // ============================================================================
@@ -480,7 +248,7 @@ function parseDailyPerformanceSheet(
 
   const looksLikeStage = (value: string) => {
     const v = value.trim().toUpperCase();
-    return /\bT\s*-?\s*\d+\b/.test(v) || /\bS\s*-?\s*\d+\b/.test(v);
+    return /^T-?\d+$/.test(v) || /^S\d+$/.test(v);
   };
 
   // Build a full matrix including the first header row from the API
@@ -541,21 +309,13 @@ function parseDailyPerformanceSheet(
 
         // Stage divider rows (blue rows in the sheet) usually have stage but no username
         if (stageCell && !userCell && looksLikeStage(stageCell)) {
-          currentStage = stageCell
-            .toUpperCase()
-            .replace(/^.*\bT\s*-?\s*(\d+)\b.*$/, 'T-$1')
-            .replace(/^.*\bS\s*-?\s*(\d+)\b.*$/, 'S$1');
+          currentStage = stageCell;
           continue;
         }
 
-        if (normalizeWorkerIdComparable(userCell) === normalizedWorkerId) {
+        if (normalizeComparable(userCell) === normalizedWorkerId) {
           foundUserName = userCell || originalWorkerId;
-          const resolvedStage = stageCell
-            ? stageCell
-                .toUpperCase()
-                .replace(/^.*\bT\s*-?\s*(\d+)\b.*$/, 'T-$1')
-                .replace(/^.*\bS\s*-?\s*(\d+)\b.*$/, 'S$1')
-            : currentStage;
+          const resolvedStage = stageCell || currentStage;
           if (resolvedStage) foundStage = resolvedStage;
 
           dailyData.push({
@@ -622,17 +382,13 @@ function parseDailyPerformanceSheet(
 
     for (let rowIdx = 1; rowIdx < data.rows.length; rowIdx++) {
       const row = data.rows[rowIdx];
-      const cellValue = normalizeWorkerIdComparable(row[usernamesCol]);
+      const cellValue = normalizeComparable(row[usernamesCol]);
 
       if (cellValue === normalizedWorkerId) {
         fallbackUserName = row[usernamesCol] || originalWorkerId;
 
         if (stagesCol >= 0 && row[stagesCol] && row[stagesCol].trim()) {
-          fallbackStage = row[stagesCol]
-            .trim()
-            .toUpperCase()
-            .replace(/^.*\bT\s*-?\s*(\d+)\b.*$/, 'T-$1')
-            .replace(/^.*\bS\s*-?\s*(\d+)\b.*$/, 'S$1');
+          fallbackStage = row[stagesCol].trim();
         }
 
         let bonusValue = 0;
@@ -761,14 +517,10 @@ function parseRankingBonusSheet(
 
     // Search all data rows for this worker in this block
     for (const row of data.rows.slice(1)) {
-      if (normalizeWorkerIdComparable(row[finalUsernameCol]) === normalizedWorkerId) {
+      if (normalizeComparable(row[finalUsernameCol]) === normalizedWorkerId) {
         foundUserName = row[finalUsernameCol] || originalWorkerId;
         if (stageCol >= 0 && row[stageCol] && row[stageCol].trim()) {
-          foundStage = row[stageCol]
-            .trim()
-            .toUpperCase()
-            .replace(/^.*\bT\s*-?\s*(\d+)\b.*$/, 'T-$1')
-            .replace(/^.*\bS\s*-?\s*(\d+)\b.*$/, 'S$1');
+          foundStage = row[stageCol].trim();
         }
         
         const value = parseNumberLike(row[finalRankingBonusCol]);
@@ -841,7 +593,7 @@ function parseWeeklyBonusSheet(
 
   for (const block of weekBlocks) {
     for (const row of data.rows.slice(2)) {
-      if (normalizeWorkerIdComparable(row[block.userNameCol]) === normalizedWorkerId) {
+      if (normalizeComparable(row[block.userNameCol]) === normalizedWorkerId) {
         foundUserName = row[block.userNameCol] || originalWorkerId;
         for (const { col, date, parsed } of block.dateColumns) {
           const value = parseNumberLike(row[col]);
@@ -883,25 +635,6 @@ function normalizeComparable(value: unknown): string {
 
 function normalizeLabel(value: unknown): string {
   return String(value ?? '').trim().toLowerCase();
-}
-
-// Canonical collector ID normalization.
-// - Handles "GHAS1001", "GHAS-1001", "GHAS 1001" as the same collector.
-// - We intentionally keep leading zeros in the numeric portion (e.g., 0001).
-const WORKER_ID_PATTERN = /^([A-Z]{2,6})\s*[-\s]?\s*(\d{3,6})$/i;
-
-function normalizeWorkerIdComparable(value: unknown): string {
-  const raw = normalizeComparable(value);
-  const match = raw.match(WORKER_ID_PATTERN);
-  if (match) return `${match[1]}${match[2]}`;
-  return raw.replace(/[^A-Z0-9]/g, '');
-}
-
-function normalizeWorkerIdForDisplay(value: unknown): string | null {
-  const raw = normalizeComparable(value);
-  const match = raw.match(WORKER_ID_PATTERN);
-  if (!match) return null;
-  return `${match[1]}${match[2]}`;
 }
 
 function parseNumberLike(value: unknown): number {
