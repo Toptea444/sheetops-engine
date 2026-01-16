@@ -209,6 +209,77 @@ export function useGoogleSheets() {
     };
   }, []);
 
+  // Extract ALL workers from the sheet data (for Team Overview)
+  const getAllWorkers = useCallback((data: SheetData): WorkerData[] => {
+    if (!data || data.rows.length === 0) return [];
+
+    const sheetName = data.sheetName.toUpperCase();
+    const workers: WorkerData[] = [];
+    const seenWorkerIds = new Set<string>();
+
+    // Helper to add worker if not already seen
+    const addWorker = (worker: WorkerData | null) => {
+      if (worker && !seenWorkerIds.has(normalizeComparable(worker.workerId))) {
+        seenWorkerIds.add(normalizeComparable(worker.workerId));
+        workers.push(worker);
+      }
+    };
+
+    // Extract all unique worker IDs from the sheet first
+    const workerIds = extractAllWorkerIds(data);
+    
+    // For each worker ID, use the existing search function to get their data
+    for (const workerId of workerIds) {
+      const normalizedId = normalizeComparable(workerId);
+      
+      if (sheetName.includes('DAILY') || sheetName.includes('PERFORMANCE')) {
+        addWorker(parseDailyPerformanceSheet(data, normalizedId, workerId));
+      } else if (sheetName.includes('RANKING')) {
+        addWorker(parseRankingBonusSheet(data, normalizedId, workerId));
+      } else if (sheetName.includes('WEEKLY')) {
+        addWorker(parseWeeklyBonusSheet(data, normalizedId, workerId));
+      } else {
+        // Try all parsers
+        addWorker(parseDailyPerformanceSheet(data, normalizedId, workerId));
+        if (!seenWorkerIds.has(normalizedId)) {
+          addWorker(parseRankingBonusSheet(data, normalizedId, workerId));
+        }
+        if (!seenWorkerIds.has(normalizedId)) {
+          addWorker(parseWeeklyBonusSheet(data, normalizedId, workerId));
+        }
+      }
+    }
+
+    return workers;
+  }, []);
+
+  // Get date range from sheet data
+  const getSheetDateRange = useCallback((data: SheetData): { start: Date; end: Date } | null => {
+    if (!data || data.rows.length === 0) return null;
+
+    const workers = getAllWorkers(data);
+    if (workers.length === 0) return null;
+
+    let minDate = Infinity;
+    let maxDate = -Infinity;
+
+    for (const worker of workers) {
+      for (const day of worker.dailyData) {
+        if (day.fullDate !== undefined) {
+          minDate = Math.min(minDate, day.fullDate);
+          maxDate = Math.max(maxDate, day.fullDate);
+        }
+      }
+    }
+
+    if (minDate === Infinity || maxDate === -Infinity) return null;
+
+    return {
+      start: new Date(minDate),
+      end: new Date(maxDate),
+    };
+  }, [getAllWorkers]);
+
   return {
     isLoading,
     error,
@@ -219,7 +290,42 @@ export function useGoogleSheets() {
     searchWorker,
     calculateBonus,
     getAvailableDays,
+    getAllWorkers,
+    getSheetDateRange,
   };
+}
+
+// Extract all unique worker IDs from sheet data
+function extractAllWorkerIds(data: SheetData): string[] {
+  const workerIds = new Set<string>();
+  const matrix: string[][] = [data.headers, ...data.rows];
+  
+  // Common worker ID patterns: GHAS-XXXX, GHGH-XXXX, etc.
+  const workerIdPattern = /^[A-Z]{2,4}-?\d{3,5}$/i;
+  
+  const looksLikeWorkerId = (value: string): boolean => {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.length < 4) return false;
+    // Check for worker ID pattern
+    if (workerIdPattern.test(trimmed)) return true;
+    // Also check for IDs like "GHAS 1001" (with space)
+    if (/^[A-Z]{2,4}\s*\d{3,5}$/i.test(trimmed)) return true;
+    return false;
+  };
+
+  // Scan all cells for worker ID patterns
+  for (const row of matrix) {
+    for (const cell of row) {
+      const value = String(cell ?? '').trim();
+      if (looksLikeWorkerId(value)) {
+        // Normalize: GHAS 1001 -> GHAS-1001
+        const normalized = value.replace(/\s+/g, '-').toUpperCase();
+        workerIds.add(normalized);
+      }
+    }
+  }
+
+  return Array.from(workerIds);
 }
 
 // ============================================================================
