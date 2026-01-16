@@ -75,7 +75,7 @@ export function BulkResultsPanel({ results, sheetName }: BulkResultsPanelProps) 
         <Alert variant="default" className="border-amber-500/50 bg-amber-500/10">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-800 dark:text-amber-200">
-            Some workers have date range adjustments. Check individual results for details.
+            Some collectors have date range adjustments. Check individual results for details.
           </AlertDescription>
         </Alert>
       )}
