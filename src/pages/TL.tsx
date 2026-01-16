@@ -104,7 +104,7 @@ const TL = () => {
     }
 
     if (foundResults.length === 0) {
-      setSearchError(`No workers found or no data in date range. Not found: ${notFoundIds.join(', ')}`);
+      setSearchError(`No collectors found or no data in date range. Not found: ${notFoundIds.join(', ')}`);
       toast.error('No workers found');
       return;
     }
