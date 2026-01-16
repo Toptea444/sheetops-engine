@@ -37,7 +37,7 @@ export function ResultsPanel({ result, sheetName }: ResultsPanelProps) {
           </div>
           <h3 className="text-xl font-semibold mb-2 text-foreground">No Results Yet</h3>
           <p className="text-center max-w-sm">
-            Enter your Worker ID and select a date range to calculate your bonus
+            Enter your Collector ID and select a date range to calculate your bonus
           </p>
         </CardContent>
       </Card>
