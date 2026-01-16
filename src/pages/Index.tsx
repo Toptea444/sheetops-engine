@@ -71,7 +71,7 @@ const Index = () => {
     const worker: WorkerData | null = searchWorker(sheetData, workerId);
     
     if (!worker) {
-      setSearchError(`Worker ID "${workerId}" not found in the "${activeSheet}" sheet.`);
+      setSearchError(`Collector ID "${workerId}" not found in the "${activeSheet}" sheet.`);
       toast.error('Worker not found');
       return;
     }
