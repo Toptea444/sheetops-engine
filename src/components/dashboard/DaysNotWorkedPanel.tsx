@@ -146,7 +146,7 @@ export function DaysNotWorkedPanel({ result, startDate, endDate, onCalculate }: 
           </div>
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Select dates the worker did not work. These will be deducted from the total bonus.
+          Select dates the collector did not work. These will be deducted from the total bonus.
         </p>
       </CardHeader>
       <CardContent>
