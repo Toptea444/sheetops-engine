@@ -72,7 +72,7 @@ export function useGoogleSheets() {
     if (!data || data.rows.length === 0) return null;
 
     const sheetName = data.sheetName.toUpperCase();
-    const normalizedWorkerId = normalizeComparable(workerId);
+    const normalizedWorkerId = normalizeWorkerIdComparable(workerId);
 
     // Try DAILY & PERFORMANCE style parser first (horizontal blocks with day numbers)
     if (sheetName.includes('DAILY') || sheetName.includes('PERFORMANCE')) {
@@ -219,8 +219,10 @@ export function useGoogleSheets() {
 
     // Helper to add worker if not already seen
     const addWorker = (worker: WorkerData | null) => {
-      if (worker && !seenWorkerIds.has(normalizeComparable(worker.workerId))) {
-        seenWorkerIds.add(normalizeComparable(worker.workerId));
+      if (!worker) return;
+      const key = normalizeWorkerIdComparable(worker.workerId);
+      if (!seenWorkerIds.has(key)) {
+        seenWorkerIds.add(key);
         workers.push(worker);
       }
     };
@@ -230,7 +232,7 @@ export function useGoogleSheets() {
     
     // For each worker ID, use the existing search function to get their data
     for (const workerId of workerIds) {
-      const normalizedId = normalizeComparable(workerId);
+      const normalizedId = normalizeWorkerIdComparable(workerId);
       
       if (sheetName.includes('DAILY') || sheetName.includes('PERFORMANCE')) {
         addWorker(parseDailyPerformanceSheet(data, normalizedId, workerId));
@@ -299,35 +301,16 @@ export function useGoogleSheets() {
 function extractAllWorkerIds(data: SheetData): string[] {
   const workerIds = new Set<string>();
   const matrix: string[][] = [data.headers, ...data.rows];
-  
-  // Common worker ID patterns: GHAS-XXXX, GHGH-XXXX, etc.
-  // Must have 2-4 letters followed by separator and 3-5 digits
-  const workerIdPattern = /^([A-Z]{2,4})[-\s]?(\d{3,5})$/i;
-  
-  const normalizeWorkerId = (value: string): string | null => {
-    const trimmed = value.trim();
-    if (!trimmed || trimmed.length < 4) return null;
-    
-    const match = trimmed.match(workerIdPattern);
-    if (match) {
-      // Normalize to format: PREFIX-NUMBERS (e.g., GHAS-1001)
-      return `${match[1].toUpperCase()}-${match[2]}`;
-    }
-    return null;
-  };
 
-  // Scan all cells for worker ID patterns
+  // Scan all cells for worker ID patterns, but normalize to a single canonical form
+  // so variants like "GHAS1001" and "GHAS-1001" dedupe correctly.
   for (const row of matrix) {
     for (const cell of row) {
-      const value = String(cell ?? '').trim();
-      const normalized = normalizeWorkerId(value);
-      if (normalized) {
-        workerIds.add(normalized);
-      }
+      const normalized = normalizeWorkerIdForDisplay(cell);
+      if (normalized) workerIds.add(normalized);
     }
   }
 
-  console.log('[EXTRACT WORKERS] Found unique worker IDs:', workerIds.size, Array.from(workerIds).slice(0, 10));
   return Array.from(workerIds);
 }
 
@@ -425,7 +408,7 @@ function parseDailyPerformanceSheet(
           continue;
         }
 
-        if (normalizeComparable(userCell) === normalizedWorkerId) {
+        if (normalizeWorkerIdComparable(userCell) === normalizedWorkerId) {
           foundUserName = userCell || originalWorkerId;
           const resolvedStage = stageCell
             ? stageCell
@@ -499,7 +482,7 @@ function parseDailyPerformanceSheet(
 
     for (let rowIdx = 1; rowIdx < data.rows.length; rowIdx++) {
       const row = data.rows[rowIdx];
-      const cellValue = normalizeComparable(row[usernamesCol]);
+      const cellValue = normalizeWorkerIdComparable(row[usernamesCol]);
 
       if (cellValue === normalizedWorkerId) {
         fallbackUserName = row[usernamesCol] || originalWorkerId;
@@ -638,7 +621,7 @@ function parseRankingBonusSheet(
 
     // Search all data rows for this worker in this block
     for (const row of data.rows.slice(1)) {
-      if (normalizeComparable(row[finalUsernameCol]) === normalizedWorkerId) {
+      if (normalizeWorkerIdComparable(row[finalUsernameCol]) === normalizedWorkerId) {
         foundUserName = row[finalUsernameCol] || originalWorkerId;
         if (stageCol >= 0 && row[stageCol] && row[stageCol].trim()) {
           foundStage = row[stageCol]
@@ -718,7 +701,7 @@ function parseWeeklyBonusSheet(
 
   for (const block of weekBlocks) {
     for (const row of data.rows.slice(2)) {
-      if (normalizeComparable(row[block.userNameCol]) === normalizedWorkerId) {
+      if (normalizeWorkerIdComparable(row[block.userNameCol]) === normalizedWorkerId) {
         foundUserName = row[block.userNameCol] || originalWorkerId;
         for (const { col, date, parsed } of block.dateColumns) {
           const value = parseNumberLike(row[col]);
@@ -760,6 +743,25 @@ function normalizeComparable(value: unknown): string {
 
 function normalizeLabel(value: unknown): string {
   return String(value ?? '').trim().toLowerCase();
+}
+
+// Canonical collector ID normalization.
+// - Handles "GHAS1001", "GHAS-1001", "GHAS 1001" as the same collector.
+// - We intentionally keep leading zeros in the numeric portion (e.g., 0001).
+const WORKER_ID_PATTERN = /^([A-Z]{2,6})\s*[-\s]?\s*(\d{3,6})$/i;
+
+function normalizeWorkerIdComparable(value: unknown): string {
+  const raw = normalizeComparable(value);
+  const match = raw.match(WORKER_ID_PATTERN);
+  if (match) return `${match[1]}${match[2]}`;
+  return raw.replace(/[^A-Z0-9]/g, '');
+}
+
+function normalizeWorkerIdForDisplay(value: unknown): string | null {
+  const raw = normalizeComparable(value);
+  const match = raw.match(WORKER_ID_PATTERN);
+  if (!match) return null;
+  return `${match[1]}${match[2]}`;
 }
 
 function parseNumberLike(value: unknown): number {
