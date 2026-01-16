@@ -95,7 +95,7 @@ export function ResultsPanel({ result, sheetName }: ResultsPanelProps) {
         <CardContent className="p-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Worker ID</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Collector ID</p>
               <p className="font-mono text-lg font-semibold text-foreground">{result.workerId}</p>
             </div>
             <div className="space-y-1">
