@@ -357,7 +357,7 @@ function parseDailyPerformanceSheet(
 
   const looksLikeStage = (value: string) => {
     const v = value.trim().toUpperCase();
-    return /^T-?\d+$/.test(v) || /^S\d+$/.test(v);
+    return /\bT\s*-?\s*\d+\b/.test(v) || /\bS\s*-?\s*\d+\b/.test(v);
   };
 
   // Build a full matrix including the first header row from the API
@@ -418,13 +418,21 @@ function parseDailyPerformanceSheet(
 
         // Stage divider rows (blue rows in the sheet) usually have stage but no username
         if (stageCell && !userCell && looksLikeStage(stageCell)) {
-          currentStage = stageCell;
+          currentStage = stageCell
+            .toUpperCase()
+            .replace(/^.*\bT\s*-?\s*(\d+)\b.*$/, 'T-$1')
+            .replace(/^.*\bS\s*-?\s*(\d+)\b.*$/, 'S$1');
           continue;
         }
 
         if (normalizeComparable(userCell) === normalizedWorkerId) {
           foundUserName = userCell || originalWorkerId;
-          const resolvedStage = stageCell || currentStage;
+          const resolvedStage = stageCell
+            ? stageCell
+                .toUpperCase()
+                .replace(/^.*\bT\s*-?\s*(\d+)\b.*$/, 'T-$1')
+                .replace(/^.*\bS\s*-?\s*(\d+)\b.*$/, 'S$1')
+            : currentStage;
           if (resolvedStage) foundStage = resolvedStage;
 
           dailyData.push({
@@ -497,7 +505,11 @@ function parseDailyPerformanceSheet(
         fallbackUserName = row[usernamesCol] || originalWorkerId;
 
         if (stagesCol >= 0 && row[stagesCol] && row[stagesCol].trim()) {
-          fallbackStage = row[stagesCol].trim();
+          fallbackStage = row[stagesCol]
+            .trim()
+            .toUpperCase()
+            .replace(/^.*\bT\s*-?\s*(\d+)\b.*$/, 'T-$1')
+            .replace(/^.*\bS\s*-?\s*(\d+)\b.*$/, 'S$1');
         }
 
         let bonusValue = 0;
@@ -629,7 +641,11 @@ function parseRankingBonusSheet(
       if (normalizeComparable(row[finalUsernameCol]) === normalizedWorkerId) {
         foundUserName = row[finalUsernameCol] || originalWorkerId;
         if (stageCol >= 0 && row[stageCol] && row[stageCol].trim()) {
-          foundStage = row[stageCol].trim();
+          foundStage = row[stageCol]
+            .trim()
+            .toUpperCase()
+            .replace(/^.*\bT\s*-?\s*(\d+)\b.*$/, 'T-$1')
+            .replace(/^.*\bS\s*-?\s*(\d+)\b.*$/, 'S$1');
         }
         
         const value = parseNumberLike(row[finalRankingBonusCol]);
