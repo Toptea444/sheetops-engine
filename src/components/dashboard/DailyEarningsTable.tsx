@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -22,11 +23,10 @@ interface DailyEarningsTableProps {
   isLoading?: boolean;
 }
 
-interface AggregatedDay {
+interface DayData {
   date: string;
   fullDate: number;
-  earnings: Record<string, number>;
-  total: number;
+  value: number;
 }
 
 export function DailyEarningsTable({
@@ -37,64 +37,84 @@ export function DailyEarningsTable({
 }: DailyEarningsTableProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showAll, setShowAll] = useState(false);
+  const [activeTab, setActiveTab] = useState(sheetNames[0] || '');
 
-  // Aggregate daily earnings from all sheets
-  const aggregatedDays = useMemo(() => {
-    const dayMap = new Map<number, AggregatedDay>();
+  // Get data for the active sheet only
+  const sheetData = useMemo(() => {
+    const activeIndex = sheetNames.indexOf(activeTab);
+    if (activeIndex === -1 || !results[activeIndex]) return [];
 
-    results.forEach((result, index) => {
-      const sheetName = sheetNames[index];
-      
-      result.dailyBreakdown?.forEach((day) => {
-        if (day.fullDate === undefined) return;
+    const result = results[activeIndex];
+    const days: DayData[] = [];
 
-        // Check if this day is in the selected cycle
-        const dayDate = new Date(day.fullDate);
-        if (!isDateInCycle(dayDate, cycle)) return;
+    result.dailyBreakdown?.forEach((day) => {
+      if (day.fullDate === undefined) return;
 
-        const existing = dayMap.get(day.fullDate);
-        if (existing) {
-          existing.earnings[sheetName] = (existing.earnings[sheetName] || 0) + day.value;
-          existing.total += day.value;
-        } else {
-          dayMap.set(day.fullDate, {
-            date: day.date,
-            fullDate: day.fullDate,
-            earnings: { [sheetName]: day.value },
-            total: day.value,
-          });
-        }
+      const dayDate = new Date(day.fullDate);
+      if (!isDateInCycle(dayDate, cycle)) return;
+
+      days.push({
+        date: day.date,
+        fullDate: day.fullDate,
+        value: day.value,
       });
     });
 
-    const days = Array.from(dayMap.values());
-    
-    // Sort by date
-    days.sort((a, b) => {
-      return sortOrder === 'desc' ? b.fullDate - a.fullDate : a.fullDate - b.fullDate;
-    });
+    days.sort((a, b) => 
+      sortOrder === 'desc' ? b.fullDate - a.fullDate : a.fullDate - b.fullDate
+    );
 
     return days;
-  }, [results, sheetNames, cycle, sortOrder]);
+  }, [results, sheetNames, activeTab, cycle, sortOrder]);
+
+  // Get value type for the active sheet
+  const isPercent = useMemo(() => {
+    const activeIndex = sheetNames.indexOf(activeTab);
+    return results[activeIndex]?.valueType === 'percent';
+  }, [results, sheetNames, activeTab]);
 
   // Calculate average for comparison
   const average = useMemo(() => {
-    if (aggregatedDays.length === 0) return 0;
-    const total = aggregatedDays.reduce((sum, day) => sum + day.total, 0);
-    return total / aggregatedDays.length;
-  }, [aggregatedDays]);
+    if (sheetData.length === 0) return 0;
+    const total = sheetData.reduce((sum, day) => sum + day.value, 0);
+    return total / sheetData.length;
+  }, [sheetData]);
+
+  // Calculate total for this sheet
+  const total = useMemo(() => {
+    return sheetData.reduce((sum, day) => sum + day.value, 0);
+  }, [sheetData]);
 
   const toggleSort = () => {
     setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
   };
 
-  const displayedDays = showAll ? aggregatedDays : aggregatedDays.slice(0, 10);
+  const displayedDays = showAll ? sheetData : sheetData.slice(0, 10);
+
+  // Update active tab when sheet names change
+  useMemo(() => {
+    if (!sheetNames.includes(activeTab) && sheetNames.length > 0) {
+      setActiveTab(sheetNames[0]);
+    }
+  }, [sheetNames, activeTab]);
+
+  const formatValue = (value: number) => {
+    if (isPercent) {
+      return `${value.toFixed(1)}%`;
+    }
+    return `₦${value.toLocaleString()}`;
+  };
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="border-2">
         <CardHeader>
-          <CardTitle className="text-lg">Daily Earnings</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-primary" />
+            </div>
+            Daily Breakdown
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -107,104 +127,131 @@ export function DailyEarningsTable({
     );
   }
 
-  if (aggregatedDays.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Daily Earnings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-center text-muted-foreground py-8">
-            No earnings recorded for this cycle
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-lg">Daily Earnings</CardTitle>
-        <Button variant="ghost" size="sm" onClick={toggleSort} className="gap-1">
-          {sortOrder === 'desc' ? (
-            <>
-              <ChevronDown className="h-4 w-4" />
-              Newest first
-            </>
-          ) : (
-            <>
-              <ChevronUp className="h-4 w-4" />
-              Oldest first
-            </>
-          )}
-        </Button>
-      </CardHeader>
-      <CardContent className="px-0 pb-4">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-6">Date</TableHead>
-                {sheetNames.map((name) => (
-                  <TableHead key={name} className="text-right">
-                    {name.split(' ')[0]}
-                  </TableHead>
-                ))}
-                <TableHead className="text-right pr-6">Total</TableHead>
-                <TableHead className="w-10"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {displayedDays.map((day) => {
-                const isAboveAvg = day.total > average * 1.1;
-                const isBelowAvg = day.total < average * 0.9;
-                
-                return (
-                  <TableRow key={day.fullDate} className="group">
-                    <TableCell className="pl-6 font-medium">
-                      {day.date}
-                    </TableCell>
-                    {sheetNames.map((name) => (
-                      <TableCell key={name} className="text-right text-muted-foreground">
-                        {day.earnings[name] 
-                          ? `₦${day.earnings[name].toLocaleString()}`
-                          : '-'
-                        }
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-right pr-6 font-semibold">
-                      ₦{day.total.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="w-10">
-                      {isAboveAvg && (
-                        <TrendingUp className="h-4 w-4 text-success" />
-                      )}
-                      {isBelowAvg && (
-                        <TrendingDown className="h-4 w-4 text-warning" />
-                      )}
-                      {!isAboveAvg && !isBelowAvg && (
-                        <Minus className="h-4 w-4 text-muted-foreground/50" />
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+    <Card className="border-2">
+      <CardHeader className="pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-primary" />
+            </div>
+            Daily Breakdown
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={toggleSort} className="gap-2 self-start">
+            {sortOrder === 'desc' ? (
+              <>
+                <ChevronDown className="h-4 w-4" />
+                Newest first
+              </>
+            ) : (
+              <>
+                <ChevronUp className="h-4 w-4" />
+                Oldest first
+              </>
+            )}
+          </Button>
         </div>
-        
-        {aggregatedDays.length > 10 && (
-          <div className="flex justify-center pt-4 px-6">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowAll(!showAll)}
-            >
-              {showAll ? 'Show Less' : `Show All (${aggregatedDays.length} days)`}
-            </Button>
-          </div>
-        )}
+      </CardHeader>
+      <CardContent className="pt-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full justify-start h-auto p-1 bg-muted/50 flex-wrap gap-1">
+            {sheetNames.map((name) => (
+              <TabsTrigger 
+                key={name} 
+                value={name}
+                className="text-xs px-3 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                {name.split(' ')[0]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {sheetNames.map((name) => (
+            <TabsContent key={name} value={name} className="mt-4">
+              {name === activeTab && (
+                <>
+                  {/* Summary for this sheet */}
+                  <div className="grid grid-cols-3 gap-4 mb-4 p-4 bg-muted/30 rounded-lg border border-border/50">
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Total</p>
+                      <p className="text-lg font-semibold">{formatValue(total)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Average</p>
+                      <p className="text-lg font-semibold">{formatValue(average)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Entries</p>
+                      <p className="text-lg font-semibold">{sheetData.length}</p>
+                    </div>
+                  </div>
+
+                  {sheetData.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      No entries recorded for this cycle
+                    </p>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="hover:bg-transparent">
+                              <TableHead className="font-semibold">Date</TableHead>
+                              <TableHead className="text-right font-semibold">
+                                {isPercent ? 'Percentage' : 'Amount'}
+                              </TableHead>
+                              <TableHead className="w-12"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {displayedDays.map((day) => {
+                              const isAboveAvg = day.value > average * 1.1;
+                              const isBelowAvg = day.value < average * 0.9;
+                              
+                              return (
+                                <TableRow key={day.fullDate} className="group">
+                                  <TableCell className="font-medium">
+                                    {day.date}
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold">
+                                    {formatValue(day.value)}
+                                  </TableCell>
+                                  <TableCell className="w-12">
+                                    {isAboveAvg && (
+                                      <TrendingUp className="h-4 w-4 text-success" />
+                                    )}
+                                    {isBelowAvg && (
+                                      <TrendingDown className="h-4 w-4 text-warning" />
+                                    )}
+                                    {!isAboveAvg && !isBelowAvg && (
+                                      <Minus className="h-4 w-4 text-muted-foreground/50" />
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                      
+                      {sheetData.length > 10 && (
+                        <div className="flex justify-center pt-4">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setShowAll(!showAll)}
+                          >
+                            {showAll ? 'Show Less' : `Show All (${sheetData.length} entries)`}
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </TabsContent>
+          ))}
+        </Tabs>
       </CardContent>
     </Card>
   );

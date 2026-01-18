@@ -1,6 +1,7 @@
-import { TrendingUp, Calendar, Target, Clock } from 'lucide-react';
+import { TrendingUp, Calendar, Activity, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { getDaysElapsedInCycle, getDaysRemainingInCycle, getTotalDaysInCycle } from '@/lib/cycleUtils';
 
@@ -25,15 +26,15 @@ export function CycleSummaryCard({
 
   if (isLoading) {
     return (
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-primary to-primary/80">
+      <Card className="border-2 shadow-sm">
         <CardContent className="p-6">
           <div className="space-y-4">
-            <Skeleton className="h-8 w-48 bg-primary-foreground/20" />
-            <Skeleton className="h-12 w-32 bg-primary-foreground/20" />
-            <div className="flex gap-8">
-              <Skeleton className="h-6 w-24 bg-primary-foreground/20" />
-              <Skeleton className="h-6 w-24 bg-primary-foreground/20" />
-              <Skeleton className="h-6 w-24 bg-primary-foreground/20" />
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-10 w-32" />
+            <div className="grid grid-cols-3 gap-4">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
             </div>
           </div>
         </CardContent>
@@ -42,55 +43,65 @@ export function CycleSummaryCard({
   }
 
   return (
-    <Card className="border-0 shadow-lg bg-gradient-to-br from-primary to-primary/80 text-primary-foreground overflow-hidden">
-      <CardContent className="p-6 md:p-8">
-        {/* Cycle Progress Bar */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-primary-foreground/20">
-          <div 
-            className="h-full bg-primary-foreground/60 transition-all duration-500"
-            style={{ width: `${progressPercent}%` }}
-          />
+    <Card className="border-2 shadow-sm overflow-hidden">
+      <CardContent className="p-0">
+        {/* Header Section */}
+        <div className="bg-primary/5 border-b border-border p-4 md:p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Current Cycle</p>
+                <p className="text-lg font-semibold text-foreground">{cycle.label}</p>
+              </div>
+            </div>
+            
+            {/* Progress indicator */}
+            <div className="flex items-center gap-3 min-w-[200px]">
+              <Progress value={progressPercent} className="h-2 flex-1" />
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                Day {daysElapsed} of {totalDays}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-6">
-          {/* Cycle Label */}
-          <div className="flex items-center gap-2 text-primary-foreground/80">
-            <Calendar className="h-5 w-5" />
-            <span className="text-lg font-medium">{cycle.label}</span>
-          </div>
-
-          {/* Total Earnings - Hero Number */}
-          <div>
-            <p className="text-sm text-primary-foreground/70 mb-1">Total Earnings</p>
-            <p className="text-4xl md:text-5xl font-bold tracking-tight">
+        {/* Main Stats */}
+        <div className="p-4 md:p-6">
+          {/* Hero Number */}
+          <div className="mb-6">
+            <p className="text-sm text-muted-foreground mb-1">Total Earnings</p>
+            <p className="text-4xl md:text-5xl font-bold text-foreground tracking-tight">
               ₦{totalEarnings.toLocaleString()}
             </p>
           </div>
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-primary-foreground/20">
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-primary-foreground/70">
-                <Target className="h-4 w-4" />
-                <span className="text-xs">Days Active</span>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                <Activity className="h-4 w-4" />
+                <span className="text-xs font-medium">Days Active</span>
               </div>
-              <p className="text-2xl font-semibold">{daysActive}</p>
+              <p className="text-2xl font-bold text-foreground">{daysActive}</p>
             </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-primary-foreground/70">
+            <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
                 <TrendingUp className="h-4 w-4" />
-                <span className="text-xs">Daily Avg</span>
+                <span className="text-xs font-medium">Daily Avg</span>
               </div>
-              <p className="text-2xl font-semibold">₦{Math.round(avgDaily).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-foreground">₦{Math.round(avgDaily).toLocaleString()}</p>
             </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-primary-foreground/70">
+            <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
                 <Clock className="h-4 w-4" />
-                <span className="text-xs">Days Left</span>
+                <span className="text-xs font-medium">Days Left</span>
               </div>
-              <p className="text-2xl font-semibold">{daysRemaining}</p>
+              <p className="text-2xl font-bold text-foreground">{daysRemaining}</p>
             </div>
           </div>
         </div>
