@@ -1,158 +1,268 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Header } from '@/components/dashboard/Header';
-import { SheetTabs } from '@/components/dashboard/SheetTabs';
-import { SearchPanel } from '@/components/dashboard/SearchPanel';
-import { ResultsPanel } from '@/components/dashboard/ResultsPanel';
+import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
+import { PerformanceCards } from '@/components/dashboard/PerformanceCards';
+import { TrendChart } from '@/components/dashboard/TrendChart';
+import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import { GoalsPanel } from '@/components/dashboard/GoalsPanel';
+import { SheetSelector } from '@/components/dashboard/SheetSelector';
 import { ErrorAlert } from '@/components/dashboard/ErrorAlert';
 import { LoadingState } from '@/components/dashboard/LoadingState';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
-import type { BonusResult, WorkerData } from '@/types/bonus';
+import { useUserIdentity } from '@/hooks/useUserIdentity';
+import type { BonusResult, SheetInfo, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
 
 const Index = () => {
   const { 
-    isLoading, 
+    isLoading: sheetsLoading, 
     error, 
     sheets, 
-    sheetData, 
     fetchSheets, 
     fetchSheetData,
     searchWorker,
     calculateBonus 
   } = useGoogleSheets();
 
-  const [activeSheet, setActiveSheet] = useState('');
-  const [result, setResult] = useState<BonusResult | null>(null);
-  const [searchError, setSearchError] = useState<string | null>(null);
+  const {
+    userId,
+    userName,
+    dailyTarget,
+    weeklyTarget,
+    isLoading: identityLoading,
+    setUserId,
+    setUserName,
+    setDailyTarget,
+    setWeeklyTarget,
+    clearIdentity,
+    hasIdentity,
+  } = useUserIdentity();
+
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
+  const [results, setResults] = useState<BonusResult[]>([]);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
 
   // Initialize: fetch sheets list
   useEffect(() => {
     const init = async () => {
       const sheetsList = await fetchSheets();
       if (sheetsList.length > 0) {
-        setActiveSheet(sheetsList[0].name);
-        await fetchSheetData(sheetsList[0].name);
+        setSelectedSheets(sheetsList.map(s => s.name));
       }
       setIsInitializing(false);
     };
     init();
-  }, [fetchSheets, fetchSheetData]);
+  }, [fetchSheets]);
 
-  // Handle sheet tab change
-  const handleSheetChange = useCallback(async (sheetName: string) => {
-    setActiveSheet(sheetName);
-    setResult(null);
-    setSearchError(null);
-    await fetchSheetData(sheetName);
-  }, [fetchSheetData]);
+  // Show welcome modal if no identity
+  useEffect(() => {
+    if (!identityLoading && !hasIdentity && !isInitializing) {
+      setShowWelcome(true);
+    }
+  }, [identityLoading, hasIdentity, isInitializing]);
+
+  // Fetch data for all selected sheets and calculate bonuses when user is set
+  const fetchUserData = useCallback(async () => {
+    if (!userId || selectedSheets.length === 0) return;
+
+    setDataError(null);
+    const newResults: BonusResult[] = [];
+    const newCache: Record<string, SheetData> = {};
+    let foundInAnySheet = false;
+
+    // Calculate date range: start of current month to today
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endDate = now;
+
+    for (const sheetName of selectedSheets) {
+      // Use cached data if available
+      let data = sheetDataCache[sheetName];
+      if (!data) {
+        data = await fetchSheetData(sheetName);
+      }
+      
+      if (data) {
+        newCache[sheetName] = data;
+        const worker = searchWorker(data, userId);
+        
+        if (worker) {
+          foundInAnySheet = true;
+          
+          // Update userName if found
+          if (worker.userName && worker.userName !== userId) {
+            setUserName(worker.userName);
+          }
+
+          // Calculate bonus for full available range
+          const result = calculateBonus(worker, startOfMonth, endDate);
+          
+          // Also get all-time data for trends
+          const allTimeStart = new Date(2020, 0, 1);
+          const allTimeResult = calculateBonus(worker, allTimeStart, endDate);
+          
+          newResults.push({
+            ...allTimeResult,
+            // Keep the sheet name for reference
+          });
+        }
+      }
+    }
+
+    setSheetDataCache(newCache);
+    setResults(newResults);
+
+    if (!foundInAnySheet && userId) {
+      setDataError(`No data found for "${userId}" in any of the selected sheets.`);
+    }
+  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName]);
+
+  // Fetch user data when userId or selectedSheets change
+  useEffect(() => {
+    if (userId && selectedSheets.length > 0 && !isInitializing) {
+      fetchUserData();
+    }
+  }, [userId, selectedSheets, isInitializing]);
+
+  // Handle welcome modal completion
+  const handleWelcomeComplete = async (newUserId: string) => {
+    setIsValidating(true);
+    setValidationError(null);
+
+    // Validate by checking if user exists in any sheet
+    let foundUser = false;
+    let foundUserName = '';
+
+    for (const sheet of sheets) {
+      const data = await fetchSheetData(sheet.name);
+      if (data) {
+        const worker = searchWorker(data, newUserId);
+        if (worker) {
+          foundUser = true;
+          foundUserName = worker.userName || newUserId;
+          break;
+        }
+      }
+    }
+
+    setIsValidating(false);
+
+    if (foundUser) {
+      setUserId(newUserId, foundUserName);
+      setShowWelcome(false);
+      toast.success(`Welcome, ${foundUserName}!`);
+    } else {
+      setValidationError(`ID "${newUserId}" not found in any sheet. Please check and try again.`);
+    }
+  };
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {
-    setResult(null);
-    setSearchError(null);
+    setDataError(null);
+    setSheetDataCache({});
     await fetchSheets();
-    if (activeSheet) {
-      await fetchSheetData(activeSheet);
+    if (userId) {
+      await fetchUserData();
     }
     toast.success('Data refreshed successfully');
-  }, [fetchSheets, fetchSheetData, activeSheet]);
+  }, [fetchSheets, fetchUserData, userId]);
 
-  // Handle search and calculation
-  const handleSearch = useCallback((workerId: string, startDate: Date, endDate: Date) => {
-    setSearchError(null);
-    setResult(null);
+  // Handle switch user
+  const handleSwitchUser = () => {
+    clearIdentity();
+    setResults([]);
+    setDataError(null);
+    setShowWelcome(true);
+  };
 
-    if (!sheetData) {
-      setSearchError('No sheet data loaded. Please select a sheet first.');
-      return;
-    }
+  // Handle sheet selection change
+  const handleSheetSelectionChange = (newSelection: string[]) => {
+    setSelectedSheets(newSelection);
+    setSheetDataCache({}); // Clear cache to refetch
+  };
 
-    const worker: WorkerData | null = searchWorker(sheetData, workerId);
-    
-    if (!worker) {
-      setSearchError(`Collector ID "${workerId}" not found in the "${activeSheet}" sheet.`);
-      toast.error('Worker not found');
-      return;
-    }
+  const isLoading = sheetsLoading || identityLoading;
 
-    const bonusResult = calculateBonus(worker, startDate, endDate);
-    
-    if (bonusResult.dailyBreakdown.length === 0) {
-      setSearchError('No bonus data found for the selected date range.');
-      toast.warning('No data in date range');
-      return;
-    }
-
-    setResult(bonusResult);
-    
-    if (bonusResult.dateWarning) {
-      toast.warning('Date range adjusted - see details above');
-    } else {
-      toast.success(`Found ${bonusResult.dailyBreakdown.length} days of bonus data`);
-    }
-  }, [sheetData, activeSheet, searchWorker, calculateBonus]);
-
-  const dismissError = () => setSearchError(null);
-
-  if (isInitializing) {
+  if (isInitializing || identityLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <LoadingState message="Connecting to Google Sheets..." />
+        <LoadingState message="Loading..." />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header onRefresh={handleRefresh} isLoading={isLoading} />
+      <WelcomeModal
+        open={showWelcome}
+        onComplete={handleWelcomeComplete}
+        isValidating={isValidating}
+        validationError={validationError}
+      />
+
+      <Header 
+        onRefresh={handleRefresh} 
+        isLoading={isLoading}
+        userId={userId}
+        userName={userName}
+        onSwitchUser={handleSwitchUser}
+      />
       
       <main className="flex-1 container mx-auto px-4 py-6 max-w-7xl">
         {/* Error Display */}
-        {(error || searchError) && (
+        {(error || dataError) && (
           <div className="mb-6">
             <ErrorAlert 
-              message={error || searchError || ''} 
-              onDismiss={dismissError} 
+              message={error || dataError || ''} 
+              onDismiss={() => setDataError(null)} 
             />
           </div>
         )}
 
-        {/* Sheet Tabs */}
-        <div className="mb-6">
-          <SheetTabs
+        {/* Sheet Selector */}
+        <div className="mb-6 flex justify-end">
+          <SheetSelector
             sheets={sheets}
-            activeSheet={activeSheet}
-            onSheetChange={handleSheetChange}
+            selectedSheets={selectedSheets}
+            onSelectionChange={handleSheetSelectionChange}
             isLoading={isLoading}
           />
         </div>
 
-        {/* Main Content Grid - Improved Desktop Layout */}
-        <div className="grid gap-6 lg:grid-cols-[380px_1fr] xl:grid-cols-[400px_1fr]">
-          {/* Left Panel: Search - Sticky on desktop */}
-          <div className="lg:sticky lg:top-6 lg:self-start">
-            <SearchPanel
-              onSearch={handleSearch}
-              isLoading={isLoading}
-              hasData={!!sheetData}
-            />
+        {/* Performance Cards */}
+        <div className="mb-6">
+          <PerformanceCards results={results} isLoading={isLoading} />
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid gap-6 lg:grid-cols-[1fr_350px]">
+          {/* Left: Chart */}
+          <div className="space-y-6">
+            <TrendChart results={results} isLoading={isLoading} />
           </div>
 
-          {/* Right Panel: Results - Takes remaining space */}
-          <div className="min-w-0">
-            {isLoading && !result ? (
-              <LoadingState message="Loading sheet data..." />
-            ) : (
-              <ResultsPanel result={result} sheetName={activeSheet} />
-            )}
+          {/* Right: Goals & Activity */}
+          <div className="space-y-6">
+            <GoalsPanel
+              results={results}
+              dailyTarget={dailyTarget}
+              weeklyTarget={weeklyTarget}
+              onUpdateDailyTarget={setDailyTarget}
+              onUpdateWeeklyTarget={setWeeklyTarget}
+            />
+            <ActivityFeed results={results} isLoading={isLoading} />
           </div>
         </div>
       </main>
 
       {/* Footer */}
       <footer className="border-t bg-card py-4 text-center text-sm text-muted-foreground mt-auto">
-        <p>Bonus Calculator System • Data synced from Google Sheets</p>
+        <p>Performance Tracker • Data synced from Google Sheets</p>
       </footer>
     </div>
   );
