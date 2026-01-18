@@ -248,12 +248,15 @@ const Index = () => {
     }
   }, [selectedSheets, sheetDataCache, userId, fetchSheetData, searchWorker, calculateBonus]);
 
-  // Calculate cycle-specific stats
+  // Calculate cycle-specific stats - exclude percentage-based sheets (like Weekly)
   const cycleStats = useMemo(() => {
     let totalEarnings = 0;
     const activeDays = new Set<number>();
 
     results.forEach((result) => {
+      // Skip percentage-based results (like Weekly bonus which is just percentages)
+      if (result.valueType === 'percent') return;
+
       result.dailyBreakdown?.forEach((day) => {
         if (day.fullDate === undefined) return;
         
@@ -337,6 +340,7 @@ const Index = () => {
         <SheetBreakdownCards
           results={results}
           sheetNames={selectedSheets}
+          cycle={selectedCycle}
           isLoading={isLoading}
         />
 
