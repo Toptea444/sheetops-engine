@@ -3,13 +3,13 @@ import { useState, useEffect, useCallback } from 'react';
 const STORAGE_KEY = 'performanceTracker_userId';
 const USER_NAME_KEY = 'performanceTracker_userName';
 const DAILY_TARGET_KEY = 'performanceTracker_dailyTarget';
-const CYCLE_TARGET_KEY = 'performanceTracker_cycleTarget';
+const CYCLE_TARGETS_KEY = 'performanceTracker_cycleTargets';
 
 interface UserIdentity {
   userId: string | null;
   userName: string | null;
   dailyTarget: number;
-  cycleTarget: number;
+  cycleTargets: Record<string, number>;
 }
 
 export function useUserIdentity() {
@@ -17,7 +17,7 @@ export function useUserIdentity() {
     userId: null,
     userName: null,
     dailyTarget: 0,
-    cycleTarget: 0,
+    cycleTargets: {},
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -26,13 +26,13 @@ export function useUserIdentity() {
     const storedUserId = localStorage.getItem(STORAGE_KEY);
     const storedUserName = localStorage.getItem(USER_NAME_KEY);
     const storedDailyTarget = localStorage.getItem(DAILY_TARGET_KEY);
-    const storedCycleTarget = localStorage.getItem(CYCLE_TARGET_KEY);
+    const storedCycleTargets = localStorage.getItem(CYCLE_TARGETS_KEY);
 
     setIdentity({
       userId: storedUserId,
       userName: storedUserName,
       dailyTarget: storedDailyTarget ? parseFloat(storedDailyTarget) : 0,
-      cycleTarget: storedCycleTarget ? parseFloat(storedCycleTarget) : 0,
+      cycleTargets: storedCycleTargets ? JSON.parse(storedCycleTargets) : {},
     });
     setIsLoading(false);
   }, []);
@@ -59,21 +59,28 @@ export function useUserIdentity() {
     setIdentity(prev => ({ ...prev, dailyTarget: target }));
   }, []);
 
-  const setCycleTarget = useCallback((target: number) => {
-    localStorage.setItem(CYCLE_TARGET_KEY, target.toString());
-    setIdentity(prev => ({ ...prev, cycleTarget: target }));
+  const setCycleTarget = useCallback((target: number, cycleKey: string) => {
+    setIdentity(prev => {
+      const newCycleTargets = { ...prev.cycleTargets, [cycleKey]: target };
+      localStorage.setItem(CYCLE_TARGETS_KEY, JSON.stringify(newCycleTargets));
+      return { ...prev, cycleTargets: newCycleTargets };
+    });
   }, []);
+
+  const getCycleTarget = useCallback((cycleKey: string): number => {
+    return identity.cycleTargets[cycleKey] || 0;
+  }, [identity.cycleTargets]);
 
   const clearIdentity = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(USER_NAME_KEY);
     localStorage.removeItem(DAILY_TARGET_KEY);
-    localStorage.removeItem(CYCLE_TARGET_KEY);
+    localStorage.removeItem(CYCLE_TARGETS_KEY);
     setIdentity({
       userId: null,
       userName: null,
       dailyTarget: 0,
-      cycleTarget: 0,
+      cycleTargets: {},
     });
   }, []);
 
@@ -84,12 +91,16 @@ export function useUserIdentity() {
   }, []);
 
   return {
-    ...identity,
+    userId: identity.userId,
+    userName: identity.userName,
+    dailyTarget: identity.dailyTarget,
+    cycleTargets: identity.cycleTargets,
     isLoading,
     setUserId,
     setUserName,
     setDailyTarget,
     setCycleTarget,
+    getCycleTarget,
     clearIdentity,
     isValidUserId,
     hasIdentity: !!identity.userId,

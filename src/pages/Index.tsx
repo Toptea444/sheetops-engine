@@ -12,7 +12,7 @@ import { ErrorAlert } from '@/components/dashboard/ErrorAlert';
 import { LoadingState } from '@/components/dashboard/LoadingState';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
-import { getCycleOptions, isDateInCycle } from '@/lib/cycleUtils';
+import { getCycleOptions, isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
@@ -32,7 +32,7 @@ const Index = () => {
     userId,
     userName,
     dailyTarget,
-    cycleTarget,
+    getCycleTarget,
     isLoading: identityLoading,
     setUserId,
     setUserName,
@@ -367,7 +367,7 @@ const Index = () => {
               results={results}
               cycle={selectedCycle}
               dailyTarget={dailyTarget}
-              cycleTarget={cycleTarget}
+              cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
               onUpdateDailyTarget={setDailyTarget}
               onUpdateCycleTarget={setCycleTarget}
             />

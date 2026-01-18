@@ -11,6 +11,15 @@ export interface CyclePeriod {
 }
 
 /**
+ * Generate a unique key for a cycle (for storing cycle-specific data)
+ */
+export function getCycleKey(cycle: CyclePeriod): string {
+  const startMonth = cycle.startDate.getMonth() + 1;
+  const startYear = cycle.startDate.getFullYear();
+  return `${startYear}-${String(startMonth).padStart(2, '0')}`;
+}
+
+/**
  * Get the cycle period for a given date
  * If date is 1st-15th, cycle is previous month 16th to current month 15th
  * If date is 16th-31st, cycle is current month 16th to next month 15th

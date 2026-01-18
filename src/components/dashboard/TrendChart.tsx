@@ -130,10 +130,10 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden w-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <TrendingUp className="h-5 w-5" />
+          <TrendingUp className="h-5 w-5 text-primary" />
           Earnings Trend
         </CardTitle>
         <div className="flex gap-1">
@@ -154,8 +154,8 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
         </div>
       </CardHeader>
       <CardContent className="p-4 pr-2">
-        <div className="w-full overflow-x-auto">
-          <ResponsiveContainer width="100%" height={200} minWidth={300}>
+        <div className="w-full min-w-0" style={{ maxWidth: '100%' }}>
+          <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
