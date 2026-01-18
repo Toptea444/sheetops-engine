@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { ChevronDown, FileSpreadsheet, Check } from 'lucide-react';
+import { ChevronDown, FileSpreadsheet, Check, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -25,6 +24,9 @@ export function SheetSelector({
   onSelectionChange,
   isLoading,
 }: SheetSelectorProps) {
+  // Filter out disabled sheets from the available selection
+  const enabledSheets = sheets.filter(s => !s.disabled);
+  
   const toggleSheet = (sheetName: string) => {
     if (selectedSheets.includes(sheetName)) {
       // Don't allow deselecting all sheets
@@ -37,8 +39,13 @@ export function SheetSelector({
   };
 
   const selectAll = () => {
-    onSelectionChange(sheets.map(s => s.name));
+    // Only select enabled sheets
+    onSelectionChange(enabledSheets.map(s => s.name));
   };
+
+  const selectedCount = selectedSheets.filter(s => 
+    enabledSheets.some(es => es.name === s)
+  ).length;
 
   return (
     <DropdownMenu>
@@ -47,37 +54,51 @@ export function SheetSelector({
           <FileSpreadsheet className="h-4 w-4" />
           <span className="hidden sm:inline">Data Sources</span>
           <Badge variant="secondary" className="ml-1">
-            {selectedSheets.length}
+            {selectedCount}
           </Badge>
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel>Select Data Sources</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {sheets.map((sheet) => {
           const isSelected = selectedSheets.includes(sheet.name);
+          const isDisabled = sheet.disabled;
+          
           return (
             <DropdownMenuItem
               key={sheet.id}
-              onClick={() => toggleSheet(sheet.name)}
-              className="gap-2 cursor-pointer"
+              onClick={() => !isDisabled && toggleSheet(sheet.name)}
+              disabled={isDisabled}
+              className={`gap-2 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             >
-              <div className={`h-4 w-4 rounded border flex items-center justify-center ${
-                isSelected 
-                  ? 'bg-primary border-primary text-primary-foreground' 
-                  : 'border-input'
-              }`}>
-                {isSelected && <Check className="h-3 w-3" />}
-              </div>
+              {isDisabled ? (
+                <Ban className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <div className={`h-4 w-4 rounded border flex items-center justify-center ${
+                  isSelected 
+                    ? 'bg-primary border-primary text-primary-foreground' 
+                    : 'border-input'
+                }`}>
+                  {isSelected && <Check className="h-3 w-3" />}
+                </div>
+              )}
               <span className="flex-1 truncate">{sheet.name}</span>
+              {isDisabled && (
+                <span className="text-xs text-muted-foreground">Hidden</span>
+              )}
             </DropdownMenuItem>
           );
         })}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={selectAll} className="text-primary">
-          Select All
-        </DropdownMenuItem>
+        {enabledSheets.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={selectAll} className="text-primary">
+              Select All ({enabledSheets.length})
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

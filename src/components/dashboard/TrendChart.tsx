@@ -1,4 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { TrendingUp } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -11,33 +15,17 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { TrendingUp } from 'lucide-react';
-import type { BonusResult, DailyBonus } from '@/types/bonus';
+import type { BonusResult } from '@/types/bonus';
+import type { CyclePeriod } from '@/lib/cycleUtils';
+import { isDateInCycle } from '@/lib/cycleUtils';
 
 interface TrendChartProps {
   results: BonusResult[];
+  cycle: CyclePeriod;
   isLoading?: boolean;
 }
 
-type TimeRange = '7d' | '14d' | '30d' | 'all';
-
-const timeRangeLabels: Record<TimeRange, string> = {
-  '7d': 'Last 7 Days',
-  '14d': 'Last 14 Days',
-  '30d': 'Last 30 Days',
-  'all': 'All Time',
-};
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+type ViewMode = 'daily' | 'cumulative';
 
 function formatShortCurrency(value: number): string {
   if (value >= 1000000) {
@@ -49,65 +37,68 @@ function formatShortCurrency(value: number): string {
   return `₦${value}`;
 }
 
-export function TrendChart({ results, isLoading }: TrendChartProps) {
-  const [timeRange, setTimeRange] = useState<TimeRange>('7d');
+export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>('daily');
 
-  // Aggregate all daily data
-  const allDays = results.flatMap(r => r.dailyBreakdown);
-  
-  // Sort by date and deduplicate (take max value per date)
-  const dateMap = new Map<string, DailyBonus>();
-  for (const day of allDays) {
-    const existing = dateMap.get(day.date);
-    if (!existing || day.value > existing.value) {
-      dateMap.set(day.date, day);
+  // Aggregate daily earnings from all results for the current cycle
+  const chartData = useMemo(() => {
+    const dayMap = new Map<number, { date: string; fullDate: number; value: number }>();
+
+    results.forEach((result) => {
+      result.dailyBreakdown?.forEach((day) => {
+        if (day.fullDate === undefined) return;
+
+        // Check if this day is in the selected cycle
+        const dayDate = new Date(day.fullDate);
+        if (!isDateInCycle(dayDate, cycle)) return;
+
+        const existing = dayMap.get(day.fullDate);
+        if (existing) {
+          existing.value += day.value;
+        } else {
+          dayMap.set(day.fullDate, {
+            date: day.date,
+            fullDate: day.fullDate,
+            value: day.value,
+          });
+        }
+      });
+    });
+
+    const days = Array.from(dayMap.values()).sort((a, b) => a.fullDate - b.fullDate);
+
+    if (viewMode === 'cumulative') {
+      let cumulative = 0;
+      return days.map((day) => {
+        cumulative += day.value;
+        return {
+          ...day,
+          value: cumulative,
+        };
+      });
     }
-  }
-  
-  const sortedDays = Array.from(dateMap.values())
-    .filter(d => d.fullDate !== undefined)
-    .sort((a, b) => (a.fullDate ?? 0) - (b.fullDate ?? 0));
 
-  // Filter by time range
-  const now = Date.now();
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const rangeDays: Record<TimeRange, number> = {
-    '7d': 7,
-    '14d': 14,
-    '30d': 30,
-    'all': Infinity,
-  };
-
-  const filteredDays = sortedDays.filter(day => {
-    if (timeRange === 'all') return true;
-    const dayTime = day.fullDate ?? 0;
-    return now - dayTime <= rangeDays[timeRange] * msPerDay;
-  });
+    return days;
+  }, [results, cycle, viewMode]);
 
   // Calculate average for reference line
-  const activeDays = filteredDays.filter(d => d.value > 0);
-  const average = activeDays.length > 0
-    ? activeDays.reduce((sum, d) => sum + d.value, 0) / activeDays.length
-    : 0;
-
-  // Prepare chart data
-  const chartData = filteredDays.map(day => ({
-    date: day.date.split(',')[0], // Short date format
-    value: day.value,
-    fullDate: day.date,
-  }));
+  const average = useMemo(() => {
+    if (chartData.length === 0 || viewMode === 'cumulative') return 0;
+    const total = chartData.reduce((sum, d) => sum + d.value, 0);
+    return Math.round(total / chartData.length);
+  }, [chartData, viewMode]);
 
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <TrendingUp className="h-5 w-5" />
-            Performance Trend
+            Earnings Trend
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] animate-pulse bg-muted rounded" />
+          <Skeleton className="h-[200px] w-full" />
         </CardContent>
       </Card>
     );
@@ -116,107 +107,120 @@ export function TrendChart({ results, isLoading }: TrendChartProps) {
   if (chartData.length === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <TrendingUp className="h-5 w-5" />
-            Performance Trend
+            Earnings Trend
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-            <p>No performance data available for the selected period</p>
+          <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+            No data available for this cycle
           </div>
         </CardContent>
       </Card>
     );
   }
 
+  // Format the date for tooltip and X axis
+  const formatShortDate = (date: string) => {
+    // date is like "Jan 16, Thu" - extract just "Jan 16"
+    const parts = date.split(',');
+    return parts[0] || date;
+  };
+
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
           <TrendingUp className="h-5 w-5" />
-          Performance Trend
+          Earnings Trend
         </CardTitle>
         <div className="flex gap-1">
-          {(Object.keys(timeRangeLabels) as TimeRange[]).map((range) => (
-            <Button
-              key={range}
-              variant={timeRange === range ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setTimeRange(range)}
-              className="text-xs"
-            >
-              {range === 'all' ? 'All' : range}
-            </Button>
-          ))}
+          <Button
+            variant={viewMode === 'daily' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('daily')}
+          >
+            Daily
+          </Button>
+          <Button
+            variant={viewMode === 'cumulative' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('cumulative')}
+          >
+            Cumulative
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(215, 70%, 45%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(215, 70%, 45%)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis 
-                dataKey="date" 
-                tick={{ fontSize: 12 }}
-                className="text-muted-foreground"
-                interval="preserveStartEnd"
-              />
-              <YAxis 
-                tickFormatter={(value) => formatShortCurrency(value)}
-                tick={{ fontSize: 12 }}
-                className="text-muted-foreground"
-                width={60}
-              />
-              <Tooltip
-                formatter={(value: number) => [formatCurrency(value), 'Bonus']}
-                labelFormatter={(label) => `Date: ${label}`}
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                }}
-              />
-              <ReferenceLine 
-                y={average} 
-                stroke="hsl(145, 60%, 45%)" 
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+            <defs>
+              <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <XAxis
+              dataKey="date"
+              tickFormatter={formatShortDate}
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              className="text-muted-foreground"
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              tickFormatter={(value) => formatShortCurrency(value)}
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              className="text-muted-foreground"
+              width={50}
+            />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload;
+                  return (
+                    <div className="rounded-lg border bg-background p-2 shadow-sm">
+                      <p className="text-sm font-medium">{data.date}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {viewMode === 'cumulative' ? 'Total: ' : ''}
+                        ₦{data.value.toLocaleString()}
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
+            {viewMode === 'daily' && average > 0 && (
+              <ReferenceLine
+                y={average}
+                stroke="hsl(var(--success))"
                 strokeDasharray="5 5"
-                label={{ 
-                  value: `Avg: ${formatShortCurrency(average)}`, 
+                label={{
+                  value: `Avg: ₦${average.toLocaleString()}`,
                   position: 'right',
-                  fill: 'hsl(145, 60%, 45%)',
-                  fontSize: 12,
+                  fontSize: 11,
+                  fill: 'hsl(var(--success))',
                 }}
               />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="hsl(215, 70%, 45%)"
-                strokeWidth={2}
-                fill="url(#colorValue)"
-                dot={{ fill: 'hsl(215, 70%, 45%)', strokeWidth: 0, r: 3 }}
-                activeDot={{ r: 6, fill: 'hsl(215, 70%, 45%)' }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="mt-4 flex items-center justify-center gap-6 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-primary" />
-            <span>Daily Bonus</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-0.5 w-6 bg-green-500" style={{ borderStyle: 'dashed' }} />
-            <span>Average ({formatShortCurrency(average)})</span>
-          </div>
-        </div>
+            )}
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke="hsl(var(--primary))"
+              strokeWidth={2}
+              fill="url(#colorValue)"
+              dot={{ fill: 'hsl(var(--primary))', strokeWidth: 0, r: 3 }}
+              activeDot={{ r: 5, fill: 'hsl(var(--primary))' }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </CardContent>
     </Card>
   );

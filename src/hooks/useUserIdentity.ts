@@ -3,13 +3,13 @@ import { useState, useEffect, useCallback } from 'react';
 const STORAGE_KEY = 'performanceTracker_userId';
 const USER_NAME_KEY = 'performanceTracker_userName';
 const DAILY_TARGET_KEY = 'performanceTracker_dailyTarget';
-const WEEKLY_TARGET_KEY = 'performanceTracker_weeklyTarget';
+const CYCLE_TARGET_KEY = 'performanceTracker_cycleTarget';
 
 interface UserIdentity {
   userId: string | null;
   userName: string | null;
   dailyTarget: number;
-  weeklyTarget: number;
+  cycleTarget: number;
 }
 
 export function useUserIdentity() {
@@ -17,7 +17,7 @@ export function useUserIdentity() {
     userId: null,
     userName: null,
     dailyTarget: 0,
-    weeklyTarget: 0,
+    cycleTarget: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -26,13 +26,13 @@ export function useUserIdentity() {
     const storedUserId = localStorage.getItem(STORAGE_KEY);
     const storedUserName = localStorage.getItem(USER_NAME_KEY);
     const storedDailyTarget = localStorage.getItem(DAILY_TARGET_KEY);
-    const storedWeeklyTarget = localStorage.getItem(WEEKLY_TARGET_KEY);
+    const storedCycleTarget = localStorage.getItem(CYCLE_TARGET_KEY);
 
     setIdentity({
       userId: storedUserId,
       userName: storedUserName,
       dailyTarget: storedDailyTarget ? parseFloat(storedDailyTarget) : 0,
-      weeklyTarget: storedWeeklyTarget ? parseFloat(storedWeeklyTarget) : 0,
+      cycleTarget: storedCycleTarget ? parseFloat(storedCycleTarget) : 0,
     });
     setIsLoading(false);
   }, []);
@@ -59,21 +59,21 @@ export function useUserIdentity() {
     setIdentity(prev => ({ ...prev, dailyTarget: target }));
   }, []);
 
-  const setWeeklyTarget = useCallback((target: number) => {
-    localStorage.setItem(WEEKLY_TARGET_KEY, target.toString());
-    setIdentity(prev => ({ ...prev, weeklyTarget: target }));
+  const setCycleTarget = useCallback((target: number) => {
+    localStorage.setItem(CYCLE_TARGET_KEY, target.toString());
+    setIdentity(prev => ({ ...prev, cycleTarget: target }));
   }, []);
 
   const clearIdentity = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(USER_NAME_KEY);
     localStorage.removeItem(DAILY_TARGET_KEY);
-    localStorage.removeItem(WEEKLY_TARGET_KEY);
+    localStorage.removeItem(CYCLE_TARGET_KEY);
     setIdentity({
       userId: null,
       userName: null,
       dailyTarget: 0,
-      weeklyTarget: 0,
+      cycleTarget: 0,
     });
   }, []);
 
@@ -89,7 +89,7 @@ export function useUserIdentity() {
     setUserId,
     setUserName,
     setDailyTarget,
-    setWeeklyTarget,
+    setCycleTarget,
     clearIdentity,
     isValidUserId,
     hasIdentity: !!identity.userId,
