@@ -52,16 +52,13 @@ const Index = () => {
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
 
-  // Cycle state
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
 
-  // Initialize: fetch sheets list
   useEffect(() => {
     const init = async () => {
       const sheetsList = await fetchSheets();
       if (sheetsList.length > 0) {
-        // Only select enabled sheets
         const enabledSheets = sheetsList.filter(s => !s.disabled);
         setSelectedSheets(enabledSheets.map(s => s.name));
       }
@@ -70,14 +67,12 @@ const Index = () => {
     init();
   }, [fetchSheets]);
 
-  // Show welcome modal if no identity
   useEffect(() => {
     if (!identityLoading && !hasIdentity && !isInitializing) {
       setShowWelcome(true);
     }
   }, [identityLoading, hasIdentity, isInitializing]);
 
-  // Fetch data for all selected sheets and calculate bonuses when user is set
   const fetchUserData = useCallback(async (forceRefetch = false) => {
     if (!userId || selectedSheets.length === 0) return;
 
@@ -87,32 +82,23 @@ const Index = () => {
     const newCache: Record<string, SheetData> = { ...sheetDataCache };
     let foundInAnySheet = false;
 
-    // Calculate date range for all-time data (we filter by cycle in display)
     const allTimeStart = new Date(2020, 0, 1);
     const endDate = new Date();
 
     for (const sheetName of selectedSheets) {
-      // Use cached data if available and not force refreshing
       let data = forceRefetch ? null : sheetDataCache[sheetName];
       if (!data) {
         data = await fetchSheetData(sheetName);
-        if (data) {
-          newCache[sheetName] = data;
-        }
+        if (data) newCache[sheetName] = data;
       }
       
       if (data) {
         const worker = searchWorker(data, userId);
-        
         if (worker) {
           foundInAnySheet = true;
-          
-          // Update userName if found
           if (worker.userName && worker.userName !== userId) {
             setUserName(worker.userName);
           }
-
-          // Calculate bonus for all available data
           const result = calculateBonus(worker, allTimeStart, endDate);
           newResults.push(result);
         }
@@ -128,19 +114,16 @@ const Index = () => {
     }
   }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName]);
 
-  // Fetch user data when userId or selectedSheets change
   useEffect(() => {
     if (userId && selectedSheets.length > 0 && !isInitializing) {
       fetchUserData();
     }
   }, [userId, selectedSheets, isInitializing]);
 
-  // Handle welcome modal completion
   const handleWelcomeComplete = async (newUserId: string) => {
     setIsValidating(true);
     setValidationError(null);
 
-    // Validate by checking if user exists in any sheet
     let foundUser = false;
     let foundUserName = '';
 
@@ -163,11 +146,10 @@ const Index = () => {
       setShowWelcome(false);
       toast.success(`Welcome, ${foundUserName}!`);
     } else {
-      setValidationError(`ID "${newUserId}" not found in any sheet. Please check and try again.`);
+      setValidationError(`ID "${newUserId}" not found. Please check and try again.`);
     }
   };
 
-  // Handle refresh
   const handleRefresh = useCallback(async () => {
     setDataError(null);
     setSheetDataCache({});
@@ -175,10 +157,9 @@ const Index = () => {
     if (userId) {
       await fetchUserData(true);
     }
-    toast.success('Data refreshed successfully');
+    toast.success('Refreshed');
   }, [fetchSheets, fetchUserData, userId]);
 
-  // Handle switch user
   const handleSwitchUser = () => {
     clearIdentity();
     setResults([]);
@@ -186,12 +167,10 @@ const Index = () => {
     setShowWelcome(true);
   };
 
-  // Handle sheet selection change - with caching, only fetch new sheets
   const handleSheetSelectionChange = useCallback(async (newSelection: string[]) => {
     const previousSelection = selectedSheets;
     setSelectedSheets(newSelection);
 
-    // Find newly added sheets that aren't in cache
     const newSheets = newSelection.filter(
       s => !previousSelection.includes(s) && !sheetDataCache[s]
     );
@@ -202,14 +181,11 @@ const Index = () => {
       
       for (const sheetName of newSheets) {
         const data = await fetchSheetData(sheetName);
-        if (data) {
-          newCache[sheetName] = data;
-        }
+        if (data) newCache[sheetName] = data;
       }
       
       setSheetDataCache(newCache);
       
-      // Recalculate results with new data
       const allTimeStart = new Date(2020, 0, 1);
       const endDate = new Date();
       const newResults: BonusResult[] = [];
@@ -228,7 +204,6 @@ const Index = () => {
       setResults(newResults);
       setIsFetchingData(false);
     } else if (userId) {
-      // Just recalculate from cache
       const allTimeStart = new Date(2020, 0, 1);
       const endDate = new Date();
       const newResults: BonusResult[] = [];
@@ -248,32 +223,24 @@ const Index = () => {
     }
   }, [selectedSheets, sheetDataCache, userId, fetchSheetData, searchWorker, calculateBonus]);
 
-  // Calculate cycle-specific stats - exclude percentage-based sheets (like Weekly)
   const cycleStats = useMemo(() => {
     let totalEarnings = 0;
     const activeDays = new Set<number>();
 
     results.forEach((result) => {
-      // Skip percentage-based results (like Weekly bonus which is just percentages)
       if (result.valueType === 'percent') return;
 
       result.dailyBreakdown?.forEach((day) => {
         if (day.fullDate === undefined) return;
-        
         const dayDate = new Date(day.fullDate);
         if (isDateInCycle(dayDate, selectedCycle)) {
           totalEarnings += day.value;
-          if (day.value > 0) {
-            activeDays.add(day.fullDate);
-          }
+          if (day.value > 0) activeDays.add(day.fullDate);
         }
       });
     });
 
-    return {
-      totalEarnings,
-      daysActive: activeDays.size,
-    };
+    return { totalEarnings, daysActive: activeDays.size };
   }, [results, selectedCycle]);
 
   const isLoading = sheetsLoading || identityLoading || isFetchingData;
@@ -303,17 +270,19 @@ const Index = () => {
         onSwitchUser={handleSwitchUser}
       />
       
-      <main className="flex-1 container mx-auto px-4 py-6 max-w-7xl space-y-6">
-        {/* Error Display */}
+      <main className="flex-1 container mx-auto px-4 py-4 max-w-4xl">
+        {/* Error */}
         {(error || dataError) && (
-          <ErrorAlert 
-            message={error || dataError || ''} 
-            onDismiss={() => setDataError(null)} 
-          />
+          <div className="mb-4">
+            <ErrorAlert 
+              message={error || dataError || ''} 
+              onDismiss={() => setDataError(null)} 
+            />
+          </div>
         )}
 
-        {/* Top Controls Row */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+        {/* Controls */}
+        <div className="flex items-center justify-between gap-2 mb-4">
           <CycleSelector
             cycles={cycleOptions}
             selectedCycle={selectedCycle}
@@ -328,56 +297,66 @@ const Index = () => {
           />
         </div>
 
-        {/* Cycle Summary Card */}
-        <CycleSummaryCard
-          cycle={selectedCycle}
-          totalEarnings={cycleStats.totalEarnings}
-          daysActive={cycleStats.daysActive}
-          isLoading={isLoading}
-        />
+        {/* Main content */}
+        <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+          {/* Left column */}
+          <div className="space-y-4">
+            {/* Summary */}
+            <div className="p-4 border rounded-lg bg-card">
+              <CycleSummaryCard
+                cycle={selectedCycle}
+                totalEarnings={cycleStats.totalEarnings}
+                daysActive={cycleStats.daysActive}
+                isLoading={isLoading}
+              />
+            </div>
 
-        {/* Sheet Breakdown */}
-        <SheetBreakdownCards
-          results={results}
-          sheetNames={selectedSheets}
-          cycle={selectedCycle}
-          isLoading={isLoading}
-        />
-
-        {/* Main Content Grid */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_350px]">
-          {/* Left: Chart and Table */}
-          <div className="space-y-6">
-            <TrendChart 
-              results={results} 
-              cycle={selectedCycle}
-              isLoading={isLoading} 
-            />
-            <DailyEarningsTable
+            {/* Breakdown */}
+            <SheetBreakdownCards
               results={results}
               sheetNames={selectedSheets}
               cycle={selectedCycle}
               isLoading={isLoading}
             />
+
+            {/* Chart */}
+            <div className="p-4 border rounded-lg bg-card">
+              <TrendChart 
+                results={results} 
+                cycle={selectedCycle}
+                isLoading={isLoading} 
+              />
+            </div>
+
+            {/* Table */}
+            <div className="p-4 border rounded-lg bg-card">
+              <DailyEarningsTable
+                results={results}
+                sheetNames={selectedSheets}
+                cycle={selectedCycle}
+                isLoading={isLoading}
+              />
+            </div>
           </div>
 
-          {/* Right: Goals */}
-          <div>
-            <GoalsPanel
-              results={results}
-              cycle={selectedCycle}
-              dailyTarget={dailyTarget}
-              cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
-              onUpdateDailyTarget={setDailyTarget}
-              onUpdateCycleTarget={setCycleTarget}
-            />
+          {/* Right column - Goals */}
+          <div className="lg:sticky lg:top-20 lg:h-fit">
+            <div className="p-4 border rounded-lg bg-card">
+              <GoalsPanel
+                results={results}
+                cycle={selectedCycle}
+                dailyTarget={dailyTarget}
+                cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
+                onUpdateDailyTarget={setDailyTarget}
+                onUpdateCycleTarget={setCycleTarget}
+              />
+            </div>
           </div>
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t bg-card py-4 text-center text-sm text-muted-foreground mt-auto">
-        <p>Performance Tracker • Data synced from Google Sheets</p>
+      <footer className="border-t py-3 text-center text-xs text-muted-foreground mt-auto">
+        Performance Tracker
       </footer>
     </div>
   );

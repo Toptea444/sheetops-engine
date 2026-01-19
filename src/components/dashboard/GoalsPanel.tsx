@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Target, Edit3, Check, X, Trophy, CheckCircle2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Edit3, Check, X, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -39,65 +38,56 @@ function GoalRow({ label, current, target, onUpdateTarget }: GoalRowProps) {
     setIsEditing(false);
   };
 
-  const handleCancel = () => {
-    setInputValue(target.toString());
-    setIsEditing(false);
-  };
-
   return (
-    <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/50">
+    <div className="space-y-2 p-3 rounded-md bg-muted/30 border border-border/50">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-foreground">{label}</span>
+        <span className="text-xs font-medium">{label}</span>
         {isEditing ? (
           <div className="flex items-center gap-1">
             <Input
               type="number"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              className="h-8 w-28 text-sm"
+              className="h-6 w-20 text-xs px-2"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSave();
-                if (e.key === 'Escape') handleCancel();
+                if (e.key === 'Escape') setIsEditing(false);
               }}
             />
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleSave}>
-              <Check className="h-4 w-4 text-success" />
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSave}>
+              <Check className="h-3 w-3 text-success" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleCancel}>
-              <X className="h-4 w-4" />
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setIsEditing(false)}>
+              <X className="h-3 w-3" />
             </Button>
           </div>
         ) : (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="h-8 gap-2 text-muted-foreground hover:text-foreground"
+            className="h-6 text-xs gap-1 text-muted-foreground"
             onClick={() => {
               setInputValue(target.toString());
               setIsEditing(true);
             }}
           >
-            <span>{target > 0 ? `₦${target.toLocaleString()}` : 'Set target'}</span>
-            <Edit3 className="h-3 w-3" />
+            {target > 0 ? `₦${target.toLocaleString()}` : 'Set'}
+            <Edit3 className="h-2.5 w-2.5" />
           </Button>
         )}
       </div>
-      <div className="space-y-2">
-        <Progress value={progress} className={`h-2.5 ${isComplete ? '[&>div]:bg-success' : ''}`} />
-        <div className="flex justify-between items-center text-sm">
-          <span className="font-medium text-foreground">₦{current.toLocaleString()}</span>
-          <span>
-            {isComplete ? (
-              <span className="flex items-center gap-1.5 text-success font-medium">
-                <CheckCircle2 className="h-4 w-4" />
-                Target reached!
-              </span>
-            ) : target > 0 ? (
-              <span className="text-muted-foreground">{progress.toFixed(0)}%</span>
-            ) : null}
+      <Progress value={progress} className={`h-1.5 ${isComplete ? '[&>div]:bg-success' : ''}`} />
+      <div className="flex justify-between items-center text-xs">
+        <span className="font-medium">₦{current.toLocaleString()}</span>
+        {isComplete ? (
+          <span className="flex items-center gap-1 text-success text-[11px]">
+            <CheckCircle className="h-3 w-3" />
+            Done
           </span>
-        </div>
+        ) : target > 0 ? (
+          <span className="text-muted-foreground text-[11px]">{progress.toFixed(0)}%</span>
+        ) : null}
       </div>
     </div>
   );
@@ -111,24 +101,19 @@ export function GoalsPanel({
   onUpdateDailyTarget,
   onUpdateCycleTarget,
 }: GoalsPanelProps) {
-  // Calculate current cycle earnings (exclude percentage-based sheets)
   let cycleTotal = 0;
   let todayTotal = 0;
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
 
   results.forEach((result) => {
-    // Skip percentage-based results
     if (result.valueType === 'percent') return;
 
     result.dailyBreakdown?.forEach((day) => {
       if (day.fullDate === undefined) return;
-
       const dayDate = new Date(day.fullDate);
       if (isDateInCycle(dayDate, cycle)) {
         cycleTotal += day.value;
-        
-        // Check if this is today
         const dayStart = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate()).getTime();
         if (dayStart === todayStart) {
           todayTotal += day.value;
@@ -140,29 +125,22 @@ export function GoalsPanel({
   const cycleKey = getCycleKey(cycle);
 
   return (
-    <Card className="border-2">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Trophy className="h-4 w-4 text-primary" />
-          </div>
-          Goals
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">Goals</p>
+      <div className="space-y-2">
         <GoalRow
-          label="Daily Target"
+          label="Daily"
           current={todayTotal}
           target={dailyTarget}
           onUpdateTarget={onUpdateDailyTarget}
         />
         <GoalRow
-          label="Cycle Target"
+          label="Cycle"
           current={cycleTotal}
           target={cycleTarget}
           onUpdateTarget={(target) => onUpdateCycleTarget(target, cycleKey)}
         />
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

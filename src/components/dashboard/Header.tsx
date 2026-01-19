@@ -1,4 +1,4 @@
-import { TrendingUp, RefreshCw } from 'lucide-react';
+import { RefreshCw, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserBadge } from './UserBadge';
 
@@ -12,39 +12,31 @@ interface HeaderProps {
 
 export function Header({ onRefresh, isLoading, userId, userName, onSwitchUser }: HeaderProps) {
   return (
-    <header className="corporate-gradient text-primary-foreground">
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-white/10 p-2">
-              <TrendingUp className="h-8 w-8" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Performance Tracker</h1>
-              <p className="text-sm text-white/80">
-                Track your daily bonuses & achievements
-              </p>
-            </div>
+    <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      <div className="container mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center">
+            <Zap className="h-4 w-4 text-primary-foreground" />
           </div>
-          <div className="flex items-center gap-3">
-            {userId && onSwitchUser && (
-              <UserBadge
-                userId={userId}
-                userName={userName}
-                onSwitchUser={onSwitchUser}
-              />
-            )}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={onRefresh}
-              disabled={isLoading}
-              className="gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
-            </Button>
-          </div>
+          <span className="font-semibold text-foreground">Tracker</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {userId && onSwitchUser && (
+            <UserBadge
+              userId={userId}
+              userName={userName}
+              onSwitchUser={onSwitchUser}
+            />
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="h-8 w-8 p-0"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
       </div>
     </header>
