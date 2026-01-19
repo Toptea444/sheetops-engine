@@ -56,17 +56,17 @@ export function SheetBreakdownCards({
       {sheetBreakdown.map((sheet) => (
         <div 
           key={sheet.name} 
-          className="shrink-0 px-3 py-2 rounded-lg border bg-card/50 min-w-[120px]"
+          className="shrink-0 px-3 py-2.5 rounded-lg border bg-card/70 min-w-[132px]"
         >
-          <div className="flex items-center gap-1.5 mb-1">
-            <p className="text-[11px] text-muted-foreground truncate max-w-[100px]">
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-xs text-muted-foreground truncate max-w-[110px]">
               {sheet.name.split(' ')[0]}
             </p>
             {sheet.isPercent && (
-              <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5">%</Badge>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">%</Badge>
             )}
           </div>
-          <p className="text-sm font-semibold">
+          <p className="text-base font-semibold">
             {sheet.isPercent 
               ? `${sheet.total.toFixed(1)}%`
               : `₦${sheet.total.toLocaleString()}`

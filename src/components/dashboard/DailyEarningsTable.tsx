@@ -25,7 +25,11 @@ interface DailyEarningsTableProps {
 interface DayData {
   date: string;
   fullDate: number;
+  /** Per-day total (backwards compatible with old 'value') */
   value: number;
+  bonus?: number;
+  rankingBonus?: number;
+  total?: number;
 }
 
 export function DailyEarningsTable({
@@ -58,14 +62,19 @@ export function DailyEarningsTable({
       const dayDate = new Date(day.fullDate);
       if (!isDateInCycle(dayDate, cycle)) return;
 
+      const total = day.total ?? day.value;
+
       days.push({
         date: day.date,
         fullDate: day.fullDate,
-        value: day.value,
+        value: total,
+        total,
+        bonus: day.bonus,
+        rankingBonus: day.rankingBonus,
       });
     });
 
-    days.sort((a, b) => 
+    days.sort((a, b) =>
       sortOrder === 'desc' ? b.fullDate - a.fullDate : a.fullDate - b.fullDate
     );
 
@@ -80,14 +89,21 @@ export function DailyEarningsTable({
 
   // Stats for this sheet
   const stats = useMemo(() => {
-    const total = sheetData.reduce((sum, day) => sum + day.value, 0);
+    const total = sheetData.reduce((sum, day) => sum + (day.total ?? day.value), 0);
+    const bonusTotal = sheetData.reduce((sum, day) => sum + (day.bonus ?? 0), 0);
+    const rankingBonusTotal = sheetData.reduce((sum, day) => sum + (day.rankingBonus ?? 0), 0);
+    const hasSplit = sheetData.some(
+      (d) => d.bonus !== undefined || d.rankingBonus !== undefined
+    );
     const avg = sheetData.length > 0 ? total / sheetData.length : 0;
-    return { total, avg, count: sheetData.length };
+    return { total, avg, count: sheetData.length, bonusTotal, rankingBonusTotal, hasSplit };
   }, [sheetData]);
+
+  const formatCurrency = (value: number) => `₦${value.toLocaleString()}`;
 
   const formatValue = (value: number) => {
     if (isPercent) return `${value.toFixed(1)}%`;
-    return `₦${value.toLocaleString()}`;
+    return formatCurrency(value);
   };
 
   const displayedDays = showAll ? sheetData : sheetData.slice(0, 8);
@@ -106,12 +122,12 @@ export function DailyEarningsTable({
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between gap-2">
-          <TabsList className="h-8 p-0.5 bg-muted/50">
+          <TabsList className="h-9 p-0.5 bg-muted/40">
             {sheetNames.map((name) => (
               <TabsTrigger 
                 key={name} 
                 value={name}
-                className="text-xs h-7 px-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="text-sm h-8 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
               >
                 {name.split(' ')[0]}
               </TabsTrigger>
@@ -121,9 +137,9 @@ export function DailyEarningsTable({
             variant="ghost" 
             size="sm" 
             onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-            className="h-7 text-xs gap-1 text-muted-foreground"
+            className="h-8 text-sm gap-1 text-muted-foreground"
           >
-            {sortOrder === 'desc' ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+            {sortOrder === 'desc' ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
             {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
           </Button>
         </div>
@@ -133,20 +149,41 @@ export function DailyEarningsTable({
             {name === activeTab && (
               <>
                 {/* Summary stats for this sheet only */}
-                <div className="grid grid-cols-3 gap-2 mb-3 p-2.5 bg-muted/30 rounded-md text-center">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</p>
-                    <p className="text-sm font-semibold">{formatValue(stats.total)}</p>
+                {stats.hasSplit && !isPercent ? (
+                  <div className="grid grid-cols-4 gap-2 mb-3 p-3 bg-muted/20 rounded-lg text-center">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Bonus</p>
+                      <p className="text-base font-semibold">{formatCurrency(stats.bonusTotal)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Ranking</p>
+                      <p className="text-base font-semibold">{formatCurrency(stats.rankingBonusTotal)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>
+                      <p className="text-base font-semibold">{formatCurrency(stats.total)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Entries</p>
+                      <p className="text-base font-semibold">{stats.count}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Average</p>
-                    <p className="text-sm font-semibold">{formatValue(stats.avg)}</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 mb-3 p-3 bg-muted/20 rounded-lg text-center">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>
+                      <p className="text-base font-semibold">{formatValue(stats.total)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Average</p>
+                      <p className="text-base font-semibold">{formatValue(stats.avg)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Entries</p>
+                      <p className="text-base font-semibold">{stats.count}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Entries</p>
-                    <p className="text-sm font-semibold">{stats.count}</p>
-                  </div>
-                </div>
+                )}
 
                 {sheetData.length === 0 ? (
                   <p className="text-center text-sm text-muted-foreground py-6">
@@ -154,23 +191,45 @@ export function DailyEarningsTable({
                   </p>
                 ) : (
                   <>
-                    <div className="border rounded-md overflow-hidden">
+                    <div className="border rounded-lg overflow-hidden">
                       <Table>
                         <TableHeader>
-                          <TableRow className="hover:bg-transparent bg-muted/30">
-                            <TableHead className="text-xs font-medium h-8">Date</TableHead>
-                            <TableHead className="text-xs font-medium h-8 text-right">
-                              {isPercent ? 'Bonus %' : 'Amount'}
-                            </TableHead>
+                          <TableRow className="hover:bg-transparent bg-muted/20">
+                            <TableHead className="text-sm font-medium h-10">Date</TableHead>
+                            {stats.hasSplit && !isPercent ? (
+                              <>
+                                <TableHead className="text-sm font-medium h-10 text-right">Bonus</TableHead>
+                                <TableHead className="text-sm font-medium h-10 text-right">Ranking Bonus</TableHead>
+                                <TableHead className="text-sm font-medium h-10 text-right">Total</TableHead>
+                              </>
+                            ) : (
+                              <TableHead className="text-sm font-medium h-10 text-right">
+                                {isPercent ? 'Bonus %' : 'Amount'}
+                              </TableHead>
+                            )}
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {displayedDays.map((day) => (
-                            <TableRow key={day.fullDate} className="h-9">
-                              <TableCell className="text-xs py-2">{day.date}</TableCell>
-                              <TableCell className="text-xs py-2 text-right font-medium">
-                                {formatValue(day.value)}
-                              </TableCell>
+                            <TableRow key={day.fullDate} className="h-11">
+                              <TableCell className="text-sm py-2.5">{day.date}</TableCell>
+                              {stats.hasSplit && !isPercent ? (
+                                <>
+                                  <TableCell className="text-sm py-2.5 text-right font-medium">
+                                    {formatCurrency(day.bonus ?? 0)}
+                                  </TableCell>
+                                  <TableCell className="text-sm py-2.5 text-right font-medium">
+                                    {formatCurrency(day.rankingBonus ?? 0)}
+                                  </TableCell>
+                                  <TableCell className="text-sm py-2.5 text-right font-semibold">
+                                    {formatCurrency(day.total ?? day.value)}
+                                  </TableCell>
+                                </>
+                              ) : (
+                                <TableCell className="text-sm py-2.5 text-right font-medium">
+                                  {formatValue(day.value)}
+                                </TableCell>
+                              )}
                             </TableRow>
                           ))}
                         </TableBody>

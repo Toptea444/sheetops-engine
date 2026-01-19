@@ -39,54 +39,54 @@ function GoalRow({ label, current, target, onUpdateTarget }: GoalRowProps) {
   };
 
   return (
-    <div className="space-y-2 p-3 rounded-md bg-muted/30 border border-border/50">
+    <div className="space-y-2.5 p-3 rounded-lg bg-muted/20 border border-border/60">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium">{label}</span>
+        <span className="text-sm font-medium">{label}</span>
         {isEditing ? (
           <div className="flex items-center gap-1">
             <Input
               type="number"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              className="h-6 w-20 text-xs px-2"
+              className="h-8 w-24 text-sm px-2"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSave();
                 if (e.key === 'Escape') setIsEditing(false);
               }}
             />
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSave}>
-              <Check className="h-3 w-3 text-success" />
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleSave}>
+              <Check className="h-4 w-4 text-success" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setIsEditing(false)}>
-              <X className="h-3 w-3" />
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setIsEditing(false)}>
+              <X className="h-4 w-4" />
             </Button>
           </div>
         ) : (
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 text-xs gap-1 text-muted-foreground"
+            className="h-8 text-sm gap-1 text-muted-foreground"
             onClick={() => {
               setInputValue(target.toString());
               setIsEditing(true);
             }}
           >
             {target > 0 ? `₦${target.toLocaleString()}` : 'Set'}
-            <Edit3 className="h-2.5 w-2.5" />
+            <Edit3 className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>
       <Progress value={progress} className={`h-1.5 ${isComplete ? '[&>div]:bg-success' : ''}`} />
-      <div className="flex justify-between items-center text-xs">
+      <div className="flex justify-between items-center text-sm">
         <span className="font-medium">₦{current.toLocaleString()}</span>
         {isComplete ? (
-          <span className="flex items-center gap-1 text-success text-[11px]">
-            <CheckCircle className="h-3 w-3" />
+          <span className="flex items-center gap-1 text-success text-sm">
+            <CheckCircle className="h-4 w-4" />
             Done
           </span>
         ) : target > 0 ? (
-          <span className="text-muted-foreground text-[11px]">{progress.toFixed(0)}%</span>
+          <span className="text-muted-foreground text-sm">{progress.toFixed(0)}%</span>
         ) : null}
       </div>
     </div>
@@ -125,9 +125,9 @@ export function GoalsPanel({
   const cycleKey = getCycleKey(cycle);
 
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">Goals</p>
-      <div className="space-y-2">
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">Goals</p>
+      <div className="space-y-3">
         <GoalRow
           label="Daily"
           current={todayTotal}
