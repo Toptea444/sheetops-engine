@@ -179,6 +179,9 @@ export function useGoogleSheets() {
             dayNumber: d.dayNumber,
             fullDate: d.fullDate,
             value: d.value,
+            bonus: d.bonus,
+            rankingBonus: d.rankingBonus,
+            total: d.total,
           });
         }
       }
@@ -296,6 +299,13 @@ function parseDailyPerformanceSheet(
       ]);
       const totalCol = findLabelInRange(headerRow, blockStart, blockEnd, ['total']);
 
+      // Daily & Performance breakdown
+      const bonusCol = findLabelInRangeExact(headerRow, blockStart, blockEnd, ['bonus', 'daily bonus']);
+      const rankingBonusCol = findLabelInRangeExact(headerRow, blockStart, blockEnd, [
+        'ranking bonus',
+        'rank bonus',
+      ]);
+
       // If we can't find these, this is not a real date block.
       if (usernamesCol < 0 || totalCol < 0) continue;
 
@@ -318,11 +328,19 @@ function parseDailyPerformanceSheet(
           const resolvedStage = stageCell || currentStage;
           if (resolvedStage) foundStage = resolvedStage;
 
+          const totalValue = parseNumberLike(dataRow[totalCol]);
+          const bonusValue = bonusCol >= 0 ? parseNumberLike(dataRow[bonusCol]) : undefined;
+          const rankingBonusValue =
+            rankingBonusCol >= 0 ? parseNumberLike(dataRow[rankingBonusCol]) : undefined;
+
           dailyData.push({
             date: starts[sIdx].parsed.formatted,
             dayNumber: starts[sIdx].parsed.day,
             fullDate: starts[sIdx].parsed.timestamp,
-            value: parseNumberLike(dataRow[totalCol]),
+            value: totalValue,
+            total: totalValue,
+            bonus: bonusValue,
+            rankingBonus: rankingBonusValue,
           });
           break; // found worker for this date block
         }
@@ -375,8 +393,18 @@ function parseDailyPerformanceSheet(
     const blockEnd = dateBlocks[blockIdx + 1]?.start ?? headers.length;
 
     const stagesCol = findLabelInRange(labelRow, blockStart, blockEnd, ['stages', 'stage']);
-    const usernamesCol = findLabelInRange(labelRow, blockStart, blockEnd, ['usernames', 'username', 'names', 'name', 'user id', 'product']);
+    const usernamesCol = findLabelInRange(labelRow, blockStart, blockEnd, [
+      'usernames',
+      'username',
+      'names',
+      'name',
+      'user id',
+      'product',
+    ]);
     const totalCol = findLabelInRange(labelRow, blockStart, blockEnd, ['total']);
+
+    const bonusCol = findLabelInRangeExact(labelRow, blockStart, blockEnd, ['bonus', 'daily bonus']);
+    const rankingBonusCol = findLabelInRangeExact(labelRow, blockStart, blockEnd, ['ranking bonus', 'rank bonus']);
 
     if (usernamesCol < 0) continue;
 
@@ -391,16 +419,18 @@ function parseDailyPerformanceSheet(
           fallbackStage = row[stagesCol].trim();
         }
 
-        let bonusValue = 0;
-        if (totalCol >= 0 && row[totalCol]) {
-          bonusValue = parseNumberLike(row[totalCol]);
-        }
+        const totalValue = totalCol >= 0 ? parseNumberLike(row[totalCol]) : 0;
+        const bonusValue = bonusCol >= 0 ? parseNumberLike(row[bonusCol]) : undefined;
+        const rankingBonusValue = rankingBonusCol >= 0 ? parseNumberLike(row[rankingBonusCol]) : undefined;
 
         fallbackDailyData.push({
           date: block.parsedDate?.formatted || block.date,
           dayNumber: block.parsedDate?.day,
           fullDate: block.parsedDate?.timestamp,
-          value: bonusValue,
+          value: totalValue,
+          total: totalValue,
+          bonus: bonusValue,
+          rankingBonus: rankingBonusValue,
         });
 
         break;
@@ -427,6 +457,17 @@ function findLabelInRange(labelRow: string[], start: number, end: number, needle
     const cell = normalizeLabel(labelRow[i]);
     if (!cell) continue;
     if (needles.some((n) => cell === n || cell.includes(n))) return i;
+  }
+  return -1;
+}
+
+// Exact-match variant used to avoid collisions like "bonus" matching "ranking bonus"
+function findLabelInRangeExact(labelRow: string[], start: number, end: number, needles: string[]): number {
+  const normalizedNeedles = needles.map((n) => n.trim().toLowerCase());
+  for (let i = start; i < end && i < labelRow.length; i++) {
+    const cell = normalizeLabel(labelRow[i]);
+    if (!cell) continue;
+    if (normalizedNeedles.includes(cell)) return i;
   }
   return -1;
 }

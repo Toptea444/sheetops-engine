@@ -24,7 +24,17 @@ export interface DailyBonus {
   dayNumber?: number;
   /** Full date timestamp (ms since epoch) for date range validation */
   fullDate?: number;
+
+  /**
+   * Backwards-compatible single value used across the app.
+   * For Daily & Performance sheets this represents the per-day TOTAL.
+   */
   value: number;
+
+  /** Optional breakdown for Daily & Performance style sheets */
+  bonus?: number;
+  rankingBonus?: number;
+  total?: number;
 }
 
 export interface BonusResult {

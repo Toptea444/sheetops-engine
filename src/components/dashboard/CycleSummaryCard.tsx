@@ -36,29 +36,29 @@ export function CycleSummaryCard({
     <div className="space-y-4">
       {/* Main earnings */}
       <div>
-        <p className="text-xs text-muted-foreground mb-0.5">Total Earnings</p>
+        <p className="text-sm text-muted-foreground mb-1">Total Earnings</p>
         <p className="text-3xl font-bold tracking-tight">
           ₦{totalEarnings.toLocaleString()}
         </p>
       </div>
 
       {/* Progress bar */}
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <Progress value={progressPercent} className="h-1.5" />
-        <div className="flex justify-between text-[11px] text-muted-foreground">
+        <div className="flex justify-between text-xs text-muted-foreground">
           <span>Day {daysElapsed}/{totalDays}</span>
           <span>{daysRemaining} days left</span>
         </div>
       </div>
 
       {/* Stats row */}
-      <div className="flex gap-6 pt-1">
+      <div className="flex gap-8 pt-1">
         <div>
-          <p className="text-[11px] text-muted-foreground">Active Days</p>
+          <p className="text-xs text-muted-foreground">Active Days</p>
           <p className="text-lg font-semibold">{daysActive}</p>
         </div>
         <div>
-          <p className="text-[11px] text-muted-foreground">Daily Avg</p>
+          <p className="text-xs text-muted-foreground">Daily Avg</p>
           <p className="text-lg font-semibold">₦{Math.round(avgDaily).toLocaleString()}</p>
         </div>
       </div>
