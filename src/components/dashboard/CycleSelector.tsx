@@ -1,4 +1,4 @@
-import { Calendar, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -25,31 +25,28 @@ export function CycleSelector({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button 
-          variant="outline" 
-          className="gap-2 min-w-[200px] justify-between"
+          variant="ghost" 
+          className="h-8 gap-1 px-2 text-sm font-medium"
           disabled={isLoading}
         >
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">{selectedCycle.label}</span>
-          </div>
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          {selectedCycle.label}
+          <ChevronDown className="h-3.5 w-3.5 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[220px]">
+      <DropdownMenuContent align="start" className="w-[200px]">
         {cycles.map((cycle, index) => (
           <DropdownMenuItem
             key={cycle.startDate.getTime()}
             onClick={() => onCycleChange(cycle)}
-            className={`cursor-pointer ${
+            className={`text-sm ${
               cycle.startDate.getTime() === selectedCycle.startDate.getTime()
-                ? 'bg-accent font-medium'
+                ? 'bg-accent'
                 : ''
             }`}
           >
             <span className="flex-1">{cycle.label}</span>
             {index === 0 && (
-              <span className="text-xs text-muted-foreground ml-2">Current</span>
+              <span className="text-[10px] text-muted-foreground">Current</span>
             )}
           </DropdownMenuItem>
         ))}
