@@ -18,7 +18,7 @@ export function Header({ onRefresh, isLoading, userId, userName, onSwitchUser }:
           <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center">
             <Zap className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-foreground">Tracker</span>
+          <span className="font-semibold text-foreground">Bonus Tracker</span>
         </div>
         <div className="flex items-center gap-2">
           {userId && onSwitchUser && (
