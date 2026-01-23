@@ -10,8 +10,13 @@ import { GoalsPanel } from '@/components/dashboard/GoalsPanel';
 import { SheetSelector } from '@/components/dashboard/SheetSelector';
 import { ErrorAlert } from '@/components/dashboard/ErrorAlert';
 import { LoadingState } from '@/components/dashboard/LoadingState';
+import { StreaksPanel } from '@/components/dashboard/StreaksPanel';
+import { EarningsProjection } from '@/components/dashboard/EarningsProjection';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
+import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
+import { useTheme } from '@/hooks/useTheme';
+import { useNotifications, generateDataHash } from '@/hooks/useNotifications';
 import { getCycleOptions, isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
@@ -54,6 +59,25 @@ const Index = () => {
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
+
+  // Theme
+  const { theme, accentColor, setTheme, setAccentColor } = useTheme();
+
+  // Notifications
+  const {
+    isSupported: notificationsSupported,
+    isEnabled: notificationsEnabled,
+    permission: notificationPermission,
+    enableNotifications,
+    disableNotifications,
+    checkForUpdates,
+  } = useNotifications();
+
+  // Streaks & Achievements
+  const { streakData, achievements, totalUnlocked } = useStreaksAndAchievements(
+    results,
+    selectedCycle
+  );
 
   useEffect(() => {
     const init = async () => {
@@ -108,6 +132,12 @@ const Index = () => {
     setSheetDataCache(newCache);
     setResults(newResults);
     setIsFetchingData(false);
+
+    // Check for data updates (notifications)
+    if (newResults.length > 0) {
+      const dataHash = generateDataHash(newResults);
+      checkForUpdates(dataHash);
+    }
 
     if (!foundInAnySheet && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
@@ -268,6 +298,15 @@ const Index = () => {
         userId={userId}
         userName={userName}
         onSwitchUser={handleSwitchUser}
+        theme={theme}
+        accentColor={accentColor}
+        onThemeChange={setTheme}
+        onAccentChange={setAccentColor}
+        notificationsSupported={notificationsSupported}
+        notificationsEnabled={notificationsEnabled}
+        notificationPermission={notificationPermission}
+        onEnableNotifications={enableNotifications}
+        onDisableNotifications={disableNotifications}
       />
       
       <main className="flex-1 container mx-auto px-4 py-4 max-w-4xl">
@@ -339,8 +378,8 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Right column - Goals */}
-          <div className="lg:sticky lg:top-20 lg:h-fit">
+          {/* Right column - Goals, Streaks, Projections */}
+          <div className="lg:sticky lg:top-20 lg:h-fit space-y-4">
             <div className="p-4 border rounded-lg bg-card">
               <GoalsPanel
                 results={results}
@@ -349,6 +388,24 @@ const Index = () => {
                 cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
                 onUpdateDailyTarget={setDailyTarget}
                 onUpdateCycleTarget={setCycleTarget}
+              />
+            </div>
+
+            <div className="p-4 border rounded-lg bg-card">
+              <StreaksPanel
+                streakData={streakData}
+                achievements={achievements}
+                totalUnlocked={totalUnlocked}
+                isLoading={isLoading}
+              />
+            </div>
+
+            <div className="p-4 border rounded-lg bg-card">
+              <EarningsProjection
+                results={results}
+                cycle={selectedCycle}
+                cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
+                isLoading={isLoading}
               />
             </div>
           </div>
