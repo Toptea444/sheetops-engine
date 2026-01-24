@@ -121,6 +121,7 @@ interface WorkerAggregate {
 export interface LeaderboardDataInfo {
   latestDataDate: Date | null;
   totalDaysWithData: number;
+  foundTimestamps: Set<number>;
 }
 
 /**
@@ -177,7 +178,7 @@ function parseAllWorkersFromSheet(data: SheetData, cycle: CyclePeriod): { worker
   const foundTimestamps = new Set<number>();
   
   if (!data || data.rows.length === 0) {
-    return { workers: [], dataInfo: { latestDataDate: null, totalDaysWithData: 0 } };
+    return { workers: [], dataInfo: { latestDataDate: null, totalDaysWithData: 0, foundTimestamps: new Set() } };
   }
 
   const matrix = [data.headers, ...data.rows];
@@ -281,7 +282,8 @@ function parseAllWorkersFromSheet(data: SheetData, cycle: CyclePeriod): { worker
     workers: Array.from(workers.values()), 
     dataInfo: { 
       latestDataDate, 
-      totalDaysWithData: foundTimestamps.size 
+      totalDaysWithData: foundTimestamps.size,
+      foundTimestamps,
     }
   };
 }
@@ -300,6 +302,7 @@ export interface UseLeaderboardResult {
   currentUserRank: number | null;
   totalParticipants: number;
   dataInfo: LeaderboardDataInfo;
+  weekHasData: boolean;
 }
 
 export function useLeaderboard({
@@ -311,9 +314,25 @@ export function useLeaderboard({
   selectedWeek,
 }: UseLeaderboardOptions): UseLeaderboardResult {
   const { workers: allWorkers, dataInfo } = useMemo(() => {
-    if (!sheetData) return { workers: [], dataInfo: { latestDataDate: null, totalDaysWithData: 0 } };
+    if (!sheetData) return { workers: [], dataInfo: { latestDataDate: null, totalDaysWithData: 0, foundTimestamps: new Set<number>() } };
     return parseAllWorkersFromSheet(sheetData, cycle);
   }, [sheetData, cycle]);
+
+  // Check if selected week has any data (check if week start date exists in found timestamps)
+  const weekHasData = useMemo(() => {
+    if (mode !== 'week' || !selectedWeek) return true;
+    
+    // Check if any timestamp from the data falls within this week
+    const weekStart = new Date(selectedWeek.startDate).setHours(0, 0, 0, 0);
+    const weekEnd = new Date(selectedWeek.endDate).setHours(23, 59, 59, 999);
+    
+    for (const ts of dataInfo.foundTimestamps) {
+      if (ts >= weekStart && ts <= weekEnd) {
+        return true;
+      }
+    }
+    return false;
+  }, [mode, selectedWeek, dataInfo.foundTimestamps]);
 
   // Filter to same stage as user
   const sameStageWorkers = useMemo(() => {
@@ -379,5 +398,6 @@ export function useLeaderboard({
     currentUserRank,
     totalParticipants,
     dataInfo,
+    weekHasData,
   };
 }
