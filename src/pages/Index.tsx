@@ -13,6 +13,7 @@ import { LoadingState } from '@/components/dashboard/LoadingState';
 import { StreaksPanel } from '@/components/dashboard/StreaksPanel';
 import { EarningsProjection } from '@/components/dashboard/EarningsProjection';
 import { LeaderboardPanel } from '@/components/dashboard/LeaderboardPanel';
+import { LeaderboardWelcome } from '@/components/dashboard/LeaderboardWelcome';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
@@ -445,6 +446,9 @@ const Index = () => {
       <footer className="border-t py-3 text-center text-xs text-muted-foreground mt-auto">
         Performance Tracker
       </footer>
+
+      {/* Leaderboard welcome notification (one-time) */}
+      <LeaderboardWelcome />
     </div>
   );
 };
