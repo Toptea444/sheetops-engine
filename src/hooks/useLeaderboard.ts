@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import type { SheetData, DailyBonus } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
-import { isDateInCycle } from '@/lib/cycleUtils';
 
 export interface LeaderboardEntry {
   rank: number;
@@ -19,8 +18,10 @@ export interface WeekPeriod {
 }
 
 /**
- * Get weeks within a cycle (Sunday-Saturday).
- * Last week ends on 15th even if < 7 days.
+ * Get weeks within a cycle using a smarter approach:
+ * - Week 1: 16th to first Saturday (partial week, 1-7 days)
+ * - Subsequent weeks: Full Sun-Sat weeks
+ * - Last week ends on 15th
  */
 export function getWeeksInCycle(cycle: CyclePeriod): WeekPeriod[] {
   const weeks: WeekPeriod[] = [];
@@ -29,20 +30,22 @@ export function getWeeksInCycle(cycle: CyclePeriod): WeekPeriod[] {
   let weekNumber = 1;
 
   while (current <= cycleEnd) {
-    // Find next Sunday or use cycle start
     let weekStart = new Date(current);
-    
-    // If not Sunday, this is a partial first week - just use the current date
-    // Otherwise use current date as start
-    
-    // Find the Saturday (or cycle end)
     let weekEnd: Date;
     
     const dayOfWeek = weekStart.getDay(); // 0 = Sunday
-    const daysUntilSat = 6 - dayOfWeek;
     
-    weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + daysUntilSat);
+    if (weekNumber === 1) {
+      // First week: from 16th to the first Saturday
+      const daysUntilSat = (6 - dayOfWeek + 7) % 7;
+      weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + daysUntilSat);
+    } else {
+      // Subsequent weeks: full Sun-Sat
+      const daysUntilSat = 6 - dayOfWeek;
+      weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + daysUntilSat);
+    }
     
     // Cap at cycle end (15th)
     if (weekEnd > cycleEnd) {
@@ -58,7 +61,7 @@ export function getWeeksInCycle(cycle: CyclePeriod): WeekPeriod[] {
       weekNumber,
     });
 
-    // Move to next Sunday
+    // Move to next day (Sunday)
     current = new Date(weekEnd);
     current.setDate(current.getDate() + 1);
     weekNumber++;
@@ -73,10 +76,11 @@ export function getWeeksInCycle(cycle: CyclePeriod): WeekPeriod[] {
 export function getCurrentWeekInCycle(cycle: CyclePeriod): WeekPeriod | null {
   const weeks = getWeeksInCycle(cycle);
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   
   for (const week of weeks) {
-    const startTime = week.startDate.getTime();
-    const endTime = new Date(week.endDate.getFullYear(), week.endDate.getMonth(), week.endDate.getDate(), 23, 59, 59).getTime();
+    const startTime = new Date(week.startDate).setHours(0, 0, 0, 0);
+    const endTime = new Date(week.endDate).setHours(23, 59, 59, 999);
     const todayTime = today.getTime();
     
     if (todayTime >= startTime && todayTime <= endTime) {
@@ -111,114 +115,175 @@ function looksLikeStage(val: string): boolean {
 interface WorkerAggregate {
   workerId: string;
   stage: string;
-  dailyData: { date: string; fullDate: number; value: number }[];
+  dailyData: { date: string; dayNumber: number; timestamp: number; value: number }[];
+}
+
+export interface LeaderboardDataInfo {
+  latestDataDate: Date | null;
+  totalDaysWithData: number;
+}
+
+/**
+ * Parse date from cell (matches the logic in useGoogleSheets)
+ */
+function parseDateFromCell(cell: string, sheetName: string): { day: number; timestamp: number } | null {
+  const trimmed = cell.trim();
+  if (!trimmed) return null;
+  
+  // Ignore collector bonus headers
+  if (trimmed.toUpperCase().includes('COLLECTOR BONUS')) return null;
+  
+  // Try MM/DD/YYYY or M/D/YYYY format
+  const slashMatch = trimmed.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (slashMatch) {
+    const month = parseInt(slashMatch[1], 10);
+    const day = parseInt(slashMatch[2], 10);
+    const year = parseInt(slashMatch[3], 10);
+    const date = new Date(year, month - 1, day);
+    return { day, timestamp: date.getTime() };
+  }
+  
+  // Try "1ST JAN 2026" or "16TH JAN" format
+  const ordinalMatch = trimmed.match(/(\d{1,2})(st|nd|rd|th)?\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s*(\d{4})?/i);
+  if (ordinalMatch) {
+    const day = parseInt(ordinalMatch[1], 10);
+    const monthStr = ordinalMatch[3].toLowerCase();
+    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const month = months.indexOf(monthStr);
+    const year = ordinalMatch[4] ? parseInt(ordinalMatch[4], 10) : new Date().getFullYear();
+    const date = new Date(year, month, day);
+    return { day, timestamp: date.getTime() };
+  }
+  
+  return null;
+}
+
+function findLabelInRange(row: string[], start: number, end: number, labels: string[]): number {
+  for (let i = start; i < end && i < row.length; i++) {
+    const cell = (row[i] || '').toString().toLowerCase().trim();
+    if (labels.some(l => cell === l || cell.includes(l))) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 /**
  * Parse all workers from a Daily & Performance style sheet
+ * Scans all rows to find date blocks (matching the main parser logic)
  */
-function parseAllWorkersFromSheet(data: SheetData): WorkerAggregate[] {
+function parseAllWorkersFromSheet(data: SheetData, cycle: CyclePeriod): { workers: WorkerAggregate[]; dataInfo: LeaderboardDataInfo } {
   const workers = new Map<string, WorkerAggregate>();
+  const foundTimestamps = new Set<number>();
   
-  if (!data || data.rows.length === 0) return [];
+  if (!data || data.rows.length === 0) {
+    return { workers: [], dataInfo: { latestDataDate: null, totalDaysWithData: 0 } };
+  }
 
   const matrix = [data.headers, ...data.rows];
-  const dateStarts: { col: number; date: string; timestamp: number; day: number }[] = [];
 
-  // Find date columns (looking for day numbers like 16, 17, 18, etc.)
-  const firstRow = matrix[0] || [];
-  for (let c = 0; c < firstRow.length; c++) {
-    const cell = String(firstRow[c] || '').trim();
-    const dayNum = parseInt(cell, 10);
-    if (dayNum >= 1 && dayNum <= 31) {
-      // Infer month/year from sheet name or use current
-      const now = new Date();
-      const timestamp = new Date(now.getFullYear(), now.getMonth(), dayNum).getTime();
-      dateStarts.push({
-        col: c,
-        date: `Day ${dayNum}`,
-        timestamp,
-        day: dayNum,
-      });
-    }
-  }
+  // Scan all rows to find date blocks (same approach as parseDailyPerformanceSheet)
+  for (let rowIdx = 0; rowIdx < matrix.length - 2; rowIdx++) {
+    const row = matrix[rowIdx] || [];
 
-  if (dateStarts.length === 0) return [];
-
-  // Find header row (usually row 1 after the date row)
-  const headerRowIdx = 1;
-  if (headerRowIdx >= matrix.length) return [];
-  const headerRow = matrix[headerRowIdx];
-
-  // Process each date block
-  for (let sIdx = 0; sIdx < dateStarts.length; sIdx++) {
-    const blockStart = dateStarts[sIdx].col;
-    const blockEnd = dateStarts[sIdx + 1]?.col ?? Math.max(firstRow.length, headerRow.length);
-
-    // Find columns within this block
-    let stagesCol = -1;
-    let usernamesCol = -1;
-    let totalCol = -1;
-
-    for (let i = blockStart; i < blockEnd && i < headerRow.length; i++) {
-      const cell = normalizeLabel(headerRow[i]);
+    // Find date-like cells on this row
+    const dateStarts: { col: number; day: number; timestamp: number }[] = [];
+    
+    for (let col = 0; col < row.length; col++) {
+      const cell = String(row[col] ?? '').trim();
       if (!cell) continue;
       
-      if (stagesCol < 0 && (cell === 'stages' || cell === 'stage' || cell.includes('stage'))) {
-        stagesCol = i;
-      }
-      if (usernamesCol < 0 && (cell === 'usernames' || cell === 'username' || cell === 'product' || cell === 'id' || cell.includes('name'))) {
-        usernamesCol = i;
-      }
-      if (totalCol < 0 && cell === 'total') {
-        totalCol = i;
+      const parsed = parseDateFromCell(cell, data.sheetName);
+      if (parsed) {
+        dateStarts.push({ col, day: parsed.day, timestamp: parsed.timestamp });
       }
     }
 
-    if (usernamesCol < 0 || totalCol < 0) continue;
+    if (dateStarts.length === 0) continue;
+    dateStarts.sort((a, b) => a.col - b.col);
 
-    let currentStage = '';
+    // The next row should be the header row
+    const headerRow = matrix[rowIdx + 1] || [];
 
-    // Scan data rows
-    for (let r = headerRowIdx + 1; r < matrix.length; r++) {
-      const row = matrix[r] || [];
-      const stageCell = String(row[stagesCol] ?? '').trim();
-      const userCell = String(row[usernamesCol] ?? '').trim();
+    // Process each date block
+    for (let sIdx = 0; sIdx < dateStarts.length; sIdx++) {
+      const blockStart = dateStarts[sIdx].col;
+      const blockEnd = dateStarts[sIdx + 1]?.col ?? Math.max(row.length, headerRow.length);
+      const dayNumber = dateStarts[sIdx].day;
+      const timestamp = dateStarts[sIdx].timestamp;
 
-      // Stage divider row
-      if (stageCell && !userCell && looksLikeStage(stageCell)) {
-        currentStage = stageCell;
-        continue;
-      }
+      // Find columns within this block
+      const stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage']);
+      const usernamesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['usernames', 'username', 'product', 'id', 'name']);
+      const totalCol = findLabelInRange(headerRow, blockStart, blockEnd, ['total']);
 
-      if (!userCell) continue;
+      if (usernamesCol < 0 || totalCol < 0) continue;
+      
+      foundTimestamps.add(timestamp);
 
-      const normalizedId = normalizeComparable(userCell);
-      const totalValue = parseNumberLike(row[totalCol]);
-      const resolvedStage = stageCell || currentStage;
+      let currentStage = '';
 
-      if (!workers.has(normalizedId)) {
-        workers.set(normalizedId, {
-          workerId: userCell,
-          stage: resolvedStage,
-          dailyData: [],
+      // Scan data rows
+      for (let r = rowIdx + 2; r < matrix.length; r++) {
+        const dataRow = matrix[r] || [];
+        const stageCell = String(dataRow[stagesCol] ?? '').trim();
+        const userCell = String(dataRow[usernamesCol] ?? '').trim();
+
+        // Check if we've hit another date block
+        if (parseDateFromCell(String(dataRow[blockStart] ?? ''), data.sheetName)) {
+          break;
+        }
+
+        // Stage divider row
+        if (stageCell && !userCell && looksLikeStage(stageCell)) {
+          currentStage = stageCell;
+          continue;
+        }
+
+        if (!userCell) continue;
+
+        const normalizedId = normalizeComparable(userCell);
+        const totalValue = parseNumberLike(dataRow[totalCol]);
+        const resolvedStage = stageCell || currentStage;
+
+        if (!workers.has(normalizedId)) {
+          workers.set(normalizedId, {
+            workerId: userCell,
+            stage: resolvedStage,
+            dailyData: [],
+          });
+        }
+
+        const worker = workers.get(normalizedId)!;
+        if (!worker.stage && resolvedStage) {
+          worker.stage = resolvedStage;
+        }
+
+        worker.dailyData.push({
+          date: `Day ${dayNumber}`,
+          dayNumber,
+          timestamp,
+          value: totalValue,
         });
       }
-
-      const worker = workers.get(normalizedId)!;
-      if (!worker.stage && resolvedStage) {
-        worker.stage = resolvedStage;
-      }
-
-      worker.dailyData.push({
-        date: dateStarts[sIdx].date,
-        fullDate: dateStarts[sIdx].timestamp,
-        value: totalValue,
-      });
     }
   }
 
-  return Array.from(workers.values());
+  // Calculate latest data date
+  let latestDataDate: Date | null = null;
+  const sortedTimestamps = Array.from(foundTimestamps).sort((a, b) => a - b);
+  
+  if (sortedTimestamps.length > 0) {
+    latestDataDate = new Date(sortedTimestamps[sortedTimestamps.length - 1]);
+  }
+
+  return { 
+    workers: Array.from(workers.values()), 
+    dataInfo: { 
+      latestDataDate, 
+      totalDaysWithData: foundTimestamps.size 
+    }
+  };
 }
 
 export interface UseLeaderboardOptions {
@@ -230,6 +295,13 @@ export interface UseLeaderboardOptions {
   selectedWeek?: WeekPeriod | null;
 }
 
+export interface UseLeaderboardResult {
+  leaderboard: LeaderboardEntry[];
+  currentUserRank: number | null;
+  totalParticipants: number;
+  dataInfo: LeaderboardDataInfo;
+}
+
 export function useLeaderboard({
   sheetData,
   currentUserId,
@@ -237,11 +309,11 @@ export function useLeaderboard({
   cycle,
   mode,
   selectedWeek,
-}: UseLeaderboardOptions) {
-  const allWorkers = useMemo(() => {
-    if (!sheetData) return [];
-    return parseAllWorkersFromSheet(sheetData);
-  }, [sheetData]);
+}: UseLeaderboardOptions): UseLeaderboardResult {
+  const { workers: allWorkers, dataInfo } = useMemo(() => {
+    if (!sheetData) return { workers: [], dataInfo: { latestDataDate: null, totalDaysWithData: 0 } };
+    return parseAllWorkersFromSheet(sheetData, cycle);
+  }, [sheetData, cycle]);
 
   // Filter to same stage as user
   const sameStageWorkers = useMemo(() => {
@@ -259,18 +331,18 @@ export function useLeaderboard({
       let total = 0;
 
       for (const day of worker.dailyData) {
-        const dayDate = new Date(day.fullDate);
+        // Use the timestamp directly from the parsed date
+        const dayDate = new Date(day.timestamp);
+        dayDate.setHours(0, 0, 0, 0);
 
         if (mode === 'cycle') {
-          // Filter by cycle
-          if (isDateInCycle(dayDate, cycle)) {
-            total += day.value;
-          }
+          // All data in the sheet for this cycle counts
+          total += day.value;
         } else if (mode === 'week' && selectedWeek) {
           // Filter by week
           const dayTime = dayDate.getTime();
-          const weekStart = selectedWeek.startDate.getTime();
-          const weekEnd = new Date(selectedWeek.endDate.getFullYear(), selectedWeek.endDate.getMonth(), selectedWeek.endDate.getDate(), 23, 59, 59).getTime();
+          const weekStart = new Date(selectedWeek.startDate).setHours(0, 0, 0, 0);
+          const weekEnd = new Date(selectedWeek.endDate).setHours(23, 59, 59, 999);
           
           if (dayTime >= weekStart && dayTime <= weekEnd) {
             total += day.value;
@@ -306,5 +378,6 @@ export function useLeaderboard({
     leaderboard,
     currentUserRank,
     totalParticipants,
+    dataInfo,
   };
 }

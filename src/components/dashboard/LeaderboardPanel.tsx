@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Trophy, Medal, Crown, User, ChevronDown } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Trophy, Medal, Crown, User, Calendar, Info } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +42,11 @@ function getRankBg(rank: number, isCurrentUser: boolean) {
   }
 }
 
+function formatDateShort(date: Date): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${months[date.getMonth()]} ${date.getDate()}`;
+}
+
 export function LeaderboardPanel({
   sheetData,
   currentUserId,
@@ -58,9 +63,18 @@ export function LeaderboardPanel({
     return idx >= 0 ? idx : 0;
   });
 
+  // Reset selected week when cycle changes
+  useEffect(() => {
+    const newCurrentWeek = getCurrentWeekInCycle(cycle);
+    if (newCurrentWeek) {
+      const idx = weeks.findIndex(w => w.weekNumber === newCurrentWeek.weekNumber);
+      setSelectedWeekIndex(idx >= 0 ? idx : 0);
+    }
+  }, [cycle, weeks]);
+
   const selectedWeek = weeks[selectedWeekIndex] || null;
 
-  const { leaderboard, currentUserRank, totalParticipants } = useLeaderboard({
+  const { leaderboard, currentUserRank, totalParticipants, dataInfo } = useLeaderboard({
     sheetData,
     currentUserId,
     userStage,
@@ -111,7 +125,7 @@ export function LeaderboardPanel({
 
       {/* Tabs */}
       <Tabs value={mode} onValueChange={(v) => setMode(v as 'week' | 'cycle')}>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <TabsList className="h-9 p-0.5 bg-muted/40">
             <TabsTrigger value="week" className="text-sm h-8 px-4">
               Weekly
@@ -139,6 +153,19 @@ export function LeaderboardPanel({
             </Select>
           )}
         </div>
+
+        {/* Data info banner for cycle mode */}
+        {mode === 'cycle' && dataInfo.latestDataDate && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
+            <Calendar className="h-3.5 w-3.5" />
+            <span>
+              Data available through <span className="font-medium text-foreground">{formatDateShort(dataInfo.latestDataDate)}</span>
+              {dataInfo.totalDaysWithData > 0 && (
+                <span className="ml-1">({dataInfo.totalDaysWithData} days)</span>
+              )}
+            </span>
+          </div>
+        )}
 
         <TabsContent value="week" className="mt-4">
           <LeaderboardList entries={displayedEntries} currentUserId={currentUserId} />
