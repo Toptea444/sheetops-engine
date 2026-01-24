@@ -12,6 +12,7 @@ import { ErrorAlert } from '@/components/dashboard/ErrorAlert';
 import { LoadingState } from '@/components/dashboard/LoadingState';
 import { StreaksPanel } from '@/components/dashboard/StreaksPanel';
 import { EarningsProjection } from '@/components/dashboard/EarningsProjection';
+import { LeaderboardPanel } from '@/components/dashboard/LeaderboardPanel';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
@@ -273,6 +274,25 @@ const Index = () => {
     return { totalEarnings, daysActive: activeDays.size };
   }, [results, selectedCycle]);
 
+  // Get current user's stage from results
+  const userStage = useMemo(() => {
+    for (const result of results) {
+      if (result.stage) return result.stage;
+    }
+    return null;
+  }, [results]);
+
+  // Get first sheet's data for leaderboard
+  const leaderboardSheetData = useMemo(() => {
+    if (selectedSheets.length === 0) return null;
+    // Prefer Daily & Performance sheet
+    const dpSheet = selectedSheets.find(s => 
+      s.toUpperCase().includes('DAILY') || s.toUpperCase().includes('PERFORMANCE')
+    );
+    const sheetName = dpSheet || selectedSheets[0];
+    return sheetDataCache[sheetName] || null;
+  }, [selectedSheets, sheetDataCache]);
+
   const isLoading = sheetsLoading || identityLoading || isFetchingData;
 
   if (isInitializing || identityLoading) {
@@ -374,6 +394,16 @@ const Index = () => {
                 sheetNames={selectedSheets}
                 cycle={selectedCycle}
                 isLoading={isLoading}
+              />
+            </div>
+
+            {/* Leaderboard */}
+            <div className="p-4 border rounded-lg bg-card">
+              <LeaderboardPanel
+                sheetData={leaderboardSheetData}
+                currentUserId={userId}
+                userStage={userStage}
+                cycle={selectedCycle}
               />
             </div>
           </div>

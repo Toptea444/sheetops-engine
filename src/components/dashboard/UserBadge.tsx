@@ -23,14 +23,14 @@ export function UserBadge({ userId, userName, onSwitchUser }: UserBadgeProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button 
-          variant="ghost" 
-          className="gap-2 bg-white/10 hover:bg-white/20 text-white"
+          variant="outline" 
+          className="gap-2 border-border/60 bg-card/50 hover:bg-muted/80"
         >
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-xs font-bold">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold">
             {initials}
           </div>
-          <span className="hidden sm:inline max-w-[120px] truncate">{displayName}</span>
-          <ChevronDown className="h-4 w-4 opacity-70" />
+          <span className="hidden sm:inline max-w-[120px] truncate text-foreground">{displayName}</span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
