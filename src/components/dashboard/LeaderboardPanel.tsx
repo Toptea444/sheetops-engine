@@ -1,0 +1,248 @@
+import { useState, useMemo } from 'react';
+import { Trophy, Medal, Crown, User, ChevronDown } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import type { SheetData } from '@/types/bonus';
+import type { CyclePeriod } from '@/lib/cycleUtils';
+import { useLeaderboard, getWeeksInCycle, getCurrentWeekInCycle, type WeekPeriod } from '@/hooks/useLeaderboard';
+
+interface LeaderboardPanelProps {
+  sheetData: SheetData | null;
+  currentUserId: string | null;
+  userStage: string | null;
+  cycle: CyclePeriod;
+}
+
+function getRankIcon(rank: number) {
+  switch (rank) {
+    case 1:
+      return <Crown className="h-5 w-5 text-amber-500" />;
+    case 2:
+      return <Medal className="h-5 w-5 text-slate-400" />;
+    case 3:
+      return <Medal className="h-5 w-5 text-amber-600" />;
+    default:
+      return <span className="w-5 h-5 flex items-center justify-center text-sm font-medium text-muted-foreground">{rank}</span>;
+  }
+}
+
+function getRankBg(rank: number, isCurrentUser: boolean) {
+  if (isCurrentUser) return 'bg-primary/10 border-primary/30';
+  switch (rank) {
+    case 1:
+      return 'bg-gradient-to-r from-amber-500/10 to-yellow-500/5 border-amber-500/20';
+    case 2:
+      return 'bg-gradient-to-r from-slate-400/10 to-slate-300/5 border-slate-400/20';
+    case 3:
+      return 'bg-gradient-to-r from-amber-600/10 to-orange-500/5 border-amber-600/20';
+    default:
+      return 'bg-card/50 border-border/50';
+  }
+}
+
+export function LeaderboardPanel({
+  sheetData,
+  currentUserId,
+  userStage,
+  cycle,
+}: LeaderboardPanelProps) {
+  const [mode, setMode] = useState<'week' | 'cycle'>('week');
+  
+  const weeks = useMemo(() => getWeeksInCycle(cycle), [cycle]);
+  const currentWeek = useMemo(() => getCurrentWeekInCycle(cycle), [cycle]);
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState<number>(() => {
+    if (!currentWeek) return 0;
+    const idx = weeks.findIndex(w => w.weekNumber === currentWeek.weekNumber);
+    return idx >= 0 ? idx : 0;
+  });
+
+  const selectedWeek = weeks[selectedWeekIndex] || null;
+
+  const { leaderboard, currentUserRank, totalParticipants } = useLeaderboard({
+    sheetData,
+    currentUserId,
+    userStage,
+    cycle,
+    mode,
+    selectedWeek: mode === 'week' ? selectedWeek : null,
+  });
+
+  // Show top 10 + current user if not in top 10
+  const displayedEntries = useMemo(() => {
+    const top10 = leaderboard.slice(0, 10);
+    const currentUserEntry = leaderboard.find(e => e.isCurrentUser);
+    
+    if (currentUserEntry && currentUserEntry.rank > 10) {
+      return [...top10, { ...currentUserEntry, showDivider: true }];
+    }
+    
+    return top10;
+  }, [leaderboard]);
+
+  if (!sheetData) {
+    return (
+      <div className="text-center py-8 text-muted-foreground text-sm">
+        Search for your ID to see the leaderboard
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Trophy className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold">Leaderboard</h3>
+          {userStage && (
+            <Badge variant="secondary" className="text-xs">
+              {userStage}
+            </Badge>
+          )}
+        </div>
+        {currentUserRank && (
+          <div className="text-sm text-muted-foreground">
+            Your rank: <span className="font-semibold text-foreground">#{currentUserRank}</span> of {totalParticipants}
+          </div>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={mode} onValueChange={(v) => setMode(v as 'week' | 'cycle')}>
+        <div className="flex items-center justify-between gap-3">
+          <TabsList className="h-9 p-0.5 bg-muted/40">
+            <TabsTrigger value="week" className="text-sm h-8 px-4">
+              Weekly
+            </TabsTrigger>
+            <TabsTrigger value="cycle" className="text-sm h-8 px-4">
+              Cycle
+            </TabsTrigger>
+          </TabsList>
+
+          {mode === 'week' && weeks.length > 0 && (
+            <Select
+              value={selectedWeekIndex.toString()}
+              onValueChange={(v) => setSelectedWeekIndex(parseInt(v, 10))}
+            >
+              <SelectTrigger className="w-[180px] h-9 text-sm">
+                <SelectValue placeholder="Select week" />
+              </SelectTrigger>
+              <SelectContent>
+                {weeks.map((week, idx) => (
+                  <SelectItem key={idx} value={idx.toString()}>
+                    Week {week.weekNumber}: {week.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        <TabsContent value="week" className="mt-4">
+          <LeaderboardList entries={displayedEntries} currentUserId={currentUserId} />
+        </TabsContent>
+
+        <TabsContent value="cycle" className="mt-4">
+          <LeaderboardList entries={displayedEntries} currentUserId={currentUserId} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+interface LeaderboardListProps {
+  entries: Array<{
+    rank: number;
+    workerId: string;
+    stage: string;
+    total: number;
+    isCurrentUser: boolean;
+    showDivider?: boolean;
+  }>;
+  currentUserId: string | null;
+}
+
+function LeaderboardList({ entries, currentUserId }: LeaderboardListProps) {
+  if (entries.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground text-sm">
+        No data available for this period
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {entries.map((entry, idx) => (
+        <div key={entry.workerId}>
+          {entry.showDivider && (
+            <div className="flex items-center gap-2 py-2">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground">Your position</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          )}
+          <div
+            className={cn(
+              'flex items-center gap-3 p-3 rounded-lg border transition-colors',
+              getRankBg(entry.rank, entry.isCurrentUser)
+            )}
+          >
+            {/* Rank */}
+            <div className="flex items-center justify-center w-8">
+              {getRankIcon(entry.rank)}
+            </div>
+
+            {/* Avatar */}
+            <div className={cn(
+              'h-9 w-9 rounded-full flex items-center justify-center text-sm font-medium',
+              entry.isCurrentUser 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-muted text-muted-foreground'
+            )}>
+              {entry.workerId.substring(0, 2).toUpperCase()}
+            </div>
+
+            {/* Name */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  'font-medium truncate',
+                  entry.isCurrentUser && 'text-primary'
+                )}>
+                  {entry.isCurrentUser ? 'You' : maskWorkerId(entry.workerId)}
+                </span>
+                {entry.isCurrentUser && (
+                  <User className="h-4 w-4 text-primary" />
+                )}
+              </div>
+            </div>
+
+            {/* Amount */}
+            <div className="text-right">
+              {entry.isCurrentUser ? (
+                <span className="font-semibold text-primary">
+                  ₦{entry.total.toLocaleString()}
+                </span>
+              ) : (
+                <span className="text-muted-foreground text-sm">•••</span>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Mask worker ID for privacy (e.g., "GHAS1234" -> "GH••1234")
+ */
+function maskWorkerId(workerId: string): string {
+  if (workerId.length <= 4) return workerId;
+  const prefix = workerId.substring(0, 2);
+  const suffix = workerId.substring(workerId.length - 4);
+  return `${prefix}••${suffix}`;
+}

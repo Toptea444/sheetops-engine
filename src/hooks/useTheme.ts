@@ -5,7 +5,14 @@ type AccentColor = 'blue' | 'green' | 'purple' | 'orange' | 'rose';
 
 const THEME_KEY = 'performanceTracker_theme';
 const ACCENT_KEY = 'performanceTracker_accent';
+const ACCENT_INITIALIZED_KEY = 'performanceTracker_accentInitialized';
 
+const ALL_ACCENTS: AccentColor[] = ['blue', 'green', 'purple', 'orange', 'rose'];
+
+function getRandomAccent(): AccentColor {
+  const randomIndex = Math.floor(Math.random() * ALL_ACCENTS.length);
+  return ALL_ACCENTS[randomIndex];
+}
 interface UseThemeResult {
   theme: Theme;
   resolvedTheme: 'light' | 'dark';
@@ -42,13 +49,23 @@ export function useTheme(): UseThemeResult {
   const [accentColor, setAccentState] = useState<AccentColor>('blue');
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
 
-  // Load saved preferences
+  // Load saved preferences or initialize with random accent for new users
   useEffect(() => {
     const savedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
     const savedAccent = localStorage.getItem(ACCENT_KEY) as AccentColor | null;
+    const accentInitialized = localStorage.getItem(ACCENT_INITIALIZED_KEY);
 
     if (savedTheme) setThemeState(savedTheme);
-    if (savedAccent) setAccentState(savedAccent);
+    
+    if (savedAccent) {
+      setAccentState(savedAccent);
+    } else if (!accentInitialized) {
+      // First-time user: assign a random accent color
+      const randomAccent = getRandomAccent();
+      setAccentState(randomAccent);
+      localStorage.setItem(ACCENT_KEY, randomAccent);
+      localStorage.setItem(ACCENT_INITIALIZED_KEY, 'true');
+    }
   }, []);
 
   // Handle system theme changes and apply theme
