@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Trophy, Medal, Crown, User, Calendar, Info } from 'lucide-react';
+import { Trophy, Medal, Crown, User, Calendar, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -74,7 +74,7 @@ export function LeaderboardPanel({
 
   const selectedWeek = weeks[selectedWeekIndex] || null;
 
-  const { leaderboard, currentUserRank, totalParticipants, dataInfo } = useLeaderboard({
+  const { leaderboard, currentUserRank, totalParticipants, dataInfo, weekHasData } = useLeaderboard({
     sheetData,
     currentUserId,
     userStage,
@@ -168,7 +168,21 @@ export function LeaderboardPanel({
         )}
 
         <TabsContent value="week" className="mt-4">
-          <LeaderboardList entries={displayedEntries} currentUserId={currentUserId} />
+          {!weekHasData ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+                <AlertCircle className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">
+                No data available for this week yet
+              </p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                Data for {selectedWeek?.label} hasn't been uploaded
+              </p>
+            </div>
+          ) : (
+            <LeaderboardList entries={displayedEntries} currentUserId={currentUserId} />
+          )}
         </TabsContent>
 
         <TabsContent value="cycle" className="mt-4">
