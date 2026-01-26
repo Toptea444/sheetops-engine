@@ -91,7 +91,8 @@ export function LeaderboardPanel({
     const top10 = leaderboard.slice(0, 10);
     const currentUserEntry = leaderboard.find(e => e.isCurrentUser);
     
-    if (currentUserEntry && currentUserEntry.rank > 10) {
+    // Always show current user - if they exist but aren't in top 10, add them at the end
+    if (currentUserEntry && !top10.some(e => e.isCurrentUser)) {
       return [...top10, { ...currentUserEntry, showDivider: true }];
     }
     

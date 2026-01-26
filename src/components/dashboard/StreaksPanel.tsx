@@ -136,12 +136,13 @@ export function StreaksPanel({
           Based on your activity. Hover/tap an icon to see what it means.
         </p>
 
-        <TooltipProvider>
+        <TooltipProvider delayDuration={100}>
           <div className="grid grid-cols-5 gap-2">
             {achievements.map((achievement) => (
               <Tooltip key={achievement.id}>
                 <TooltipTrigger asChild>
-                  <div
+                  <button
+                    type="button"
                     className={`
                       relative h-11 w-11 rounded-lg flex items-center justify-center text-lg
                       transition-all duration-200 cursor-pointer
@@ -161,7 +162,7 @@ export function StreaksPanel({
                         />
                       </div>
                     )}
-                  </div>
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-[200px]">
                   <p className="font-medium">{achievement.name}</p>
