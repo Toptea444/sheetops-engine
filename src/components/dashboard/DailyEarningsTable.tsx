@@ -152,12 +152,9 @@ export function DailyEarningsTable({
             {name === activeTab && (
               <>
                 {/* Active sheet label */}
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <p className="text-xs text-muted-foreground">Showing sheet</p>
-                  <p className="text-sm font-medium text-foreground truncate max-w-[70%]" title={activeTab}>
-                    {activeTab}
-                  </p>
-                </div>
+                <p className="text-sm font-medium text-foreground truncate mb-2" title={activeTab}>
+                  {activeTab}
+                </p>
 
                 {/* Summary stats for this sheet only */}
                 {stats.hasSplit && !isPercent ? (
