@@ -170,6 +170,14 @@ function findLabelInRange(row: string[], start: number, end: number, labels: str
 }
 
 /**
+ * Normalize stage for comparison (handles S1, S-1, S 1, etc.)
+ */
+function normalizeStage(stage: string): string {
+  // Remove spaces, hyphens, underscores and lowercase
+  return stage.toUpperCase().replace(/[\s\-_]/g, '');
+}
+
+/**
  * Parse all workers from a Daily & Performance style sheet
  * Scans all rows to find date blocks (matching the main parser logic)
  */
@@ -215,10 +223,14 @@ function parseAllWorkersFromSheet(data: SheetData, cycle: CyclePeriod): { worker
 
       // Find columns within this block
       const stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage']);
-      const usernamesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['usernames', 'username', 'product', 'id', 'name']);
-      const totalCol = findLabelInRange(headerRow, blockStart, blockEnd, ['total']);
+      const usernamesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['usernames', 'username', 'product', 'id', 'name', 'names']);
+      // Try TOTAL first, then RANKING BONUS for ranking-style sheets
+      let valueCol = findLabelInRange(headerRow, blockStart, blockEnd, ['total']);
+      if (valueCol < 0) {
+        valueCol = findLabelInRange(headerRow, blockStart, blockEnd, ['ranking bonus']);
+      }
 
-      if (usernamesCol < 0 || totalCol < 0) continue;
+      if (usernamesCol < 0 || valueCol < 0) continue;
       
       foundTimestamps.add(timestamp);
 
@@ -244,7 +256,7 @@ function parseAllWorkersFromSheet(data: SheetData, cycle: CyclePeriod): { worker
         if (!userCell) continue;
 
         const normalizedId = normalizeComparable(userCell);
-        const totalValue = parseNumberLike(dataRow[totalCol]);
+        const totalValue = parseNumberLike(dataRow[valueCol]);
         const resolvedStage = stageCell || currentStage;
 
         if (!workers.has(normalizedId)) {
@@ -334,11 +346,11 @@ export function useLeaderboard({
     return false;
   }, [mode, selectedWeek, dataInfo.foundTimestamps]);
 
-  // Filter to same stage as user
+  // Filter to same stage as user (using normalizeStage for better matching)
   const sameStageWorkers = useMemo(() => {
     if (!userStage) return allWorkers;
-    const normalizedStage = normalizeComparable(userStage);
-    return allWorkers.filter(w => normalizeComparable(w.stage) === normalizedStage);
+    const normalizedUserStage = normalizeStage(userStage);
+    return allWorkers.filter(w => normalizeStage(w.stage) === normalizedUserStage);
   }, [allWorkers, userStage]);
 
   // Calculate totals based on mode
