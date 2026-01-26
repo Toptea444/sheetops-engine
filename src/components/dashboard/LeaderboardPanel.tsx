@@ -11,6 +11,7 @@ import { useLeaderboard, getWeeksInCycle, getCurrentWeekInCycle, type WeekPeriod
 interface LeaderboardPanelProps {
   sheetData: SheetData | null;
   currentUserId: string | null;
+  currentUserName?: string | null;
   userStage: string | null;
   cycle: CyclePeriod;
 }
@@ -50,6 +51,7 @@ function formatDateShort(date: Date): string {
 export function LeaderboardPanel({
   sheetData,
   currentUserId,
+  currentUserName,
   userStage,
   cycle,
 }: LeaderboardPanelProps) {
@@ -77,6 +79,7 @@ export function LeaderboardPanel({
   const { leaderboard, currentUserRank, totalParticipants, dataInfo, weekHasData } = useLeaderboard({
     sheetData,
     currentUserId,
+    currentUserName,
     userStage,
     cycle,
     mode,
@@ -116,7 +119,7 @@ export function LeaderboardPanel({
             </Badge>
           )}
         </div>
-        {currentUserRank && (
+        {currentUserRank !== null && (
           <div className="text-sm text-muted-foreground">
             Your rank: <span className="font-semibold text-foreground">#{currentUserRank}</span> of {totalParticipants}
           </div>

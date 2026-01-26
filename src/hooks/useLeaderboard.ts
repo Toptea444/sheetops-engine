@@ -93,7 +93,9 @@ export function getCurrentWeekInCycle(cycle: CyclePeriod): WeekPeriod | null {
 }
 
 function normalizeComparable(value: string): string {
-  return value.toUpperCase().replace(/[\s\-_]/g, '');
+  // Be extra tolerant: users sometimes copy/paste IDs with hidden chars or punctuation.
+  // Keep only alphanumerics so matching works reliably across sheets.
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
 function normalizeLabel(s: string): string {
@@ -303,6 +305,7 @@ function parseAllWorkersFromSheet(data: SheetData, cycle: CyclePeriod): { worker
 export interface UseLeaderboardOptions {
   sheetData: SheetData | null;
   currentUserId: string | null;
+  currentUserName?: string | null;
   userStage: string | null;
   cycle: CyclePeriod;
   mode: 'week' | 'cycle';
@@ -320,6 +323,7 @@ export interface UseLeaderboardResult {
 export function useLeaderboard({
   sheetData,
   currentUserId,
+  currentUserName,
   userStage,
   cycle,
   mode,
@@ -356,7 +360,11 @@ export function useLeaderboard({
   // Calculate totals based on mode
   const leaderboard = useMemo((): LeaderboardEntry[] => {
     const entries: { workerId: string; stage: string; total: number; isCurrentUser: boolean }[] = [];
-    const normalizedCurrentUser = currentUserId ? normalizeComparable(currentUserId) : '';
+    const normalizedCurrentUserIds = new Set(
+      [currentUserId, currentUserName]
+        .filter(Boolean)
+        .map((v) => normalizeComparable(String(v)))
+    );
 
     for (const worker of sameStageWorkers) {
       let total = 0;
@@ -385,7 +393,7 @@ export function useLeaderboard({
         workerId: worker.workerId,
         stage: worker.stage,
         total,
-        isCurrentUser: normalizeComparable(worker.workerId) === normalizedCurrentUser,
+        isCurrentUser: normalizedCurrentUserIds.has(normalizeComparable(worker.workerId)),
       });
     }
 
@@ -397,7 +405,7 @@ export function useLeaderboard({
       ...entry,
       rank: index + 1,
     }));
-  }, [sameStageWorkers, currentUserId, cycle, mode, selectedWeek]);
+  }, [sameStageWorkers, currentUserId, currentUserName, cycle, mode, selectedWeek]);
 
   const currentUserRank = useMemo(() => {
     return leaderboard.find(e => e.isCurrentUser)?.rank ?? null;

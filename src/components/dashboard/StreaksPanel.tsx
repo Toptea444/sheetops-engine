@@ -1,5 +1,14 @@
-import { Flame, Trophy, Zap, Calendar } from 'lucide-react';
+import { Flame, Trophy, Zap, Calendar, Info } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {
   Tooltip,
   TooltipContent,
@@ -75,10 +84,57 @@ export function StreaksPanel({
             <Zap className="h-4 w-4 text-primary" />
             Achievements
           </p>
-          <span className="text-xs text-muted-foreground">
-            {totalUnlocked}/{achievements.length}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {totalUnlocked}/{achievements.length}
+            </span>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground"
+                  aria-label="How achievements work"
+                >
+                  <Info className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>How achievements work</DialogTitle>
+                  <DialogDescription>
+                    Achievements are small goals based on your work days, streaks, and earnings.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-3 text-sm">
+                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                    <li>
+                      <span className="font-medium text-foreground">Work day</span> = a day with earnings &gt; 0.
+                    </li>
+                    <li>
+                      <span className="font-medium text-foreground">Streak</span> = consecutive work days.
+                    </li>
+                    <li>
+                      <span className="font-medium text-foreground">Cycle</span> achievements use the currently selected cycle.
+                    </li>
+                    <li>
+                      <span className="font-medium text-foreground">All-time</span> achievements look across all loaded sheets.
+                    </li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground">
+                    Tip: Hover (desktop) or tap (mobile) an icon to see the exact requirement and your progress.
+                  </p>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
+
+        <p className="text-xs text-muted-foreground mb-3">
+          Based on your activity. Hover/tap an icon to see what it means.
+        </p>
 
         <TooltipProvider>
           <div className="grid grid-cols-5 gap-2">
