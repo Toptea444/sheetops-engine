@@ -108,6 +108,8 @@ export function DailyEarningsTable({
 
   const displayedDays = showAll ? sheetData : sheetData.slice(0, 8);
 
+  const tabLabel = (name: string) => (name.split(' ')[0] || name).toUpperCase();
+
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -127,9 +129,10 @@ export function DailyEarningsTable({
               <TabsTrigger 
                 key={name} 
                 value={name}
-                className="text-sm h-8 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                title={name}
+                className="text-sm h-8 px-3 text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
               >
-                {name.split(' ')[0]}
+                {tabLabel(name)}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -148,6 +151,14 @@ export function DailyEarningsTable({
           <TabsContent key={name} value={name} className="mt-3">
             {name === activeTab && (
               <>
+                {/* Active sheet label */}
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <p className="text-xs text-muted-foreground">Showing sheet</p>
+                  <p className="text-sm font-medium text-foreground truncate max-w-[70%]" title={activeTab}>
+                    {activeTab}
+                  </p>
+                </div>
+
                 {/* Summary stats for this sheet only */}
                 {stats.hasSplit && !isPercent ? (
                   <div className="grid grid-cols-4 gap-2 mb-3 p-3 bg-muted/20 rounded-lg text-center">

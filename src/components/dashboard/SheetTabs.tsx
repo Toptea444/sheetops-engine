@@ -27,7 +27,8 @@ export function SheetTabs({ sheets, activeSheet, onSheetChange, isLoading }: She
             key={sheet.id}
             value={sheet.name}
             disabled={isLoading || !!sheet.disabled}
-            className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            title={sheet.name}
+            className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
           >
             <FileSpreadsheet className="h-4 w-4" />
             {sheet.name}

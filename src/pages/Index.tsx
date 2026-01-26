@@ -403,6 +403,7 @@ const Index = () => {
               <LeaderboardPanel
                 sheetData={leaderboardSheetData}
                 currentUserId={userId}
+                currentUserName={userName}
                 userStage={userStage}
                 cycle={selectedCycle}
               />

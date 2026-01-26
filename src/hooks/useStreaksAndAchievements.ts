@@ -150,7 +150,7 @@ export function useStreaksAndAchievements(
       {
         id: 'first_day',
         name: 'First Steps',
-        description: 'Complete your first day of work',
+          description: 'Work at least 1 day (earnings > 0) in the selected cycle',
         icon: '🚀',
         unlocked: daysWorked >= 1,
         progress: Math.min(daysWorked, 1),
@@ -159,7 +159,7 @@ export function useStreaksAndAchievements(
       {
         id: 'streak_3',
         name: 'On a Roll',
-        description: '3-day work streak',
+          description: 'Work 3 consecutive days (earnings > 0)',
         icon: '🔥',
         unlocked: streakData.longestStreak >= 3,
         progress: Math.min(streakData.longestStreak, 3),
@@ -168,7 +168,7 @@ export function useStreaksAndAchievements(
       {
         id: 'streak_7',
         name: 'Week Warrior',
-        description: '7-day work streak',
+          description: 'Work 7 consecutive days (earnings > 0)',
         icon: '⚡',
         unlocked: streakData.longestStreak >= 7,
         progress: Math.min(streakData.longestStreak, 7),
@@ -177,7 +177,7 @@ export function useStreaksAndAchievements(
       {
         id: 'streak_14',
         name: 'Unstoppable',
-        description: '14-day work streak',
+          description: 'Work 14 consecutive days (earnings > 0)',
         icon: '💪',
         unlocked: streakData.longestStreak >= 14,
         progress: Math.min(streakData.longestStreak, 14),
@@ -186,7 +186,7 @@ export function useStreaksAndAchievements(
       {
         id: 'earn_10k',
         name: 'Rising Star',
-        description: 'Earn ₦10,000 in a cycle',
+          description: 'Cycle total earnings ≥ ₦10,000',
         icon: '⭐',
         unlocked: cycleTotal >= 10000,
         progress: Math.min(cycleTotal, 10000),
@@ -195,7 +195,7 @@ export function useStreaksAndAchievements(
       {
         id: 'earn_50k',
         name: 'Money Maker',
-        description: 'Earn ₦50,000 in a cycle',
+          description: 'Cycle total earnings ≥ ₦50,000',
         icon: '💰',
         unlocked: cycleTotal >= 50000,
         progress: Math.min(cycleTotal, 50000),
@@ -204,7 +204,7 @@ export function useStreaksAndAchievements(
       {
         id: 'earn_100k',
         name: 'Big League',
-        description: 'Earn ₦100,000 in a cycle',
+          description: 'Cycle total earnings ≥ ₦100,000',
         icon: '🏆',
         unlocked: cycleTotal >= 100000,
         progress: Math.min(cycleTotal, 100000),
@@ -213,7 +213,7 @@ export function useStreaksAndAchievements(
       {
         id: 'day_5k',
         name: 'Power Day',
-        description: 'Earn ₦5,000 in a single day',
+          description: 'All-time: earn ≥ ₦5,000 in a single day',
         icon: '💎',
         unlocked: highestDay >= 5000,
         progress: Math.min(highestDay, 5000),
@@ -222,7 +222,7 @@ export function useStreaksAndAchievements(
       {
         id: 'day_10k',
         name: 'Super Day',
-        description: 'Earn ₦10,000 in a single day',
+          description: 'All-time: earn ≥ ₦10,000 in a single day',
         icon: '🌟',
         unlocked: highestDay >= 10000,
         progress: Math.min(highestDay, 10000),
@@ -231,7 +231,7 @@ export function useStreaksAndAchievements(
       {
         id: 'work_20_days',
         name: 'Consistent',
-        description: 'Work 20 days in a cycle',
+          description: 'Work 20 different days in the selected cycle',
         icon: '📅',
         unlocked: daysWorked >= 20,
         progress: Math.min(daysWorked, 20),
