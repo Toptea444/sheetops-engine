@@ -1,93 +1,129 @@
 
-# Implementation Plan: Permanent Device-Identity Binding & User ID Display
+
+# Implementation Plan: Worker PIN System with Privacy Explanation
 
 ## Overview
-This plan implements two features:
-1. **Permanent device-to-ID binding**: Once a user confirms their identity, their device (browser) is permanently linked to that specific ID and cannot be used to log in to any other ID
-2. **Display user ID in dashboard**: Show the user ID prominently in the interface
+This plan implements a secure PIN authentication system that protects worker accounts across all devices and browsers. When a worker logs in for the first time, they set a 4-6 digit PIN that must be entered on any future login, from any device.
 
 ---
 
-## How It Will Work
+## User Experience Flow
 
-### Device Binding Flow
-```text
-User A confirms identity on Browser 1
-         |
-         v
-[Database records: device_fingerprint_1 = NGDS2001]
-         |
-         v
-Later, User A opens Browser 2 and tries to log in as GHAS1001
-         |
-         v
-System checks: "Has this browser confirmed any ID before?"
-         |
-    Yes (if cleared cookies) -> No record found -> Allow login attempt
-    No -> "Is it the same ID?" 
-              |
-         Yes -> Allow
-         No  -> BLOCK with error: "This browser is already linked to another ID"
-```
+### First-Time User (No PIN Set Yet)
+1. Enter Worker ID → Validate ID exists in sheets
+2. Show PIN setup screen with:
+   - Clear warning: "Once you set your PIN and confirm, you won't be able to log out and use a different ID"
+   - "Why am I setting a PIN?" expandable explanation
+   - PIN input (4-6 digits)
+   - Confirm PIN input (must match)
+3. Submit → PIN stored in database → Identity confirmed → Dashboard unlocked
 
-### Important Consideration
-The binding is per-browser (using localStorage fingerprint). If a user clears their browser data, the fingerprint is regenerated and they could potentially log in as someone else. To make this stricter:
-- Store the confirmed worker ID in localStorage as well
-- Check both database AND localStorage before allowing login
+### Returning User (PIN Already Set)
+1. Enter Worker ID → System detects PIN exists
+2. Show PIN entry screen: "Enter your PIN"
+3. Verify PIN → If correct, access granted
+
+**********IMPORTANT***********
+Some users are currently logged in, there should be a way they are shown the pin stuff and prompt for verification while they're logged in. In all, the prompt to ask if the logged in ID is theirs should come first and the pin after.
+
+
+Also create a page for admin to reset pin for any worker id. Make the workflow easy
+**********IMPORTANT***********
+
+### Someone Trying to Use Another Person's ID
+1. Enter the other person's Worker ID
+2. System prompts: "Enter your PIN"
+3. They don't know the PIN → Blocked
 
 ---
 
-## Technical Changes
+## "Why Am I Setting a PIN?" Explanation
 
-### 1. Database: New Table `confirmed_identities`
+When users click this link, they see:
 
-Create a table to store permanent device-to-worker bindings:
+> **Your privacy matters!**
+>
+> While everyone has access to the shared Google Sheet, manually tracking someone else's progress there is tedious and time-consuming.
+>
+> However, this app makes viewing bonus data very easy and convenient. Without a PIN, someone could simply enter your Worker ID on their device and monitor your bonuses, goals, and performance trends.
+>
+> Your PIN ensures that only YOU can access your personal dashboard, no matter which device or browser someone tries to use.
+
+---
+
+## Technical Implementation
+
+### 1. Database: New Table `worker_pins`
 
 | Column | Type | Description |
 |--------|------|-------------|
 | id | UUID | Primary key |
-| device_fingerprint | TEXT | Unique - the browser's fingerprint |
-| worker_id | TEXT | The confirmed worker ID |
-| confirmed_at | TIMESTAMP | When the identity was confirmed |
+| worker_id | TEXT | Unique - the worker's ID |
+| pin_hash | TEXT | Hashed PIN (never plain text) |
+| created_at | TIMESTAMP | When PIN was set |
 
 **RLS Policies:**
-- Anyone can read (to check if a fingerprint is already bound)
-- Anyone can insert (when confirming identity)
-- No updates or deletes (permanent binding)
+- SELECT: Anyone can check if a PIN exists for a worker ID (returns true/false, never the hash)
+- INSERT: Anyone can insert (first-time setup)
+- No UPDATE or DELETE (prevents tampering; admin reset would be manual)
 
-### 2. Update `useSessionLock.ts`
+### 2. Edge Function: `verify-worker-pin`
 
-Add new functions:
-- `checkDeviceBinding(fingerprint)`: Check if this device is already permanently bound to a worker ID
-- `bindDeviceToWorker(fingerprint, workerId)`: Create permanent binding when identity is confirmed
+A secure server-side function that:
+1. Receives `worker_id` and `pin`
+2. Fetches the stored hash from database
+3. Hashes the provided PIN and compares
+4. Returns `{ valid: true/false }` - never exposes the hash
 
-Modify `claimSession()`:
-- Before allowing login, check if the device fingerprint already has a confirmed binding
-- If bound to a different worker ID, reject with error
+This prevents any client-side PIN comparison which could be bypassed.
 
-### 3. Update `useUserIdentity.ts`
+### 3. Edge Function: `set-worker-pin`
 
-Store the confirmed worker ID in localStorage:
-- New key: `performanceTracker_confirmedWorkerId`
-- Set this when identity is confirmed
-- Check this on app load to prevent manipulation
+For first-time PIN setup:
+1. Receives `worker_id` and `pin`
+2. Checks if PIN already exists (reject if so)
+3. Hashes the PIN
+4. Stores in database
+5. Returns success/failure
 
-### 4. Update `Index.tsx`
+### 4. New Hook: `useWorkerPin.ts`
 
-- When confirming identity, call `bindDeviceToWorker()`
-- Pass the binding check to `WelcomeModal` for error display
+```typescript
+interface UseWorkerPinResult {
+  checkPinExists: (workerId: string) => Promise<boolean>;
+  setPin: (workerId: string, pin: string) => Promise<{ success: boolean; error?: string }>;
+  verifyPin: (workerId: string, pin: string) => Promise<{ valid: boolean; error?: string }>;
+}
+```
 
-### 5. Update `WelcomeModal.tsx`
+### 5. Updated Flow Components
 
-- Display a new error type for device-already-bound scenario
-- Error message: "This browser is already linked to ID [XXX]. Please use your original browser or contact support."
+**WelcomeModal.tsx Changes:**
+- After ID validation, check if PIN exists
+- If no PIN: Show PIN setup step
+- If PIN exists: Show PIN entry step
 
-### 6. Display User ID in Dashboard
+**New Component: PinSetupStep**
+- Warning about permanent identity lock (prominent, not dismissible)
+- "Why am I setting a PIN?" collapsible/expandable section
+- PIN input (4-6 digits, masked)
+- Confirm PIN input
+- Validation: PINs must match, 4-6 digits only
+- Submit button
 
-Update the `Header.tsx` or create a visible user badge that:
-- Always shows the user ID (not hidden behind a dropdown)
-- Shows prominently even on mobile
-- Displays the ID when identity is confirmed
+**New Component: PinEntryStep**
+- PIN input field
+- "Enter your 4-6 digit PIN"
+- Submit button
+- Error display for wrong PIN
+
+### 6. Header User ID Display (Smaller/Subtler)
+
+Current display is quite prominent. Update to:
+- Smaller avatar (h-5 w-5 instead of h-7 w-7)
+- Smaller text (text-xs instead of text-sm)
+- More muted styling
+- Remove border, use subtle background only
 
 ---
 
@@ -95,41 +131,110 @@ Update the `Header.tsx` or create a visible user badge that:
 
 | File | Change |
 |------|--------|
-| **Database Migration** | Create `confirmed_identities` table with RLS |
-| `src/hooks/useSessionLock.ts` | Add device binding check and creation functions |
-| `src/hooks/useUserIdentity.ts` | Store confirmed worker ID in localStorage |
-| `src/components/dashboard/WelcomeModal.tsx` | Add device-bound error message |
-| `src/components/dashboard/Header.tsx` | Display user ID badge prominently |
-| `src/pages/Index.tsx` | Integrate binding on identity confirmation |
+| **Database Migration** | Create `worker_pins` table with RLS |
+| `supabase/functions/verify-worker-pin/index.ts` | New edge function for secure PIN verification |
+| `supabase/functions/set-worker-pin/index.ts` | New edge function for PIN setup |
+| `src/hooks/useWorkerPin.ts` | New hook for PIN operations |
+| `src/components/dashboard/WelcomeModal.tsx` | Add multi-step flow (ID → PIN setup/entry) |
+| `src/components/dashboard/PinSetupStep.tsx` | New component for first-time PIN setup |
+| `src/components/dashboard/PinEntryStep.tsx` | New component for PIN verification |
+| `src/components/dashboard/Header.tsx` | Make user ID display smaller/subtler |
+| `src/pages/Index.tsx` | Integrate PIN flow before identity confirmation |
 
 ---
 
-## Edge Cases Handled
+## Security Considerations
 
-1. **User clears cookies**: The localStorage confirmedWorkerId is also cleared, but database still has the binding. However, a new fingerprint is generated, so they could log in as someone else. To mitigate:
-   - The localStorage `confirmedWorkerId` acts as a local safeguard
-   - The database binding catches cases where the fingerprint hasn't changed
-
-2. **Same user, different browser**: Allowed - they can confirm their own ID on multiple browsers
-
-3. **User tries to log in to their own ID after confirming**: Allowed - binding is per-fingerprint, and they're accessing their own ID
-
-4. **Stale sessions**: The existing 15-minute heartbeat timeout still applies for session locks, but the identity binding is permanent
+1. **PIN Hashing**: PINs are hashed server-side before storage using a secure algorithm
+2. **Server-Side Verification**: All PIN checks happen via edge functions, not client-side
+3. **No Hash Exposure**: The PIN hash is never sent to the client
+4. **First-Come-First-Served**: First person to set PIN owns the ID
+5. **Dispute Mechanism**: If someone's ID is claimed by another, an admin can manually delete the PIN record in the database to allow reset
 
 ---
 
-## User Experience
+## Validation Rules
 
-### For New Users
-1. Enter ID → Validate → Show identity confirmation modal → Confirm → Device permanently bound → Dashboard unlocked
+- PIN must be 4-6 digits (numbers only)
+- Confirm PIN must exactly match the original PIN
+- Both fields required before submission
+- Clear error messages for mismatches
 
-### For Existing Confirmed Users  
-1. Open app → Auto-checks binding → Dashboard loads normally
+---
 
-### For Users Trying to Cheat
-1. Open different browser → Enter someone else's ID → **BLOCKED**: "This browser is already linked to ID [their actual ID]"
+## Visual Layout for PIN Setup
 
-### Visible User ID
-- The user ID badge will always be visible in the header
-- Shows initials avatar + full ID
-- No dropdown menu (since Switch User is removed after confirmation)
+```text
+┌─────────────────────────────────────────────────────────┐
+│                    🛡️ Secure Your Account              │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ⚠️ IMPORTANT                                          │
+│  Once you set your PIN, this ID will be permanently    │
+│  linked to you. You won't be able to log out and       │
+│  use a different Worker ID.                            │
+│                                                         │
+│  ────────────────────────────────────────────────────  │
+│                                                         │
+│  Create your PIN (4-6 digits)                          │
+│  ┌────────────────────────────────────────────┐        │
+│  │ ● ● ● ●                                    │        │
+│  └────────────────────────────────────────────┘        │
+│                                                         │
+│  Confirm your PIN                                       │
+│  ┌────────────────────────────────────────────┐        │
+│  │ ● ● ● ●                                    │        │
+│  └────────────────────────────────────────────┘        │
+│                                                         │
+│  ❓ Why am I setting a PIN?                [expand ▼]  │
+│                                                         │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │                 Set PIN & Continue               │   │
+│  └─────────────────────────────────────────────────┘   │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Expanded "Why am I setting a PIN?" Section
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│ ❓ Why am I setting a PIN?                  [collapse ▲]│
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  Your privacy matters!                                  │
+│                                                         │
+│  While everyone has access to the shared Google Sheet,  │
+│  manually tracking someone's progress there is tedious  │
+│  and time-consuming.                                    │
+│                                                         │
+│  However, this app makes viewing bonus data very easy.  │
+│  Without a PIN, someone could enter your Worker ID on   │
+│  their device and monitor your bonuses, goals, and      │
+│  performance trends without your knowledge.             │
+│                                                         │
+│  Your PIN ensures that only YOU can access your         │
+│  personal dashboard, no matter which device or browser  │
+│  someone tries to use.                                  │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Updated Header Display (Smaller)
+
+**Before:**
+```text
+[NG] NGDS0001     (h-7 w-7 avatar, text-sm, bordered)
+```
+
+**After:**
+```text
+NG·0001           (h-5 w-5 avatar, text-xs, subtle bg only)
+```
+
+Or just initials on mobile with full ID on hover/tooltip.
+
