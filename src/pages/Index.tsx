@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
+import { IdentityConfirmationModal } from '@/components/dashboard/IdentityConfirmationModal';
 import { CycleSelector } from '@/components/dashboard/CycleSelector';
 import { CycleSummaryCard } from '@/components/dashboard/CycleSummaryCard';
 import { SheetBreakdownCards } from '@/components/dashboard/SheetBreakdownCards';
@@ -40,16 +41,19 @@ const Index = () => {
     userName,
     dailyTarget,
     getCycleTarget,
+    identityConfirmed,
     isLoading: identityLoading,
     setUserId,
     setUserName,
     setDailyTarget,
     setCycleTarget,
+    confirmIdentity,
     clearIdentity,
     hasIdentity,
   } = useUserIdentity();
 
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showIdentityConfirmation, setShowIdentityConfirmation] = useState(false);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
   const [results, setResults] = useState<BonusResult[]>([]);
   const [dataError, setDataError] = useState<string | null>(null);
@@ -93,11 +97,17 @@ const Index = () => {
     init();
   }, [fetchSheets]);
 
+  // Show welcome modal for new users OR identity confirmation for returning users who haven't confirmed
   useEffect(() => {
-    if (!identityLoading && !hasIdentity && !isInitializing) {
-      setShowWelcome(true);
+    if (!identityLoading && !isInitializing) {
+      if (!hasIdentity) {
+        setShowWelcome(true);
+      } else if (!identityConfirmed) {
+        // Existing user but hasn't confirmed identity yet
+        setShowIdentityConfirmation(true);
+      }
     }
-  }, [identityLoading, hasIdentity, isInitializing]);
+  }, [identityLoading, hasIdentity, isInitializing, identityConfirmed]);
 
   const fetchUserData = useCallback(async (forceRefetch = false) => {
     if (!userId || selectedSheets.length === 0) return;
@@ -120,14 +130,15 @@ const Index = () => {
       
       if (data) {
         const worker = searchWorker(data, userId);
-        if (worker) {
-          foundInAnySheet = true;
-          if (worker.userName && worker.userName !== userId) {
-            setUserName(worker.userName);
+          if (worker) {
+            foundInAnySheet = true;
+            if (worker.userName && worker.userName !== userId) {
+              setUserName(worker.userName);
+            }
+            const result = calculateBonus(worker, allTimeStart, endDate);
+            // Add sheetName to the result
+            newResults.push({ ...result, sheetName: sheetName });
           }
-          const result = calculateBonus(worker, allTimeStart, endDate);
-          newResults.push(result);
-        }
       }
     }
 
@@ -175,6 +186,8 @@ const Index = () => {
 
     if (foundUser) {
       setUserId(newUserId, foundUserName);
+      // For new users, automatically confirm identity and mark it
+      confirmIdentity();
       setShowWelcome(false);
       toast.success(`Welcome, ${foundUserName}!`);
     } else {
@@ -191,6 +204,22 @@ const Index = () => {
     }
     toast.success('Refreshed');
   }, [fetchSheets, fetchUserData, userId]);
+
+  // Handle identity confirmation
+  const handleIdentityConfirm = useCallback(() => {
+    confirmIdentity();
+    setShowIdentityConfirmation(false);
+    toast.success('Identity confirmed! Your account is now secured.');
+  }, [confirmIdentity]);
+
+  const handleIdentityDeny = useCallback(() => {
+    clearIdentity();
+    setResults([]);
+    setDataError(null);
+    setShowIdentityConfirmation(false);
+    setShowWelcome(true);
+    toast.info('Logged out. Please log in with your own ID.');
+  }, [clearIdentity]);
 
   const handleSwitchUser = () => {
     clearIdentity();
@@ -228,7 +257,7 @@ const Index = () => {
           const worker = searchWorker(data, userId);
           if (worker) {
             const result = calculateBonus(worker, allTimeStart, endDate);
-            newResults.push(result);
+            newResults.push({ ...result, sheetName: sheetName });
           }
         }
       }
@@ -246,7 +275,7 @@ const Index = () => {
           const worker = searchWorker(data, userId);
           if (worker) {
             const result = calculateBonus(worker, allTimeStart, endDate);
-            newResults.push(result);
+            newResults.push({ ...result, sheetName: sheetName });
           }
         }
       }
@@ -313,12 +342,20 @@ const Index = () => {
         validationError={validationError}
       />
 
+      <IdentityConfirmationModal
+        open={showIdentityConfirmation}
+        userId={userId || ''}
+        userName={userName}
+        onConfirm={handleIdentityConfirm}
+        onDeny={handleIdentityDeny}
+      />
+
       <Header 
         onRefresh={handleRefresh} 
         isLoading={isLoading}
         userId={userId}
         userName={userName}
-        onSwitchUser={handleSwitchUser}
+        onSwitchUser={identityConfirmed ? undefined : handleSwitchUser}
         theme={theme}
         accentColor={accentColor}
         onThemeChange={setTheme}

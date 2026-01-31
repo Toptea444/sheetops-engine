@@ -89,10 +89,15 @@ export function LeaderboardPanel({
   // Show top 10 + current user if not in top 10
   const displayedEntries = useMemo(() => {
     const top10 = leaderboard.slice(0, 10);
+    
+    // Find current user entry - it MUST exist in the full leaderboard if they have data
     const currentUserEntry = leaderboard.find(e => e.isCurrentUser);
     
-    // Always show current user - if they exist but aren't in top 10, add them at the end
-    if (currentUserEntry && !top10.some(e => e.isCurrentUser)) {
+    // Check if current user is already in top 10
+    const userInTop10 = top10.some(e => e.isCurrentUser);
+    
+    // If current user exists and is NOT in top 10, append them with a divider
+    if (currentUserEntry && !userInTop10) {
       return [...top10, { ...currentUserEntry, showDivider: true }];
     }
     
@@ -131,10 +136,16 @@ export function LeaderboardPanel({
       <Tabs value={mode} onValueChange={(v) => setMode(v as 'week' | 'cycle')}>
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <TabsList className="h-9 p-0.5 bg-muted/40">
-            <TabsTrigger value="week" className="text-sm h-8 px-4">
+            <TabsTrigger 
+              value="week" 
+              className="text-sm h-8 px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
               Weekly
             </TabsTrigger>
-            <TabsTrigger value="cycle" className="text-sm h-8 px-4">
+            <TabsTrigger 
+              value="cycle" 
+              className="text-sm h-8 px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
               Cycle
             </TabsTrigger>
           </TabsList>

@@ -36,6 +36,9 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
     results.forEach((result) => {
       // Skip percentage-based sheets in chart
       if (result.valueType === 'percent') return;
+      
+      // Skip "Weekly Bonus GH" sheet from earnings trend
+      if (result.sheetName?.toUpperCase().includes('WEEKLY BONUS GH')) return;
 
       result.dailyBreakdown?.forEach((day) => {
         if (day.fullDate === undefined) return;

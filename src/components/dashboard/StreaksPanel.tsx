@@ -136,16 +136,17 @@ export function StreaksPanel({
           Based on your activity. Hover/tap an icon to see what it means.
         </p>
 
-        <TooltipProvider delayDuration={100}>
+        <TooltipProvider delayDuration={0}>
           <div className="grid grid-cols-5 gap-2">
             {achievements.map((achievement) => (
               <Tooltip key={achievement.id}>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
+                    aria-label={`${achievement.name}: ${achievement.description}`}
                     className={`
                       relative h-11 w-11 rounded-lg flex items-center justify-center text-lg
-                      transition-all duration-200 cursor-pointer
+                      transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary
                       ${
                         achievement.unlocked
                           ? 'bg-primary/10 border-2 border-primary/30 shadow-sm'
@@ -164,9 +165,14 @@ export function StreaksPanel({
                     )}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-[200px]">
+                <TooltipContent 
+                  side="top" 
+                  className="max-w-[220px] z-[100]"
+                  sideOffset={8}
+                  onPointerDownOutside={(e) => e.preventDefault()}
+                >
                   <p className="font-medium">{achievement.name}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {achievement.description}
                   </p>
                   {!achievement.unlocked && achievement.progress !== undefined && (
