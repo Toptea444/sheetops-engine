@@ -35,6 +35,27 @@ export type Database = {
         }
         Relationships: []
       }
+      worker_pins: {
+        Row: {
+          created_at: string
+          id: string
+          pin_hash: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pin_hash: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pin_hash?: string
+          worker_id?: string
+        }
+        Relationships: []
+      }
       worker_sessions: {
         Row: {
           created_at: string
