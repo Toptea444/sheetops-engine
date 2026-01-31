@@ -58,6 +58,8 @@ export interface BonusResult {
   dateWarning?: string;
   /** How to display/interpret totalBonus + dailyBreakdown values (defaults to percent). */
   valueType?: BonusValueType;
+  /** The name of the sheet this result came from */
+  sheetName?: string;
 }
 
 export interface SheetData {

@@ -4,12 +4,14 @@ const STORAGE_KEY = 'performanceTracker_userId';
 const USER_NAME_KEY = 'performanceTracker_userName';
 const DAILY_TARGET_KEY = 'performanceTracker_dailyTarget';
 const CYCLE_TARGETS_KEY = 'performanceTracker_cycleTargets';
+const IDENTITY_CONFIRMED_KEY = 'performanceTracker_identityConfirmed';
 
 interface UserIdentity {
   userId: string | null;
   userName: string | null;
   dailyTarget: number;
   cycleTargets: Record<string, number>;
+  identityConfirmed: boolean;
 }
 
 export function useUserIdentity() {
@@ -18,6 +20,7 @@ export function useUserIdentity() {
     userName: null,
     dailyTarget: 0,
     cycleTargets: {},
+    identityConfirmed: false,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -27,12 +30,14 @@ export function useUserIdentity() {
     const storedUserName = localStorage.getItem(USER_NAME_KEY);
     const storedDailyTarget = localStorage.getItem(DAILY_TARGET_KEY);
     const storedCycleTargets = localStorage.getItem(CYCLE_TARGETS_KEY);
+    const storedIdentityConfirmed = localStorage.getItem(IDENTITY_CONFIRMED_KEY);
 
     setIdentity({
       userId: storedUserId,
       userName: storedUserName,
       dailyTarget: storedDailyTarget ? parseFloat(storedDailyTarget) : 0,
       cycleTargets: storedCycleTargets ? JSON.parse(storedCycleTargets) : {},
+      identityConfirmed: storedIdentityConfirmed === 'true',
     });
     setIsLoading(false);
   }, []);
@@ -71,16 +76,23 @@ export function useUserIdentity() {
     return identity.cycleTargets[cycleKey] || 0;
   }, [identity.cycleTargets]);
 
+  const confirmIdentity = useCallback(() => {
+    localStorage.setItem(IDENTITY_CONFIRMED_KEY, 'true');
+    setIdentity(prev => ({ ...prev, identityConfirmed: true }));
+  }, []);
+
   const clearIdentity = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(USER_NAME_KEY);
     localStorage.removeItem(DAILY_TARGET_KEY);
     localStorage.removeItem(CYCLE_TARGETS_KEY);
+    localStorage.removeItem(IDENTITY_CONFIRMED_KEY);
     setIdentity({
       userId: null,
       userName: null,
       dailyTarget: 0,
       cycleTargets: {},
+      identityConfirmed: false,
     });
   }, []);
 
@@ -95,12 +107,14 @@ export function useUserIdentity() {
     userName: identity.userName,
     dailyTarget: identity.dailyTarget,
     cycleTargets: identity.cycleTargets,
+    identityConfirmed: identity.identityConfirmed,
     isLoading,
     setUserId,
     setUserName,
     setDailyTarget,
     setCycleTarget,
     getCycleTarget,
+    confirmIdentity,
     clearIdentity,
     isValidUserId,
     hasIdentity: !!identity.userId,
