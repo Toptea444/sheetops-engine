@@ -1,1 +1,10 @@
 project_id = "gducdbslxhugyqxbfkic"
+
+[functions.set-worker-pin]
+verify_jwt = false
+
+[functions.verify-worker-pin]
+verify_jwt = false
+
+[functions.reset-worker-pin]
+verify_jwt = false

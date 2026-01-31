@@ -200,7 +200,8 @@ const Index = () => {
     }
   }, [userId, selectedSheets, isInitializing, identityConfirmed]);
 
-  const handleWelcomeComplete = async (newUserId: string) => {
+  // Validate ID exists in sheets (used by WelcomeModal before PIN step)
+  const handleIdValidation = async (newUserId: string): Promise<boolean> => {
     setIsValidating(true);
     setValidationError(null);
 
@@ -209,7 +210,7 @@ const Index = () => {
     if (!canClaim) {
       setIsValidating(false);
       // sessionLockError will be shown via the modal
-      return;
+      return false;
     }
 
     let foundUser = false;
@@ -229,16 +230,24 @@ const Index = () => {
 
     setIsValidating(false);
 
-    if (foundUser) {
-      setUserId(newUserId, foundUserName);
-      setShowWelcome(false);
-      // Always require explicit identity confirmation before unlocking the app.
-      setShowIdentityConfirmation(true);
-      toast.success(`Welcome, ${foundUserName}!`);
-    } else {
+    if (!foundUser) {
       // Release the session since user wasn't found
       await releaseSession(newUserId);
       setValidationError(`ID "${newUserId}" not found. Please check and try again.`);
+      return false;
+    }
+
+    // Store the user name for later
+    setUserId(newUserId, foundUserName);
+    return true;
+  };
+
+  const handleWelcomeComplete = async (newUserId: string, pinVerified: boolean) => {
+    if (pinVerified) {
+      setShowWelcome(false);
+      // Always require explicit identity confirmation before unlocking the app.
+      setShowIdentityConfirmation(true);
+      toast.success(`Welcome, ${userName || newUserId}!`);
     }
   };
 
@@ -411,6 +420,7 @@ const Index = () => {
         isValidating={isValidating}
         validationError={validationError}
         sessionLockError={sessionLockError}
+        onIdValidated={handleIdValidation}
       />
 
       <IdentityConfirmationModal

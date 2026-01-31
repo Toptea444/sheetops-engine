@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ShieldCheck, AlertTriangle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +19,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { PinSetupStep } from './PinSetupStep';
+import { PinEntryStep } from './PinEntryStep';
+import { useWorkerPin } from '@/hooks/useWorkerPin';
+
+type ConfirmStep = 'identity' | 'pin-check' | 'pin-setup' | 'pin-entry';
 
 interface IdentityConfirmationModalProps {
   open: boolean;
@@ -36,20 +41,59 @@ export function IdentityConfirmationModal({
   onDeny,
 }: IdentityConfirmationModalProps) {
   const [showWarning, setShowWarning] = useState(false);
+  const [step, setStep] = useState<ConfirmStep>('identity');
   const displayName = userName || userId;
+  
+  const { isLoading: pinLoading, checkPinExists, setPin, verifyPin, error: pinError } = useWorkerPin();
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setStep('identity');
+      setShowWarning(false);
+    }
+  }, [open]);
 
   const handleConfirmClick = () => {
     setShowWarning(true);
   };
 
-  const handleFinalConfirm = () => {
+  const handleFinalConfirm = async () => {
     setShowWarning(false);
-    onConfirm();
+    setStep('pin-check');
+    
+    // Check if user already has a PIN
+    const hasPinSet = await checkPinExists(userId);
+    if (hasPinSet) {
+      setStep('pin-entry');
+    } else {
+      setStep('pin-setup');
+    }
   };
+
+  const handlePinSetup = async (pin: string) => {
+    const result = await setPin(userId, pin);
+    if (result.success) {
+      onConfirm();
+    }
+  };
+
+  const handlePinVerify = async (pin: string) => {
+    const result = await verifyPin(userId, pin);
+    if (result.valid) {
+      onConfirm();
+    }
+  };
+
+  const isIdentityStep = step === 'identity' && !showWarning;
+  const isPinCheckStep = step === 'pin-check';
+  const isPinSetupStep = step === 'pin-setup';
+  const isPinEntryStep = step === 'pin-entry';
 
   return (
     <>
-      <Dialog open={open && !showWarning} onOpenChange={() => {}}>
+      {/* Identity confirmation step */}
+      <Dialog open={open && isIdentityStep} onOpenChange={() => {}}>
         <DialogContent 
           className="sm:max-w-md" 
           onPointerDownOutside={(e) => e.preventDefault()}
@@ -98,6 +142,7 @@ export function IdentityConfirmationModal({
         </DialogContent>
       </Dialog>
 
+      {/* Warning confirmation dialog */}
       <AlertDialog open={showWarning} onOpenChange={setShowWarning}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -118,6 +163,52 @@ export function IdentityConfirmationModal({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* PIN check loading state */}
+      <Dialog open={open && isPinCheckStep} onOpenChange={() => {}}>
+        <DialogContent 
+          className="sm:max-w-md" 
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <div className="py-8 text-center">
+            <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+            <p className="text-muted-foreground">Checking account security...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* PIN setup step */}
+      <Dialog open={open && isPinSetupStep} onOpenChange={() => {}}>
+        <DialogContent 
+          className="sm:max-w-md" 
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <PinSetupStep
+            workerId={userId}
+            onSubmit={handlePinSetup}
+            isLoading={pinLoading}
+            error={pinError}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* PIN entry step */}
+      <Dialog open={open && isPinEntryStep} onOpenChange={() => {}}>
+        <DialogContent 
+          className="sm:max-w-md" 
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <PinEntryStep
+            workerId={userId}
+            onSubmit={handlePinVerify}
+            isLoading={pinLoading}
+            error={pinError}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
