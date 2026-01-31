@@ -85,6 +85,8 @@ const Index = () => {
     selectedCycle
   );
 
+  const isIdentityLocked = !!userId && !identityConfirmed;
+
   useEffect(() => {
     const init = async () => {
       const sheetsList = await fetchSheets();
@@ -109,8 +111,16 @@ const Index = () => {
     }
   }, [identityLoading, hasIdentity, isInitializing, identityConfirmed]);
 
+  // Safety: never keep sensitive data on screen before identity is confirmed
+  useEffect(() => {
+    if (userId && !identityConfirmed) {
+      setResults([]);
+      setDataError(null);
+    }
+  }, [userId, identityConfirmed]);
+
   const fetchUserData = useCallback(async (forceRefetch = false) => {
-    if (!userId || selectedSheets.length === 0) return;
+    if (!userId || selectedSheets.length === 0 || !identityConfirmed) return;
 
     setDataError(null);
     setIsFetchingData(true);
@@ -155,13 +165,13 @@ const Index = () => {
     if (!foundInAnySheet && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName]);
+  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed]);
 
   useEffect(() => {
-    if (userId && selectedSheets.length > 0 && !isInitializing) {
+    if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
       fetchUserData();
     }
-  }, [userId, selectedSheets, isInitializing]);
+  }, [userId, selectedSheets, isInitializing, identityConfirmed]);
 
   const handleWelcomeComplete = async (newUserId: string) => {
     setIsValidating(true);
@@ -186,9 +196,9 @@ const Index = () => {
 
     if (foundUser) {
       setUserId(newUserId, foundUserName);
-      // For new users, automatically confirm identity and mark it
-      confirmIdentity();
       setShowWelcome(false);
+      // Always require explicit identity confirmation before unlocking the app.
+      setShowIdentityConfirmation(true);
       toast.success(`Welcome, ${foundUserName}!`);
     } else {
       setValidationError(`ID "${newUserId}" not found. Please check and try again.`);
@@ -350,24 +360,28 @@ const Index = () => {
         onDeny={handleIdentityDeny}
       />
 
-      <Header 
-        onRefresh={handleRefresh} 
-        isLoading={isLoading}
-        userId={userId}
-        userName={userName}
-        onSwitchUser={identityConfirmed ? undefined : handleSwitchUser}
-        theme={theme}
-        accentColor={accentColor}
-        onThemeChange={setTheme}
-        onAccentChange={setAccentColor}
-        notificationsSupported={notificationsSupported}
-        notificationsEnabled={notificationsEnabled}
-        notificationPermission={notificationPermission}
-        onEnableNotifications={enableNotifications}
-        onDisableNotifications={disableNotifications}
-      />
-      
-      <main className="flex-1 container mx-auto px-4 py-4 max-w-4xl">
+      <div
+        className={`flex flex-1 flex-col ${isIdentityLocked ? 'pointer-events-none select-none blur-sm' : ''}`}
+        aria-hidden={isIdentityLocked}
+      >
+        <Header 
+          onRefresh={handleRefresh} 
+          isLoading={isLoading}
+          userId={userId}
+          userName={userName}
+          onSwitchUser={identityConfirmed ? undefined : handleSwitchUser}
+          theme={theme}
+          accentColor={accentColor}
+          onThemeChange={setTheme}
+          onAccentChange={setAccentColor}
+          notificationsSupported={notificationsSupported}
+          notificationsEnabled={notificationsEnabled}
+          notificationPermission={notificationPermission}
+          onEnableNotifications={enableNotifications}
+          onDisableNotifications={disableNotifications}
+        />
+
+        <main className="flex-1 container mx-auto px-4 py-4 max-w-4xl">
         {/* Error */}
         {(error || dataError) && (
           <div className="mb-4">
@@ -479,14 +493,15 @@ const Index = () => {
             </div>
           </div>
         </div>
-      </main>
+        </main>
 
-      <footer className="border-t py-3 text-center text-xs text-muted-foreground mt-auto">
-        Performance Tracker
-      </footer>
+        <footer className="border-t py-3 text-center text-xs text-muted-foreground mt-auto">
+          Performance Tracker
+        </footer>
 
-      {/* Leaderboard welcome notification (one-time) */}
-      <LeaderboardWelcome />
+        {/* Leaderboard welcome notification (one-time) */}
+        <LeaderboardWelcome />
+      </div>
     </div>
   );
 };
