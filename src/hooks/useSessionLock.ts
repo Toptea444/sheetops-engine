@@ -17,22 +17,102 @@ function getDeviceFingerprint(): string {
   return fingerprint;
 }
 
+export interface DeviceBinding {
+  isBound: boolean;
+  boundWorkerId: string | null;
+}
+
 export interface UseSessionLockResult {
   isLocked: boolean;
   isChecking: boolean;
   lockError: string | null;
+  deviceBinding: DeviceBinding;
   claimSession: (workerId: string) => Promise<boolean>;
   releaseSession: (workerId: string) => Promise<void>;
   startHeartbeat: (workerId: string) => void;
   stopHeartbeat: () => void;
+  checkDeviceBinding: () => Promise<DeviceBinding>;
+  bindDeviceToWorker: (workerId: string) => Promise<boolean>;
 }
 
 export function useSessionLock(): UseSessionLockResult {
   const [isLocked, setIsLocked] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [lockError, setLockError] = useState<string | null>(null);
+  const [deviceBinding, setDeviceBinding] = useState<DeviceBinding>({ isBound: false, boundWorkerId: null });
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const deviceFingerprint = useRef(getDeviceFingerprint());
+
+  /**
+   * Check if this device is already permanently bound to a worker ID
+   */
+  const checkDeviceBinding = useCallback(async (): Promise<DeviceBinding> => {
+    try {
+      const { data, error } = await supabase
+        .from('confirmed_identities')
+        .select('worker_id')
+        .eq('device_fingerprint', deviceFingerprint.current)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      const binding: DeviceBinding = {
+        isBound: !!data,
+        boundWorkerId: data?.worker_id || null,
+      };
+      
+      setDeviceBinding(binding);
+      return binding;
+    } catch (err) {
+      console.error('Error checking device binding:', err);
+      return { isBound: false, boundWorkerId: null };
+    }
+  }, []);
+
+  /**
+   * Permanently bind this device to a worker ID (called when identity is confirmed)
+   */
+  const bindDeviceToWorker = useCallback(async (workerId: string): Promise<boolean> => {
+    try {
+      const normalizedId = workerId.toUpperCase();
+      
+      // Check if already bound
+      const { data: existing } = await supabase
+        .from('confirmed_identities')
+        .select('worker_id')
+        .eq('device_fingerprint', deviceFingerprint.current)
+        .maybeSingle();
+
+      if (existing) {
+        // Already bound - check if same worker
+        if (existing.worker_id === normalizedId) {
+          return true; // Already bound to same worker, all good
+        }
+        // Bound to different worker - this shouldn't happen if we check properly
+        console.error('Device already bound to different worker');
+        return false;
+      }
+
+      // Create new binding
+      const { error } = await supabase
+        .from('confirmed_identities')
+        .insert({
+          device_fingerprint: deviceFingerprint.current,
+          worker_id: normalizedId,
+        });
+
+      if (error) {
+        console.error('Failed to bind device:', error);
+        return false;
+      }
+
+      setDeviceBinding({ isBound: true, boundWorkerId: normalizedId });
+      return true;
+    } catch (err) {
+      console.error('Error binding device:', err);
+      return false;
+    }
+  }, []);
 
   /**
    * Check if a worker ID is currently locked by another device
@@ -76,8 +156,17 @@ export function useSessionLock(): UseSessionLockResult {
 
     try {
       const normalizedId = workerId.toUpperCase();
+
+      // First check if this device is permanently bound to a DIFFERENT worker
+      const binding = await checkDeviceBinding();
+      if (binding.isBound && binding.boundWorkerId !== normalizedId) {
+        setLockError(`This browser is permanently linked to ID "${binding.boundWorkerId}". You cannot log in as a different user from this browser.`);
+        setIsLocked(true);
+        setIsChecking(false);
+        return false;
+      }
       
-      // First check if locked by another device
+      // Check if locked by another device
       const { isLocked, isOwnDevice } = await checkSessionLock(workerId);
       
       if (isLocked) {
@@ -134,7 +223,7 @@ export function useSessionLock(): UseSessionLockResult {
       setIsChecking(false);
       return false;
     }
-  }, [checkSessionLock]);
+  }, [checkSessionLock, checkDeviceBinding]);
 
   /**
    * Release a session (when logging out)
@@ -201,9 +290,12 @@ export function useSessionLock(): UseSessionLockResult {
     isLocked,
     isChecking,
     lockError,
+    deviceBinding,
     claimSession,
     releaseSession,
     startHeartbeat,
     stopHeartbeat,
+    checkDeviceBinding,
+    bindDeviceToWorker,
   };
 }

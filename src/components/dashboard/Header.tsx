@@ -40,6 +40,11 @@ export function Header({
   onEnableNotifications,
   onDisableNotifications,
 }: HeaderProps) {
+  // Show user ID badge only if onSwitchUser is available (dropdown mode)
+  // Otherwise show static display of user ID
+  const showUserBadgeDropdown = userId && onSwitchUser;
+  const showUserBadgeStatic = userId && !onSwitchUser;
+
   return (
     <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 h-14 flex items-center justify-between">
@@ -50,7 +55,16 @@ export function Header({
           <span className="font-semibold text-foreground">Bonus Tracker</span>
         </div>
         <div className="flex items-center gap-1">
-          {userId && onSwitchUser && (
+          {/* User ID - always visible when logged in */}
+          {showUserBadgeStatic && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border/60 bg-card/50">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold">
+                {userId.substring(0, 2).toUpperCase()}
+              </div>
+              <span className="text-sm font-medium text-foreground">{userName || userId}</span>
+            </div>
+          )}
+          {showUserBadgeDropdown && (
             <UserBadge
               userId={userId}
               userName={userName}
