@@ -10,11 +10,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import type { StreakData, Achievement } from '@/hooks/useStreaksAndAchievements';
 
 interface StreaksPanelProps {
@@ -133,58 +132,56 @@ export function StreaksPanel({
         </div>
 
         <p className="text-xs text-muted-foreground mb-3">
-          Based on your activity. Hover/tap an icon to see what it means.
+          Based on your activity. Click/tap an icon to see what it means.
         </p>
 
-        <TooltipProvider delayDuration={0}>
-          <div className="grid grid-cols-5 gap-2">
-            {achievements.map((achievement) => (
-              <Tooltip key={achievement.id}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={`${achievement.name}: ${achievement.description}`}
-                    className={`
-                      relative h-11 w-11 rounded-lg flex items-center justify-center text-lg
-                      transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary
-                      ${
-                        achievement.unlocked
-                          ? 'bg-primary/10 border-2 border-primary/30 shadow-sm'
-                          : 'bg-muted/50 border border-border/50 grayscale opacity-50'
-                      }
-                    `}
-                  >
-                    {achievement.icon}
-                    {!achievement.unlocked && achievement.progress !== undefined && (
-                      <div className="absolute -bottom-1 left-1 right-1">
-                        <Progress 
-                          value={(achievement.progress / (achievement.target || 1)) * 100} 
-                          className="h-0.5"
-                        />
-                      </div>
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent 
-                  side="top" 
-                  className="max-w-[220px] z-[100]"
-                  sideOffset={8}
-                  onPointerDownOutside={(e) => e.preventDefault()}
+        <div className="grid grid-cols-5 gap-2">
+          {achievements.map((achievement) => (
+            <Popover key={achievement.id}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`${achievement.name}: ${achievement.description}`}
+                  className={`
+                    relative h-11 w-11 rounded-lg flex items-center justify-center text-lg
+                    transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary
+                    ${
+                      achievement.unlocked
+                        ? 'bg-primary/10 border-2 border-primary/30 shadow-sm'
+                        : 'bg-muted/50 border border-border/50 grayscale opacity-50'
+                    }
+                  `}
                 >
-                  <p className="font-medium">{achievement.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {achievement.description}
-                  </p>
+                  {achievement.icon}
                   {!achievement.unlocked && achievement.progress !== undefined && (
-                    <p className="text-xs text-primary mt-1">
-                      Progress: {achievement.progress.toLocaleString()} / {achievement.target?.toLocaleString()}
-                    </p>
+                    <div className="absolute -bottom-1 left-1 right-1">
+                      <Progress 
+                        value={(achievement.progress / (achievement.target || 1)) * 100} 
+                        className="h-0.5"
+                      />
+                    </div>
                   )}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        </TooltipProvider>
+                </button>
+              </PopoverTrigger>
+
+              <PopoverContent
+                side="top"
+                sideOffset={8}
+                className="max-w-[240px] z-[100]"
+              >
+                <p className="font-medium">{achievement.name}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {achievement.description}
+                </p>
+                {!achievement.unlocked && achievement.progress !== undefined && (
+                  <p className="text-xs text-primary mt-1">
+                    Progress: {achievement.progress.toLocaleString()} / {achievement.target?.toLocaleString()}
+                  </p>
+                )}
+              </PopoverContent>
+            </Popover>
+          ))}
+        </div>
       </div>
     </div>
   );

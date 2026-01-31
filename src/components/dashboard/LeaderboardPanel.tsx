@@ -91,7 +91,9 @@ export function LeaderboardPanel({
     const top10 = leaderboard.slice(0, 10);
     
     // Find current user entry - it MUST exist in the full leaderboard if they have data
-    const currentUserEntry = leaderboard.find(e => e.isCurrentUser);
+    const currentUserEntry =
+      leaderboard.find((e) => e.isCurrentUser) ??
+      (currentUserRank ? leaderboard[currentUserRank - 1] : undefined);
     
     // Check if current user is already in top 10
     const userInTop10 = top10.some(e => e.isCurrentUser);
@@ -102,7 +104,7 @@ export function LeaderboardPanel({
     }
     
     return top10;
-  }, [leaderboard]);
+  }, [leaderboard, currentUserRank]);
 
   if (!sheetData) {
     return (
@@ -232,7 +234,7 @@ function LeaderboardList({ entries, currentUserId }: LeaderboardListProps) {
   return (
     <div className="space-y-2">
       {entries.map((entry, idx) => (
-        <div key={entry.workerId}>
+        <div key={`${entry.workerId}-${entry.rank}-${idx}`}>
           {entry.showDivider && (
             <div className="flex items-center gap-2 py-2">
               <div className="flex-1 h-px bg-border" />
