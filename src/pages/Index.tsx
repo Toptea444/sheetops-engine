@@ -20,6 +20,7 @@ import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
 import { useTheme } from '@/hooks/useTheme';
 import { useNotifications, generateDataHash } from '@/hooks/useNotifications';
+import { useSessionLock } from '@/hooks/useSessionLock';
 import { getCycleOptions, isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
@@ -79,6 +80,15 @@ const Index = () => {
     checkForUpdates,
   } = useNotifications();
 
+  // Session lock for cross-device protection
+  const {
+    lockError: sessionLockError,
+    claimSession,
+    releaseSession,
+    startHeartbeat,
+    stopHeartbeat,
+  } = useSessionLock();
+
   // Streaks & Achievements
   const { streakData, achievements, totalUnlocked } = useStreaksAndAchievements(
     results,
@@ -110,6 +120,22 @@ const Index = () => {
       }
     }
   }, [identityLoading, hasIdentity, isInitializing, identityConfirmed]);
+
+  // Start heartbeat for already confirmed users on mount
+  useEffect(() => {
+    if (userId && identityConfirmed) {
+      // Reclaim session (handles stale sessions) and start heartbeat
+      claimSession(userId).then((claimed) => {
+        if (claimed) {
+          startHeartbeat(userId);
+        }
+      });
+    }
+    
+    return () => {
+      stopHeartbeat();
+    };
+  }, [userId, identityConfirmed, claimSession, startHeartbeat, stopHeartbeat]);
 
   // Safety: never keep sensitive data on screen before identity is confirmed
   useEffect(() => {
@@ -177,6 +203,14 @@ const Index = () => {
     setIsValidating(true);
     setValidationError(null);
 
+    // First check session lock
+    const canClaim = await claimSession(newUserId);
+    if (!canClaim) {
+      setIsValidating(false);
+      // sessionLockError will be shown via the modal
+      return;
+    }
+
     let foundUser = false;
     let foundUserName = '';
 
@@ -201,6 +235,8 @@ const Index = () => {
       setShowIdentityConfirmation(true);
       toast.success(`Welcome, ${foundUserName}!`);
     } else {
+      // Release the session since user wasn't found
+      await releaseSession(newUserId);
       setValidationError(`ID "${newUserId}" not found. Please check and try again.`);
     }
   };
@@ -215,23 +251,38 @@ const Index = () => {
     toast.success('Refreshed');
   }, [fetchSheets, fetchUserData, userId]);
 
-  // Handle identity confirmation
-  const handleIdentityConfirm = useCallback(() => {
+  // Handle identity confirmation - start heartbeat after confirming
+  const handleIdentityConfirm = useCallback(async () => {
+    if (userId) {
+      // Claim session and start heartbeat
+      const claimed = await claimSession(userId);
+      if (claimed) {
+        startHeartbeat(userId);
+      }
+    }
     confirmIdentity();
     setShowIdentityConfirmation(false);
     toast.success('Identity confirmed! Your account is now secured.');
-  }, [confirmIdentity]);
+  }, [confirmIdentity, userId, claimSession, startHeartbeat]);
 
-  const handleIdentityDeny = useCallback(() => {
+  const handleIdentityDeny = useCallback(async () => {
+    if (userId) {
+      await releaseSession(userId);
+      stopHeartbeat();
+    }
     clearIdentity();
     setResults([]);
     setDataError(null);
     setShowIdentityConfirmation(false);
     setShowWelcome(true);
     toast.info('Logged out. Please log in with your own ID.');
-  }, [clearIdentity]);
+  }, [clearIdentity, userId, releaseSession, stopHeartbeat]);
 
-  const handleSwitchUser = () => {
+  const handleSwitchUser = async () => {
+    if (userId) {
+      await releaseSession(userId);
+      stopHeartbeat();
+    }
     clearIdentity();
     setResults([]);
     setDataError(null);
@@ -350,6 +401,7 @@ const Index = () => {
         onComplete={handleWelcomeComplete}
         isValidating={isValidating}
         validationError={validationError}
+        sessionLockError={sessionLockError}
       />
 
       <IdentityConfirmationModal
