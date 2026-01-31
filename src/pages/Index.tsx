@@ -87,6 +87,7 @@ const Index = () => {
     releaseSession,
     startHeartbeat,
     stopHeartbeat,
+    bindDeviceToWorker,
   } = useSessionLock();
 
   // Streaks & Achievements
@@ -251,19 +252,26 @@ const Index = () => {
     toast.success('Refreshed');
   }, [fetchSheets, fetchUserData, userId]);
 
-  // Handle identity confirmation - start heartbeat after confirming
+  // Handle identity confirmation - bind device permanently and start heartbeat
   const handleIdentityConfirm = useCallback(async () => {
     if (userId) {
+      // Bind this device permanently to this worker ID
+      const bound = await bindDeviceToWorker(userId);
+      if (!bound) {
+        toast.error('Failed to secure your identity. Please try again.');
+        return;
+      }
+
       // Claim session and start heartbeat
       const claimed = await claimSession(userId);
       if (claimed) {
         startHeartbeat(userId);
       }
     }
-    confirmIdentity();
+    confirmIdentity(userId || undefined);
     setShowIdentityConfirmation(false);
     toast.success('Identity confirmed! Your account is now secured.');
-  }, [confirmIdentity, userId, claimSession, startHeartbeat]);
+  }, [confirmIdentity, userId, claimSession, startHeartbeat, bindDeviceToWorker]);
 
   const handleIdentityDeny = useCallback(async () => {
     if (userId) {

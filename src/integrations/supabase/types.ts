@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      confirmed_identities: {
+        Row: {
+          confirmed_at: string
+          device_fingerprint: string
+          id: string
+          worker_id: string
+        }
+        Insert: {
+          confirmed_at?: string
+          device_fingerprint: string
+          id?: string
+          worker_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          device_fingerprint?: string
+          id?: string
+          worker_id?: string
+        }
+        Relationships: []
+      }
       worker_sessions: {
         Row: {
           created_at: string

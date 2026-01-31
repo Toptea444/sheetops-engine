@@ -5,6 +5,7 @@ const USER_NAME_KEY = 'performanceTracker_userName';
 const DAILY_TARGET_KEY = 'performanceTracker_dailyTarget';
 const CYCLE_TARGETS_KEY = 'performanceTracker_cycleTargets';
 const IDENTITY_CONFIRMED_KEY = 'performanceTracker_identityConfirmed';
+const CONFIRMED_WORKER_ID_KEY = 'performanceTracker_confirmedWorkerId';
 
 interface UserIdentity {
   userId: string | null;
@@ -12,6 +13,7 @@ interface UserIdentity {
   dailyTarget: number;
   cycleTargets: Record<string, number>;
   identityConfirmed: boolean;
+  confirmedWorkerId: string | null;
 }
 
 export function useUserIdentity() {
@@ -21,6 +23,7 @@ export function useUserIdentity() {
     dailyTarget: 0,
     cycleTargets: {},
     identityConfirmed: false,
+    confirmedWorkerId: null,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -31,6 +34,7 @@ export function useUserIdentity() {
     const storedDailyTarget = localStorage.getItem(DAILY_TARGET_KEY);
     const storedCycleTargets = localStorage.getItem(CYCLE_TARGETS_KEY);
     const storedIdentityConfirmed = localStorage.getItem(IDENTITY_CONFIRMED_KEY);
+    const storedConfirmedWorkerId = localStorage.getItem(CONFIRMED_WORKER_ID_KEY);
 
     setIdentity({
       userId: storedUserId,
@@ -38,6 +42,7 @@ export function useUserIdentity() {
       dailyTarget: storedDailyTarget ? parseFloat(storedDailyTarget) : 0,
       cycleTargets: storedCycleTargets ? JSON.parse(storedCycleTargets) : {},
       identityConfirmed: storedIdentityConfirmed === 'true',
+      confirmedWorkerId: storedConfirmedWorkerId,
     });
     setIsLoading(false);
   }, []);
@@ -76,9 +81,16 @@ export function useUserIdentity() {
     return identity.cycleTargets[cycleKey] || 0;
   }, [identity.cycleTargets]);
 
-  const confirmIdentity = useCallback(() => {
+  const confirmIdentity = useCallback((workerId?: string) => {
     localStorage.setItem(IDENTITY_CONFIRMED_KEY, 'true');
-    setIdentity(prev => ({ ...prev, identityConfirmed: true }));
+    if (workerId) {
+      localStorage.setItem(CONFIRMED_WORKER_ID_KEY, workerId.toUpperCase());
+    }
+    setIdentity(prev => ({ 
+      ...prev, 
+      identityConfirmed: true,
+      confirmedWorkerId: workerId?.toUpperCase() || prev.userId?.toUpperCase() || null,
+    }));
   }, []);
 
   const clearIdentity = useCallback(() => {
@@ -87,12 +99,14 @@ export function useUserIdentity() {
     localStorage.removeItem(DAILY_TARGET_KEY);
     localStorage.removeItem(CYCLE_TARGETS_KEY);
     localStorage.removeItem(IDENTITY_CONFIRMED_KEY);
+    localStorage.removeItem(CONFIRMED_WORKER_ID_KEY);
     setIdentity({
       userId: null,
       userName: null,
       dailyTarget: 0,
       cycleTargets: {},
       identityConfirmed: false,
+      confirmedWorkerId: null,
     });
   }, []);
 
@@ -108,6 +122,7 @@ export function useUserIdentity() {
     dailyTarget: identity.dailyTarget,
     cycleTargets: identity.cycleTargets,
     identityConfirmed: identity.identityConfirmed,
+    confirmedWorkerId: identity.confirmedWorkerId,
     isLoading,
     setUserId,
     setUserName,
