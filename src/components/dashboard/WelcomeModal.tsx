@@ -16,16 +16,21 @@ interface WelcomeModalProps {
   onComplete: (userId: string) => void;
   isValidating?: boolean;
   validationError?: string | null;
+  sessionLockError?: string | null;
 }
 
 export function WelcomeModal({ 
   open, 
   onComplete, 
   isValidating = false,
-  validationError = null 
+  validationError = null,
+  sessionLockError = null,
 }: WelcomeModalProps) {
   const [userId, setUserId] = useState('');
   const [error, setError] = useState<string | null>(null);
+  
+  // Show session lock error when it changes
+  const displayError = error || validationError || sessionLockError;
 
   const validateAndSubmit = () => {
     const trimmedId = userId.trim().toUpperCase();
@@ -86,8 +91,8 @@ export function WelcomeModal({
                 disabled={isValidating}
               />
             </div>
-            {(error || validationError) && (
-              <p className="text-sm text-destructive">{error || validationError}</p>
+            {displayError && (
+              <p className="text-sm text-destructive">{displayError}</p>
             )}
           </div>
 
