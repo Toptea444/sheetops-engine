@@ -52,22 +52,27 @@ export function useNotifications(): UseNotificationsResult {
       const result = await Notification.requestPermission();
       setPermission(result);
 
-      if (result === 'granted') {
-        localStorage.setItem(NOTIFICATION_KEY, 'true');
-        setIsEnabled(true);
-        
-        // Show a test notification
-        new Notification('Notifications Enabled! 🔔', {
-          body: 'You will be notified when your sheet data is updated.',
-          icon: '/favicon.ico',
-        });
-        
-        toast.success('Notifications enabled!');
-        return true;
-      } else {
+      if (result !== 'granted') {
         toast.error('Notification permission denied');
         return false;
       }
+
+      localStorage.setItem(NOTIFICATION_KEY, 'true');
+      setIsEnabled(true);
+
+      // Some browsers/environments allow permission but still block the constructor.
+      // This should NOT fail the whole enable flow.
+      try {
+        new Notification('Notifications Enabled', {
+          body: 'You will be notified when your sheet data is updated.',
+          icon: '/favicon.ico',
+        });
+      } catch (err) {
+        console.warn('Test notification was blocked:', err);
+      }
+
+      toast.success('Notifications enabled!');
+      return true;
     } catch (error) {
       console.error('Failed to enable notifications:', error);
       toast.error('Failed to enable notifications');
@@ -88,11 +93,15 @@ export function useNotifications(): UseNotificationsResult {
     
     if (lastHash && lastHash !== currentDataHash) {
       // Data has changed! Send notification
-      new Notification('Sheet Data Updated! 📊', {
-        body: 'Your performance data has been updated. Check your latest earnings!',
-        icon: '/favicon.ico',
-        tag: 'data-update', // Prevents duplicate notifications
-      });
+      try {
+        new Notification('Sheet Data Updated', {
+          body: 'Your performance data has been updated. Check your latest earnings!',
+          icon: '/favicon.ico',
+          tag: 'data-update', // Prevents duplicate notifications
+        });
+      } catch (err) {
+        console.warn('Update notification was blocked:', err);
+      }
     }
 
     // Store current hash

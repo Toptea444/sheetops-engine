@@ -92,28 +92,34 @@ export function useSessionLock(): UseSessionLockResult {
         await supabase
           .from('worker_sessions')
           .update({ last_heartbeat: new Date().toISOString() })
-          .eq('worker_id', normalizedId);
+          .eq('worker_id', normalizedId)
+          .eq('device_fingerprint', deviceFingerprint.current);
         
         setIsLocked(false);
         setIsChecking(false);
         return true;
       }
 
-      // Try to upsert the session
-      const { error } = await supabase
+      // If a stale session exists, delete it first (then do a clean insert).
+      // This avoids updating stale rows, which the backend disallows for safety.
+      const staleCutoffIso = new Date(Date.now() - SESSION_TIMEOUT_MS).toISOString();
+      await supabase
         .from('worker_sessions')
-        .upsert(
-          {
-            worker_id: normalizedId,
-            device_fingerprint: deviceFingerprint.current,
-            last_heartbeat: new Date().toISOString(),
-          },
-          { onConflict: 'worker_id' }
-        );
+        .delete()
+        .eq('worker_id', normalizedId)
+        .lt('last_heartbeat', staleCutoffIso);
 
-      if (error) {
-        console.error('Failed to claim session:', error);
-        setLockError('This ID is currently active on another device. Please try again later.');
+      const { error: insertError } = await supabase
+        .from('worker_sessions')
+        .insert({
+          worker_id: normalizedId,
+          device_fingerprint: deviceFingerprint.current,
+          last_heartbeat: new Date().toISOString(),
+        });
+
+      if (insertError) {
+        console.error('Failed to claim session:', insertError);
+        setLockError('This ID is currently active on another device. Please try again in 15 minutes or use your own ID.');
         setIsLocked(true);
         setIsChecking(false);
         return false;

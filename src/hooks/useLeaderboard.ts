@@ -175,8 +175,15 @@ function findLabelInRange(row: string[], start: number, end: number, labels: str
  * Normalize stage for comparison (handles S1, S-1, S 1, etc.)
  */
 function normalizeStage(stage: string): string {
-  // Remove spaces, hyphens, underscores and lowercase
-  return stage.toUpperCase().replace(/[\s\-_]/g, '');
+  const compact = stage.toUpperCase().replace(/[\s\-_]/g, '');
+
+  // Normalize "STAGE 1" / "STAGE-1" to "S1" so it matches users labeled as "S1".
+  if (compact.startsWith('STAGE')) {
+    const n = compact.replace(/^STAGE/, '');
+    if (n) return `S${n}`;
+  }
+
+  return compact;
 }
 
 /**

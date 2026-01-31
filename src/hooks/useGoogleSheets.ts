@@ -251,7 +251,11 @@ function parseDailyPerformanceSheet(
 
   const looksLikeStage = (value: string) => {
     const v = value.trim().toUpperCase();
-    return /^T-?\d+$/.test(v) || /^S\d+$/.test(v);
+    return (
+      /^T-?\d+$/.test(v) ||
+      /^S-?\d+$/.test(v) ||
+      /^STAGE\s*-?\s*\d+$/.test(v)
+    );
   };
 
   // Build a full matrix including the first header row from the API

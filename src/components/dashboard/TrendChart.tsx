@@ -21,6 +21,16 @@ interface TrendChartProps {
 
 type ViewMode = 'daily' | 'cumulative';
 
+function normalizeSheetName(value?: string): string {
+  return (value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function isWeeklyBonusGhSheet(sheetName?: string): boolean {
+  const n = normalizeSheetName(sheetName);
+  // Be tolerant of naming variations like: "WEEKLY BONUS GH", "Weekly Bonus (GH)", "WEEKLY B/GH".
+  return n.includes('WEEKLYBONUSGH') || n.includes('WEEKLYBGH');
+}
+
 function formatShortCurrency(value: number): string {
   if (value >= 1000000) return `₦${(value / 1000000).toFixed(1)}M`;
   if (value >= 1000) return `₦${(value / 1000).toFixed(0)}K`;
@@ -37,8 +47,8 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
       // Skip percentage-based sheets in chart
       if (result.valueType === 'percent') return;
       
-      // Skip "Weekly Bonus GH" sheet from earnings trend
-      if (result.sheetName?.toUpperCase().includes('WEEKLY BONUS GH')) return;
+      // Skip "Weekly Bonus GH" sheet from earnings trend (always omit)
+      if (isWeeklyBonusGhSheet(result.sheetName)) return;
 
       result.dailyBreakdown?.forEach((day) => {
         if (day.fullDate === undefined) return;
