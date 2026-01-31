@@ -57,11 +57,11 @@ export function Header({
         <div className="flex items-center gap-1">
           {/* User ID - always visible when logged in */}
           {showUserBadgeStatic && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border/60 bg-card/50">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50">
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-bold">
                 {userId.substring(0, 2).toUpperCase()}
               </div>
-              <span className="text-sm font-medium text-foreground">{userName || userId}</span>
+              <span className="text-xs text-muted-foreground font-medium">{userId}</span>
             </div>
           )}
           {showUserBadgeDropdown && (
