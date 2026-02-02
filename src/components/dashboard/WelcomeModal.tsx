@@ -94,6 +94,8 @@ export function WelcomeModal({
   const handlePinSetup = async (pin: string) => {
     const result = await setPin(validatedUserId, pin);
     if (result.success) {
+      // Reset step before completing to ensure clean state
+      setStep('id-entry');
       onComplete(validatedUserId, true);
     }
   };
@@ -101,6 +103,8 @@ export function WelcomeModal({
   const handlePinVerify = async (pin: string) => {
     const result = await verifyPin(validatedUserId, pin);
     if (result.valid) {
+      // Reset step before completing to ensure clean state
+      setStep('id-entry');
       onComplete(validatedUserId, true);
     }
   };

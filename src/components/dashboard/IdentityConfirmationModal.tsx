@@ -74,6 +74,8 @@ export function IdentityConfirmationModal({
   const handlePinSetup = async (pin: string) => {
     const result = await setPin(userId, pin);
     if (result.success) {
+      // Reset step before calling onConfirm to ensure clean state
+      setStep('identity');
       onConfirm();
     }
   };
@@ -81,6 +83,8 @@ export function IdentityConfirmationModal({
   const handlePinVerify = async (pin: string) => {
     const result = await verifyPin(userId, pin);
     if (result.valid) {
+      // Reset step before calling onConfirm to ensure clean state
+      setStep('identity');
       onConfirm();
     }
   };
