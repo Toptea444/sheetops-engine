@@ -567,7 +567,7 @@ const Index = () => {
         </main>
 
         <footer className="border-t py-3 text-center text-xs text-muted-foreground mt-auto">
-          Performance Tracker
+          Bonus Tracker
         </footer>
 
         {/* Leaderboard welcome notification (one-time) */}
