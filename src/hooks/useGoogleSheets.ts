@@ -535,8 +535,9 @@ function parseRankingBonusSheet(
   const headers = data.headers;
   const labelRow = data.rows[0] || [];
   
-  // Find date blocks in headers
-  const blocks = extractDateBlocks(headers);
+  // Find date blocks in headers, using labelRow.length as the true column count
+  // (headers may be shorter than labelRow for the last block)
+  const blocks = extractDateBlocks(headers, labelRow.length);
   if (blocks.length === 0) return null;
 
   const dailyData: DailyBonus[] = [];
@@ -705,7 +706,7 @@ function isDateLike(value: unknown): boolean {
     || /\d{1,2}(st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(s);
 }
 
-function extractDateBlocks(headers: string[]): Array<{ start: number; end: number; date: string }> {
+function extractDateBlocks(headers: string[], totalColumns?: number): Array<{ start: number; end: number; date: string }> {
   const starts: number[] = [];
   headers.forEach((h, i) => {
     // Look for date-like patterns in headers
@@ -714,9 +715,12 @@ function extractDateBlocks(headers: string[]): Array<{ start: number; end: numbe
     }
   });
 
+  // Use totalColumns if provided (for cases where labelRow is longer than headers)
+  const maxEnd = totalColumns ?? headers.length;
+
   return starts.map((start, idx) => ({
     start,
-    end: starts[idx + 1] ?? headers.length,
+    end: starts[idx + 1] ?? maxEnd,
     date: String(headers[start] ?? '').trim(),
   }));
 }
