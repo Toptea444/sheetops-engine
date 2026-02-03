@@ -19,11 +19,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PinSetupStep } from './PinSetupStep';
-import { PinEntryStep } from './PinEntryStep';
-import { useWorkerPin } from '@/hooks/useWorkerPin';
 
-type ConfirmStep = 'identity' | 'pin-check' | 'pin-setup' | 'pin-entry';
+type ConfirmStep = 'identity' | 'confirming';
 
 interface IdentityConfirmationModalProps {
   open: boolean;
@@ -43,8 +40,6 @@ export function IdentityConfirmationModal({
   const [showWarning, setShowWarning] = useState(false);
   const [step, setStep] = useState<ConfirmStep>('identity');
   const displayName = userName || userId;
-  
-  const { isLoading: pinLoading, checkPinExists, setPin, verifyPin, error: pinError } = useWorkerPin();
 
   // Reset state when modal closes
   useEffect(() => {
@@ -58,41 +53,14 @@ export function IdentityConfirmationModal({
     setShowWarning(true);
   };
 
-  const handleFinalConfirm = async () => {
+  const handleFinalConfirm = () => {
     setShowWarning(false);
-    setStep('pin-check');
-    
-    // Check if user already has a PIN
-    const hasPinSet = await checkPinExists(userId);
-    if (hasPinSet) {
-      setStep('pin-entry');
-    } else {
-      setStep('pin-setup');
-    }
-  };
-
-  const handlePinSetup = async (pin: string) => {
-    const result = await setPin(userId, pin);
-    if (result.success) {
-      // Reset step before calling onConfirm to ensure clean state
-      setStep('identity');
-      onConfirm();
-    }
-  };
-
-  const handlePinVerify = async (pin: string) => {
-    const result = await verifyPin(userId, pin);
-    if (result.valid) {
-      // Reset step before calling onConfirm to ensure clean state
-      setStep('identity');
-      onConfirm();
-    }
+    setStep('confirming');
+    // Directly confirm - PIN was already verified in WelcomeModal
+    onConfirm();
   };
 
   const isIdentityStep = step === 'identity' && !showWarning;
-  const isPinCheckStep = step === 'pin-check';
-  const isPinSetupStep = step === 'pin-setup';
-  const isPinEntryStep = step === 'pin-entry';
 
   return (
     <>
@@ -168,8 +136,8 @@ export function IdentityConfirmationModal({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* PIN check loading state */}
-      <Dialog open={open && isPinCheckStep} onOpenChange={() => {}}>
+      {/* Confirming state */}
+      <Dialog open={open && step === 'confirming'} onOpenChange={() => {}}>
         <DialogContent 
           className="sm:max-w-md" 
           onPointerDownOutside={(e) => e.preventDefault()}
@@ -177,40 +145,8 @@ export function IdentityConfirmationModal({
         >
           <div className="py-8 text-center">
             <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-            <p className="text-muted-foreground">Checking account security...</p>
+            <p className="text-muted-foreground">Securing your account...</p>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* PIN setup step */}
-      <Dialog open={open && isPinSetupStep} onOpenChange={() => {}}>
-        <DialogContent 
-          className="sm:max-w-md" 
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <PinSetupStep
-            workerId={userId}
-            onSubmit={handlePinSetup}
-            isLoading={pinLoading}
-            error={pinError}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* PIN entry step */}
-      <Dialog open={open && isPinEntryStep} onOpenChange={() => {}}>
-        <DialogContent 
-          className="sm:max-w-md" 
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <PinEntryStep
-            workerId={userId}
-            onSubmit={handlePinVerify}
-            isLoading={pinLoading}
-            error={pinError}
-          />
         </DialogContent>
       </Dialog>
     </>
