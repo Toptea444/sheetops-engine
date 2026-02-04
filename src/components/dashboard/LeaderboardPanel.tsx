@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Trophy, Medal, Crown, User, Calendar, AlertCircle } from 'lucide-react';
+import { Trophy, Medal, Crown, User, Calendar, AlertCircle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { LeaderboardPodium } from './LeaderboardPodium';
 import type { SheetData } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { useLeaderboard, getWeeksInCycle, getCurrentWeekInCycle, type WeekPeriod } from '@/hooks/useLeaderboard';
@@ -201,12 +202,22 @@ export function LeaderboardPanel({
               </p>
             </div>
           ) : (
-            <LeaderboardList entries={displayedEntries} currentUserId={currentUserId} />
+            <>
+              {/* Animated Podium for top 3 */}
+              {leaderboard.length >= 3 && (
+                <LeaderboardPodium entries={leaderboard} currentUserId={currentUserId} />
+              )}
+              <LeaderboardList entries={displayedEntries} currentUserId={currentUserId} showPodium={leaderboard.length >= 3} />
+            </>
           )}
         </TabsContent>
 
         <TabsContent value="cycle" className="mt-4">
-          <LeaderboardList entries={displayedEntries} currentUserId={currentUserId} />
+          {/* Animated Podium for top 3 */}
+          {leaderboard.length >= 3 && (
+            <LeaderboardPodium entries={leaderboard} currentUserId={currentUserId} />
+          )}
+          <LeaderboardList entries={displayedEntries} currentUserId={currentUserId} showPodium={leaderboard.length >= 3} />
         </TabsContent>
       </Tabs>
     </div>
@@ -223,10 +234,17 @@ interface LeaderboardListProps {
     showDivider?: boolean;
   }>;
   currentUserId: string | null;
+  showPodium?: boolean;
 }
 
-function LeaderboardList({ entries, currentUserId }: LeaderboardListProps) {
-  if (entries.length === 0) {
+function LeaderboardList({ entries, currentUserId, showPodium }: LeaderboardListProps) {
+  // Skip first 3 entries if podium is shown
+  const listEntries = showPodium ? entries.filter(e => e.rank > 3 || e.showDivider) : entries;
+  if (listEntries.length === 0) {
+    if (showPodium) {
+      // Podium is showing, just return empty for the list part
+      return null;
+    }
     return (
       <div className="text-center py-8 text-muted-foreground text-sm">
         No data available for this period
@@ -236,7 +254,7 @@ function LeaderboardList({ entries, currentUserId }: LeaderboardListProps) {
 
   return (
     <div className="space-y-2">
-      {entries.map((entry, idx) => (
+      {listEntries.map((entry, idx) => (
         <div key={`${entry.workerId}-${entry.rank}-${idx}`}>
           {entry.showDivider && (
             <div className="flex items-center gap-2 py-2">

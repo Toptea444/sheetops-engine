@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Edit3, Check, X, CheckCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Edit3, Check, X, CheckCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { useConfetti } from '@/hooks/useConfetti';
 import type { BonusResult } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
@@ -20,15 +21,29 @@ interface GoalRowProps {
   label: string;
   current: number;
   target: number;
+  goalKey: string;
   onUpdateTarget: (target: number) => void;
+  onGoalComplete?: (key: string) => void;
 }
 
-function GoalRow({ label, current, target, onUpdateTarget }: GoalRowProps) {
+function GoalRow({ label, current, target, goalKey, onUpdateTarget, onGoalComplete }: GoalRowProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState(target.toString());
+  const [showCelebration, setShowCelebration] = useState(false);
+  const wasCompleteRef = useRef(false);
 
   const progress = target > 0 ? Math.min((current / target) * 100, 100) : 0;
   const isComplete = current >= target && target > 0;
+
+  // Trigger celebration when goal is newly completed
+  useEffect(() => {
+    if (isComplete && !wasCompleteRef.current) {
+      setShowCelebration(true);
+      onGoalComplete?.(goalKey);
+      setTimeout(() => setShowCelebration(false), 2000);
+    }
+    wasCompleteRef.current = isComplete;
+  }, [isComplete, goalKey, onGoalComplete]);
 
   const handleSave = () => {
     const parsed = parseFloat(inputValue);
@@ -39,9 +54,18 @@ function GoalRow({ label, current, target, onUpdateTarget }: GoalRowProps) {
   };
 
   return (
-    <div className="space-y-2.5 p-3 rounded-lg bg-muted/20 border border-border/60">
+    <div className={`space-y-2.5 p-3 rounded-lg border transition-all duration-300 ${
+      showCelebration 
+        ? 'bg-success/10 border-success/40 ring-2 ring-success/20' 
+        : isComplete 
+          ? 'bg-success/5 border-success/30' 
+          : 'bg-muted/20 border-border/60'
+    }`}>
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">{label}</span>
+        <span className="text-sm font-medium flex items-center gap-1.5">
+          {label}
+          {showCelebration && <Sparkles className="h-4 w-4 text-success animate-pulse" />}
+        </span>
         {isEditing ? (
           <div className="flex items-center gap-1">
             <Input
@@ -101,6 +125,8 @@ export function GoalsPanel({
   onUpdateDailyTarget,
   onUpdateCycleTarget,
 }: GoalsPanelProps) {
+  const { triggerGoalComplete } = useConfetti();
+  
   let cycleTotal = 0;
   let todayTotal = 0;
   const today = new Date();
@@ -123,6 +149,8 @@ export function GoalsPanel({
   });
 
   const cycleKey = getCycleKey(cycle);
+  const dailyGoalKey = `daily-${new Date().toDateString()}`;
+  const cycleGoalKey = `cycle-${cycleKey}`;
 
   return (
     <div className="space-y-3">
@@ -132,13 +160,17 @@ export function GoalsPanel({
           label="Daily"
           current={todayTotal}
           target={dailyTarget}
+          goalKey={dailyGoalKey}
           onUpdateTarget={onUpdateDailyTarget}
+          onGoalComplete={triggerGoalComplete}
         />
         <GoalRow
           label="Cycle"
           current={cycleTotal}
           target={cycleTarget}
+          goalKey={cycleGoalKey}
           onUpdateTarget={(target) => onUpdateCycleTarget(target, cycleKey)}
+          onGoalComplete={triggerGoalComplete}
         />
       </div>
     </div>
