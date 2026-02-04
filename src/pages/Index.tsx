@@ -15,6 +15,7 @@ import { StreaksPanel } from '@/components/dashboard/StreaksPanel';
 import { EarningsProjection } from '@/components/dashboard/EarningsProjection';
 import { LeaderboardPanel } from '@/components/dashboard/LeaderboardPanel';
 import { LeaderboardWelcome } from '@/components/dashboard/LeaderboardWelcome';
+import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
@@ -98,11 +99,21 @@ const Index = () => {
 
   const isIdentityLocked = !!userId && !identityConfirmed;
 
+  // Helper to check if a sheet is the "Weekly Bonus GH" sheet
+  const isWeeklyBonusGhSheet = (name: string): boolean => {
+    const n = name.toUpperCase().replace(/[^A-Z]/g, '');
+    return n.includes('WEEKLYBONUSGH') || 
+           (n.includes('WEEKLY') && n.includes('BONUS') && n.includes('GH'));
+  };
+
   useEffect(() => {
     const init = async () => {
       const sheetsList = await fetchSheets();
       if (sheetsList.length > 0) {
-        const enabledSheets = sheetsList.filter(s => !s.disabled);
+        // Exclude disabled sheets AND the Weekly Bonus GH sheet
+        const enabledSheets = sheetsList.filter(s => 
+          !s.disabled && !isWeeklyBonusGhSheet(s.name)
+        );
         setSelectedSheets(enabledSheets.map(s => s.name));
       }
       setIsInitializing(false);
@@ -414,6 +425,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Weekly Bonus Alert */}
+      <WeeklyBonusAlert />
+      
       <WelcomeModal
         open={showWelcome}
         onComplete={handleWelcomeComplete}

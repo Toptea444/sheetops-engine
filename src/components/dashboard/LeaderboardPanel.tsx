@@ -232,6 +232,7 @@ interface LeaderboardListProps {
     total: number;
     isCurrentUser: boolean;
     showDivider?: boolean;
+    rankChange?: number;
   }>;
   currentUserId: string | null;
   showPodium?: boolean;
@@ -284,7 +285,7 @@ function LeaderboardList({ entries, currentUserId, showPodium }: LeaderboardList
               {entry.workerId.substring(0, 2).toUpperCase()}
             </div>
 
-            {/* Name */}
+            {/* Name and Rank Change */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className={cn(
@@ -295,6 +296,32 @@ function LeaderboardList({ entries, currentUserId, showPodium }: LeaderboardList
                 </span>
                 {entry.isCurrentUser && (
                   <User className="h-4 w-4 text-primary" />
+                )}
+                {/* Rank Change Indicator */}
+                {entry.rankChange !== undefined && entry.rankChange !== 0 && (
+                  <span className={cn(
+                    'flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full',
+                    entry.rankChange > 0 
+                      ? 'bg-green-500/10 text-green-600 dark:text-green-400' 
+                      : 'bg-red-500/10 text-red-600 dark:text-red-400'
+                  )}>
+                    {entry.rankChange > 0 ? (
+                      <>
+                        <TrendingUp className="h-3 w-3" />
+                        +{entry.rankChange}
+                      </>
+                    ) : (
+                      <>
+                        <TrendingDown className="h-3 w-3" />
+                        {entry.rankChange}
+                      </>
+                    )}
+                  </span>
+                )}
+                {entry.rankChange === 0 && (
+                  <span className="flex items-center text-xs text-muted-foreground px-1.5 py-0.5">
+                    <Minus className="h-3 w-3" />
+                  </span>
                 )}
               </div>
             </div>
