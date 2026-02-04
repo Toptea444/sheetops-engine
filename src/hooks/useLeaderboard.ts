@@ -8,6 +8,7 @@ export interface LeaderboardEntry {
   stage: string;
   total: number;
   isCurrentUser: boolean;
+  rankChange?: number; // Positive = moved up, negative = moved down, 0 = same, undefined = new
 }
 
 export interface WeekPeriod {
@@ -364,6 +365,60 @@ export function useLeaderboard({
     return allWorkers.filter(w => normalizeStage(w.stage) === normalizedUserStage);
   }, [allWorkers, userStage]);
 
+  // Calculate totals for a given week period
+  const calculateRankingsForPeriod = (week: WeekPeriod | null, forCycle: boolean): Map<string, number> => {
+    const rankings = new Map<string, number>();
+    const entries: { workerId: string; total: number }[] = [];
+
+    for (const worker of sameStageWorkers) {
+      let total = 0;
+
+      for (const day of worker.dailyData) {
+        const dayDate = new Date(day.timestamp);
+        dayDate.setHours(0, 0, 0, 0);
+
+        if (forCycle) {
+          total += day.value;
+        } else if (week) {
+          const dayTime = dayDate.getTime();
+          const weekStart = new Date(week.startDate).setHours(0, 0, 0, 0);
+          const weekEnd = new Date(week.endDate).setHours(23, 59, 59, 999);
+          
+          if (dayTime >= weekStart && dayTime <= weekEnd) {
+            total += day.value;
+          }
+        }
+      }
+
+      entries.push({ workerId: normalizeComparable(worker.workerId), total });
+    }
+
+    entries.sort((a, b) => b.total - a.total);
+    entries.forEach((entry, index) => {
+      rankings.set(entry.workerId, index + 1);
+    });
+
+    return rankings;
+  };
+
+  // Get previous week for comparison
+  const previousWeek = useMemo((): WeekPeriod | null => {
+    if (mode !== 'week' || !selectedWeek) return null;
+    const weeks = getWeeksInCycle(cycle);
+    const currentIdx = weeks.findIndex(w => w.weekNumber === selectedWeek.weekNumber);
+    if (currentIdx <= 0) return null;
+    return weeks[currentIdx - 1];
+  }, [mode, selectedWeek, cycle]);
+
+  // Calculate previous period rankings
+  const previousRankings = useMemo((): Map<string, number> => {
+    if (mode === 'week' && previousWeek) {
+      return calculateRankingsForPeriod(previousWeek, false);
+    }
+    // For cycle mode, we don't have a "previous" period to compare
+    return new Map();
+  }, [sameStageWorkers, mode, previousWeek]);
+
   // Calculate totals based on mode
   const leaderboard = useMemo((): LeaderboardEntry[] => {
     const entries: { workerId: string; stage: string; total: number; isCurrentUser: boolean }[] = [];
@@ -377,15 +432,12 @@ export function useLeaderboard({
       let total = 0;
 
       for (const day of worker.dailyData) {
-        // Use the timestamp directly from the parsed date
         const dayDate = new Date(day.timestamp);
         dayDate.setHours(0, 0, 0, 0);
 
         if (mode === 'cycle') {
-          // All data in the sheet for this cycle counts
           total += day.value;
         } else if (mode === 'week' && selectedWeek) {
-          // Filter by week
           const dayTime = dayDate.getTime();
           const weekStart = new Date(selectedWeek.startDate).setHours(0, 0, 0, 0);
           const weekEnd = new Date(selectedWeek.endDate).setHours(23, 59, 59, 999);
@@ -407,12 +459,27 @@ export function useLeaderboard({
     // Sort by total descending
     entries.sort((a, b) => b.total - a.total);
 
-    // Add ranks
-    return entries.map((entry, index) => ({
-      ...entry,
-      rank: index + 1,
-    }));
-  }, [sameStageWorkers, currentUserId, currentUserName, cycle, mode, selectedWeek]);
+    // Add ranks and rank changes
+    return entries.map((entry, index) => {
+      const currentRank = index + 1;
+      const normalizedId = normalizeComparable(entry.workerId);
+      const prevRank = previousRankings.get(normalizedId);
+      
+      let rankChange: number | undefined;
+      if (mode === 'week' && previousWeek) {
+        if (prevRank !== undefined) {
+          rankChange = prevRank - currentRank; // Positive = moved up
+        }
+        // undefined means new entry (no previous data)
+      }
+
+      return {
+        ...entry,
+        rank: currentRank,
+        rankChange,
+      };
+    });
+  }, [sameStageWorkers, currentUserId, currentUserName, cycle, mode, selectedWeek, previousRankings, previousWeek]);
 
   const currentUserRank = useMemo(() => {
     return leaderboard.find(e => e.isCurrentUser)?.rank ?? null;
