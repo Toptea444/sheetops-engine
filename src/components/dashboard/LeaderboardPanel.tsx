@@ -90,21 +90,24 @@ export function LeaderboardPanel({
   const displayedEntries = useMemo(() => {
     const top10 = leaderboard.slice(0, 10);
     
-    // Find current user entry - it MUST exist in the full leaderboard if they have data
-    const currentUserEntry =
-      leaderboard.find((e) => e.isCurrentUser) ??
-      (currentUserRank ? leaderboard[currentUserRank - 1] : undefined);
-    
     // Check if current user is already in top 10
     const userInTop10 = top10.some(e => e.isCurrentUser);
     
+    // If user is in top 10, just return top 10
+    if (userInTop10) {
+      return top10;
+    }
+    
+    // Find current user entry anywhere in the full leaderboard
+    const currentUserEntry = leaderboard.find((e) => e.isCurrentUser);
+    
     // If current user exists and is NOT in top 10, append them with a divider
-    if (currentUserEntry && !userInTop10) {
+    if (currentUserEntry) {
       return [...top10, { ...currentUserEntry, showDivider: true }];
     }
     
     return top10;
-  }, [leaderboard, currentUserRank]);
+  }, [leaderboard]);
 
   if (!sheetData) {
     return (

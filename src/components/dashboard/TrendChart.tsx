@@ -27,8 +27,10 @@ function normalizeSheetName(value?: string): string {
 
 function isWeeklyBonusGhSheet(sheetName?: string): boolean {
   const n = normalizeSheetName(sheetName);
-  // Be tolerant of naming variations like: "WEEKLY BONUS GH", "Weekly Bonus (GH)", "WEEKLY B/GH".
-  return n.includes('WEEKLYBONUSGH') || n.includes('WEEKLYBGH');
+  // Be tolerant of naming variations: "WEEKLY BONUS GH", "Weekly Bonus (GH)", "WEEKLY B/GH", "WEEKLYBONUSGH"
+  // Also match just "WEEKLYBONUSGH" or contains "WEEKLYBONUS" with "GH"
+  return n.includes('WEEKLYBONUSGH') || n.includes('WEEKLYBGH') || 
+         (n.includes('WEEKLY') && n.includes('BONUS') && n.includes('GH'));
 }
 
 function formatShortCurrency(value: number): string {
