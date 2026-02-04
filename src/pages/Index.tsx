@@ -16,6 +16,10 @@ import { EarningsProjection } from '@/components/dashboard/EarningsProjection';
 import { LeaderboardPanel } from '@/components/dashboard/LeaderboardPanel';
 import { LeaderboardWelcome } from '@/components/dashboard/LeaderboardWelcome';
 import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
+import { WeeklyChallenges } from '@/components/dashboard/WeeklyChallenges';
+import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import { WeeklyMVPs } from '@/components/dashboard/WeeklyMVPs';
+import { AvatarPicker } from '@/components/dashboard/AvatarPicker';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
@@ -546,8 +550,19 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Right column - Goals, Streaks, Projections */}
+          {/* Right column - Goals, Challenges, Streaks, Activity */}
           <div className="lg:sticky lg:top-20 lg:h-fit space-y-4">
+            {/* Avatar Picker - shown at top */}
+            {userId && identityConfirmed && (
+              <div className="flex items-center gap-3 p-3 border rounded-lg bg-card">
+                <AvatarPicker userId={userId} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{userName || userId}</p>
+                  <p className="text-xs text-muted-foreground">Click to customize</p>
+                </div>
+              </div>
+            )}
+
             <div className="p-4 border rounded-lg bg-card">
               <GoalsPanel
                 results={results}
@@ -560,11 +575,34 @@ const Index = () => {
             </div>
 
             <div className="p-4 border rounded-lg bg-card">
+              <WeeklyChallenges
+                results={results}
+                cycle={selectedCycle}
+              />
+            </div>
+
+            <div className="p-4 border rounded-lg bg-card">
               <StreaksPanel
                 streakData={streakData}
                 achievements={achievements}
                 totalUnlocked={totalUnlocked}
                 isLoading={isLoading}
+              />
+            </div>
+
+            <div className="p-4 border rounded-lg bg-card">
+              <WeeklyMVPs
+                sheetData={leaderboardSheetData}
+                currentUserId={userId}
+                cycle={selectedCycle}
+              />
+            </div>
+
+            <div className="p-4 border rounded-lg bg-card">
+              <ActivityFeed
+                sheetData={leaderboardSheetData}
+                currentUserId={userId}
+                cycle={selectedCycle}
               />
             </div>
 

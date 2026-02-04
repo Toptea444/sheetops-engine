@@ -14,6 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { AnimatedBadge } from './AnimatedBadge';
 import type { StreakData, Achievement } from '@/hooks/useStreaksAndAchievements';
 
 interface StreaksPanelProps {
@@ -139,20 +140,12 @@ export function StreaksPanel({
           {achievements.map((achievement) => (
             <Popover key={achievement.id}>
               <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={`${achievement.name}: ${achievement.description}`}
-                  className={`
-                    relative h-11 w-11 rounded-lg flex items-center justify-center text-lg
-                    transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary
-                    ${
-                      achievement.unlocked
-                        ? 'bg-primary/10 border-2 border-primary/30 shadow-sm'
-                        : 'bg-muted/50 border border-border/50 grayscale opacity-50'
-                    }
-                  `}
-                >
-                  {achievement.icon}
+                <div className="relative">
+                  <AnimatedBadge
+                    icon={achievement.icon}
+                    unlocked={achievement.unlocked}
+                    size="md"
+                  />
                   {!achievement.unlocked && achievement.progress !== undefined && (
                     <div className="absolute -bottom-1 left-1 right-1">
                       <Progress 
@@ -161,7 +154,7 @@ export function StreaksPanel({
                       />
                     </div>
                   )}
-                </button>
+                </div>
               </PopoverTrigger>
 
               <PopoverContent
