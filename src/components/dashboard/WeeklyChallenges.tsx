@@ -250,7 +250,11 @@ export function WeeklyChallenges({ results, cycle }: WeeklyChallengesProps) {
                     {challenge.description}
                   </p>
                   <div className="mt-2">
-                    <Progress value={progress} className={cn('h-1', isComplete && '[&>div]:bg-success')} />
+                    <Progress 
+                      value={progress} 
+                      animated={!isComplete}
+                      className={cn('h-1.5', isComplete && '[&>div]:bg-success')} 
+                    />
                     <div className="flex justify-between mt-1 text-xs text-muted-foreground">
                       <span>
                         {challenge.unit === '₦' ? `₦${challenge.current.toLocaleString()}` : `${challenge.current} ${challenge.unit}`}

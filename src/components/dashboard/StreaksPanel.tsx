@@ -136,16 +136,24 @@ export function StreaksPanel({
           Based on your activity. Click/tap an icon to see what it means.
         </p>
 
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-5 gap-2">
           {achievements.map((achievement) => (
             <Popover key={achievement.id}>
               <PopoverTrigger asChild>
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center gap-1">
                   <AnimatedBadge
                     icon={achievement.icon}
                     unlocked={achievement.unlocked}
                     size="md"
                   />
+                  {/* Progress indicator for locked achievements */}
+                  {!achievement.unlocked && achievement.progress !== undefined && achievement.target !== undefined && (
+                    <Progress
+                      value={(achievement.progress / achievement.target) * 100}
+                      animated
+                      className="h-1 w-full max-w-[36px]"
+                    />
+                  )}
                 </div>
               </PopoverTrigger>
 
