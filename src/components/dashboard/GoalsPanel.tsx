@@ -1,19 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { Edit3, Check, X, CheckCircle, Sparkles } from 'lucide-react';
+import { Edit3, Check, X, CheckCircle, Sparkles, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
 import { useConfetti } from '@/hooks/useConfetti';
 import type { BonusResult } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
+import { cn } from '@/lib/utils';
 
 interface GoalsPanelProps {
   results: BonusResult[];
   cycle: CyclePeriod;
-  dailyTarget: number;
   cycleTarget: number;
-  onUpdateDailyTarget: (target: number) => void;
   onUpdateCycleTarget: (target: number, cycleKey: string) => void;
 }
 
@@ -54,18 +52,37 @@ function GoalRow({ label, current, target, goalKey, onUpdateTarget, onGoalComple
   };
 
   return (
-    <div className={`space-y-2.5 p-3 rounded-lg border transition-all duration-300 ${
+    <div className={cn(
+      'relative overflow-hidden rounded-xl p-4 transition-all duration-300',
       showCelebration 
-        ? 'bg-success/10 border-success/40 ring-2 ring-success/20' 
+        ? 'bg-gradient-to-br from-success/20 via-success/10 to-transparent ring-2 ring-success/30' 
         : isComplete 
-          ? 'bg-success/5 border-success/30' 
-          : 'bg-muted/20 border-border/60'
-    }`}>
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium flex items-center gap-1.5">
-          {label}
-          {showCelebration && <Sparkles className="h-4 w-4 text-success animate-pulse" />}
-        </span>
+          ? 'bg-gradient-to-br from-success/15 to-success/5' 
+          : 'bg-gradient-to-br from-primary/10 via-primary/5 to-transparent'
+    )}>
+      {/* Background decoration */}
+      <div className={cn(
+        'absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl -mr-8 -mt-8 transition-colors duration-300',
+        isComplete ? 'bg-success/20' : 'bg-primary/15'
+      )} />
+      
+      {/* Header */}
+      <div className="relative flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className={cn(
+            'h-8 w-8 rounded-lg flex items-center justify-center',
+            isComplete ? 'bg-success/20' : 'bg-primary/20'
+          )}>
+            {isComplete ? (
+              <CheckCircle className="h-4 w-4 text-success" />
+            ) : showCelebration ? (
+              <Sparkles className="h-4 w-4 text-success animate-pulse" />
+            ) : (
+              <Target className="h-4 w-4 text-primary" />
+            )}
+          </div>
+          <span className="font-semibold text-sm">{label} Goal</span>
+        </div>
         {isEditing ? (
           <div className="flex items-center gap-1">
             <Input
@@ -90,27 +107,48 @@ function GoalRow({ label, current, target, goalKey, onUpdateTarget, onGoalComple
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 text-sm gap-1 text-muted-foreground"
+            className="h-8 text-sm gap-1.5 text-muted-foreground hover:text-foreground"
             onClick={() => {
               setInputValue(target.toString());
               setIsEditing(true);
             }}
           >
-            {target > 0 ? `₦${target.toLocaleString()}` : 'Set'}
+            {target > 0 ? `Target: ₦${target.toLocaleString()}` : 'Set Target'}
             <Edit3 className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>
-      <Progress value={progress} className={`h-1.5 ${isComplete ? '[&>div]:bg-success' : ''}`} />
-      <div className="flex justify-between items-center text-sm">
-        <span className="font-medium">₦{current.toLocaleString()}</span>
+      
+      {/* Progress bar */}
+      <div className="relative h-3 bg-muted/50 rounded-full overflow-hidden mb-3">
+        <div 
+          className={cn(
+            'absolute inset-y-0 left-0 rounded-full transition-all duration-500',
+            isComplete 
+              ? 'bg-gradient-to-r from-success to-success/80' 
+              : 'bg-gradient-to-r from-primary to-primary/70'
+          )}
+          style={{ width: `${progress}%` }}
+        >
+          {/* Animated shimmer effect for in-progress goals */}
+          {!isComplete && target > 0 && (
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+          )}
+        </div>
+      </div>
+      
+      {/* Stats */}
+      <div className="relative flex justify-between items-center">
+        <div>
+          <span className="text-lg font-bold">₦{current.toLocaleString()}</span>
+          {target > 0 && (
+            <span className="text-sm text-muted-foreground ml-1">/ ₦{target.toLocaleString()}</span>
+          )}
+        </div>
         {isComplete ? (
-          <span className="flex items-center gap-1 text-success text-sm">
-            <CheckCircle className="h-4 w-4" />
-            Done
-          </span>
+          <span className="text-sm font-medium text-success">Complete! 🎉</span>
         ) : target > 0 ? (
-          <span className="text-muted-foreground text-sm">{progress.toFixed(0)}%</span>
+          <span className="text-sm font-medium text-muted-foreground">{progress.toFixed(0)}%</span>
         ) : null}
       </div>
     </div>
@@ -120,17 +158,12 @@ function GoalRow({ label, current, target, goalKey, onUpdateTarget, onGoalComple
 export function GoalsPanel({
   results,
   cycle,
-  dailyTarget,
   cycleTarget,
-  onUpdateDailyTarget,
   onUpdateCycleTarget,
 }: GoalsPanelProps) {
   const { triggerGoalComplete } = useConfetti();
   
   let cycleTotal = 0;
-  let todayTotal = 0;
-  const today = new Date();
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
 
   results.forEach((result) => {
     if (result.valueType === 'percent') return;
@@ -140,39 +173,21 @@ export function GoalsPanel({
       const dayDate = new Date(day.fullDate);
       if (isDateInCycle(dayDate, cycle)) {
         cycleTotal += day.value;
-        const dayStart = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate()).getTime();
-        if (dayStart === todayStart) {
-          todayTotal += day.value;
-        }
       }
     });
   });
 
   const cycleKey = getCycleKey(cycle);
-  const dailyGoalKey = `daily-${new Date().toDateString()}`;
   const cycleGoalKey = `cycle-${cycleKey}`;
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">Goals</p>
-      <div className="space-y-3">
-        <GoalRow
-          label="Daily"
-          current={todayTotal}
-          target={dailyTarget}
-          goalKey={dailyGoalKey}
-          onUpdateTarget={onUpdateDailyTarget}
-          onGoalComplete={triggerGoalComplete}
-        />
-        <GoalRow
-          label="Cycle"
-          current={cycleTotal}
-          target={cycleTarget}
-          goalKey={cycleGoalKey}
-          onUpdateTarget={(target) => onUpdateCycleTarget(target, cycleKey)}
-          onGoalComplete={triggerGoalComplete}
-        />
-      </div>
-    </div>
+    <GoalRow
+      label="Cycle"
+      current={cycleTotal}
+      target={cycleTarget}
+      goalKey={cycleGoalKey}
+      onUpdateTarget={(target) => onUpdateCycleTarget(target, cycleKey)}
+      onGoalComplete={triggerGoalComplete}
+    />
   );
 }

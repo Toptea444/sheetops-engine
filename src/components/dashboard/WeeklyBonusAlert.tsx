@@ -72,7 +72,7 @@ export function WeeklyBonusAlert() {
                 Weekly Bonus Not Tracked
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                This app doesn't track the weekly bonus sheet. Use the link from your group to check your weekly bonus.
+                This app doesn't track the weekly bonus sheet. Use the link from the group to check your weekly bonus.
               </p>
             </div>
           </div>

@@ -554,9 +554,16 @@ const Index = () => {
           <div className="lg:sticky lg:top-20 lg:h-fit space-y-4">
             {/* Avatar Picker - shown at top */}
             {userId && identityConfirmed && (
-              <div className="flex items-center gap-3 p-3 border rounded-lg bg-card">
+              <div 
+                className="flex items-center gap-3 p-3 border rounded-lg bg-card cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => {
+                  // Find and click the avatar picker button
+                  const avatarBtn = document.querySelector('[title="Customize your avatar"]') as HTMLButtonElement;
+                  if (avatarBtn) avatarBtn.click();
+                }}
+              >
                 <AvatarPicker userId={userId} />
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pointer-events-none">
                   <p className="text-sm font-medium truncate">{userName || userId}</p>
                   <p className="text-xs text-muted-foreground">Click to customize</p>
                 </div>
@@ -567,9 +574,7 @@ const Index = () => {
               <GoalsPanel
                 results={results}
                 cycle={selectedCycle}
-                dailyTarget={dailyTarget}
                 cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
-                onUpdateDailyTarget={setDailyTarget}
                 onUpdateCycleTarget={setCycleTarget}
               />
             </div>
