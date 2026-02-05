@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Edit3, Check, X, CheckCircle, Sparkles, Target } from 'lucide-react';
+import { Edit3, Check, X, CheckCircle2, Target, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { useConfetti } from '@/hooks/useConfetti';
 import type { BonusResult } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
@@ -15,146 +17,6 @@ interface GoalsPanelProps {
   onUpdateCycleTarget: (target: number, cycleKey: string) => void;
 }
 
-interface GoalRowProps {
-  label: string;
-  current: number;
-  target: number;
-  goalKey: string;
-  onUpdateTarget: (target: number) => void;
-  onGoalComplete?: (key: string) => void;
-}
-
-function GoalRow({ label, current, target, goalKey, onUpdateTarget, onGoalComplete }: GoalRowProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [inputValue, setInputValue] = useState(target.toString());
-  const [showCelebration, setShowCelebration] = useState(false);
-  const wasCompleteRef = useRef(false);
-
-  const progress = target > 0 ? Math.min((current / target) * 100, 100) : 0;
-  const isComplete = current >= target && target > 0;
-
-  // Trigger celebration when goal is newly completed
-  useEffect(() => {
-    if (isComplete && !wasCompleteRef.current) {
-      setShowCelebration(true);
-      onGoalComplete?.(goalKey);
-      setTimeout(() => setShowCelebration(false), 2000);
-    }
-    wasCompleteRef.current = isComplete;
-  }, [isComplete, goalKey, onGoalComplete]);
-
-  const handleSave = () => {
-    const parsed = parseFloat(inputValue);
-    if (!isNaN(parsed) && parsed >= 0) {
-      onUpdateTarget(parsed);
-    }
-    setIsEditing(false);
-  };
-
-  return (
-    <div className={cn(
-      'relative overflow-hidden rounded-xl p-4 transition-all duration-300',
-      showCelebration 
-        ? 'bg-gradient-to-br from-success/20 via-success/10 to-transparent ring-2 ring-success/30' 
-        : isComplete 
-          ? 'bg-gradient-to-br from-success/15 to-success/5' 
-          : 'bg-gradient-to-br from-primary/10 via-primary/5 to-transparent'
-    )}>
-      {/* Background decoration */}
-      <div className={cn(
-        'absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl -mr-8 -mt-8 transition-colors duration-300',
-        isComplete ? 'bg-success/20' : 'bg-primary/15'
-      )} />
-      
-      {/* Header */}
-      <div className="relative flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className={cn(
-            'h-8 w-8 rounded-lg flex items-center justify-center',
-            isComplete ? 'bg-success/20' : 'bg-primary/20'
-          )}>
-            {isComplete ? (
-              <CheckCircle className="h-4 w-4 text-success" />
-            ) : showCelebration ? (
-              <Sparkles className="h-4 w-4 text-success animate-pulse" />
-            ) : (
-              <Target className="h-4 w-4 text-primary" />
-            )}
-          </div>
-          <span className="font-semibold text-sm">{label} Goal</span>
-        </div>
-        {isEditing ? (
-          <div className="flex items-center gap-1">
-            <Input
-              type="number"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              className="h-8 w-24 text-sm px-2"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSave();
-                if (e.key === 'Escape') setIsEditing(false);
-              }}
-            />
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleSave}>
-              <Check className="h-4 w-4 text-success" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setIsEditing(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 text-sm gap-1.5 text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              setInputValue(target.toString());
-              setIsEditing(true);
-            }}
-          >
-            {target > 0 ? `Target: ₦${target.toLocaleString()}` : 'Set Target'}
-            <Edit3 className="h-3.5 w-3.5" />
-          </Button>
-        )}
-      </div>
-      
-      {/* Progress bar */}
-      <div className="relative h-3 bg-muted/50 rounded-full overflow-hidden mb-3">
-        <div 
-          className={cn(
-            'absolute inset-y-0 left-0 rounded-full transition-all duration-500',
-            isComplete 
-              ? 'bg-gradient-to-r from-success to-success/80' 
-              : 'bg-gradient-to-r from-primary to-primary/70'
-          )}
-          style={{ width: `${progress}%` }}
-        >
-          {/* Animated shimmer effect for in-progress goals */}
-          {!isComplete && target > 0 && (
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
-          )}
-        </div>
-      </div>
-      
-      {/* Stats */}
-      <div className="relative flex justify-between items-center">
-        <div>
-          <span className="text-lg font-bold">₦{current.toLocaleString()}</span>
-          {target > 0 && (
-            <span className="text-sm text-muted-foreground ml-1">/ ₦{target.toLocaleString()}</span>
-          )}
-        </div>
-        {isComplete ? (
-          <span className="text-sm font-medium text-success">Complete! 🎉</span>
-        ) : target > 0 ? (
-          <span className="text-sm font-medium text-muted-foreground">{progress.toFixed(0)}%</span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 export function GoalsPanel({
   results,
   cycle,
@@ -162,7 +24,10 @@ export function GoalsPanel({
   onUpdateCycleTarget,
 }: GoalsPanelProps) {
   const { triggerGoalComplete } = useConfetti();
-  
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(cycleTarget.toString());
+  const wasCompleteRef = useRef(false);
+
   let cycleTotal = 0;
 
   results.forEach((result) => {
@@ -178,16 +43,132 @@ export function GoalsPanel({
   });
 
   const cycleKey = getCycleKey(cycle);
-  const cycleGoalKey = `cycle-${cycleKey}`;
+  const progress = cycleTarget > 0 ? Math.min((cycleTotal / cycleTarget) * 100, 100) : 0;
+  const isComplete = cycleTotal >= cycleTarget && cycleTarget > 0;
+
+  // Trigger celebration when goal is newly completed
+  useEffect(() => {
+    if (isComplete && !wasCompleteRef.current) {
+      triggerGoalComplete(`cycle-${cycleKey}`);
+    }
+    wasCompleteRef.current = isComplete;
+  }, [isComplete, cycleKey, triggerGoalComplete]);
+
+  // Sync input value when cycleTarget changes
+  useEffect(() => {
+    setInputValue(cycleTarget.toString());
+  }, [cycleTarget]);
+
+  const handleSave = () => {
+    const parsed = parseFloat(inputValue);
+    if (!isNaN(parsed) && parsed >= 0) {
+      onUpdateCycleTarget(parsed, cycleKey);
+    }
+    setIsEditing(false);
+  };
+
+  // Calculate days remaining in cycle
+  const daysRemaining = Math.max(0, Math.ceil((cycle.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
   return (
-    <GoalRow
-      label="Cycle"
-      current={cycleTotal}
-      target={cycleTarget}
-      goalKey={cycleGoalKey}
-      onUpdateTarget={(target) => onUpdateCycleTarget(target, cycleKey)}
-      onGoalComplete={triggerGoalComplete}
-    />
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">Cycle Goal</span>
+        </div>
+        {daysRemaining > 0 && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            {daysRemaining}d left
+          </span>
+        )}
+      </div>
+
+      {/* Goal card */}
+      <div className={cn(
+        'p-3 rounded-lg border transition-all duration-300',
+        isComplete
+          ? 'bg-success/5 border-success/30'
+          : 'bg-muted/20 border-border/60'
+      )}>
+        <div className="flex items-start gap-3">
+          <div className={cn(
+            'h-8 w-8 rounded-full flex items-center justify-center shrink-0',
+            isComplete ? 'bg-success/20' : 'bg-muted'
+          )}>
+            {isComplete ? (
+              <CheckCircle2 className="h-4 w-4 text-success" />
+            ) : (
+              <Target className="h-4 w-4 text-primary" />
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className={cn(
+                'text-sm font-medium',
+                isComplete && 'text-success'
+              )}>
+                {isComplete ? 'Goal Reached!' : 'Earnings Target'}
+              </span>
+              {isComplete && (
+                <Badge variant="secondary" className="text-xs shrink-0">
+                  🎉 Complete
+                </Badge>
+              )}
+            </div>
+            
+            {/* Editable target */}
+            <div className="flex items-center gap-1 mt-0.5">
+              {isEditing ? (
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">₦</span>
+                  <Input
+                    type="number"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    className="h-6 w-20 text-xs px-1"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSave();
+                      if (e.key === 'Escape') setIsEditing(false);
+                    }}
+                  />
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSave}>
+                    <Check className="h-3 w-3 text-success" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setIsEditing(false)}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {cycleTarget > 0 ? `Target: ₦${cycleTarget.toLocaleString()}` : 'Click to set target'}
+                  <Edit3 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Progress bar */}
+            <div className="mt-2">
+              <Progress 
+                value={progress} 
+                animated={!isComplete && cycleTarget > 0}
+                className={cn('h-1.5', isComplete && '[&>div]:bg-success')} 
+              />
+              <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                <span>₦{cycleTotal.toLocaleString()}</span>
+                {cycleTarget > 0 && <span>₦{cycleTarget.toLocaleString()}</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
