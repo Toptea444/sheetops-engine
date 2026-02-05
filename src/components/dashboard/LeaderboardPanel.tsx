@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { LeaderboardPodium } from './LeaderboardPodium';
+import { loadUserAvatar } from './AvatarPicker';
 import type { SheetData } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { useLeaderboard, getWeeksInCycle, getCurrentWeekInCycle, type WeekPeriod } from '@/hooks/useLeaderboard';
@@ -276,14 +277,7 @@ function LeaderboardList({ entries, currentUserId, showPodium }: LeaderboardList
             </div>
 
             {/* Avatar */}
-            <div className={cn(
-              'h-9 w-9 rounded-full flex items-center justify-center text-sm font-medium',
-              entry.isCurrentUser 
-                ? 'bg-primary text-primary-foreground' 
-                : 'bg-muted text-muted-foreground'
-            )}>
-              {entry.workerId.substring(0, 2).toUpperCase()}
-            </div>
+            <LeaderboardAvatar workerId={entry.workerId} isCurrentUser={entry.isCurrentUser} />
 
             {/* Name and Rank Change */}
             <div className="flex-1 min-w-0">
@@ -351,4 +345,33 @@ function maskWorkerId(workerId: string): string {
   const prefix = workerId.substring(0, 2);
   const suffix = workerId.substring(workerId.length - 4);
   return `${prefix}••${suffix}`;
+}
+
+/**
+ * Leaderboard avatar that uses customized avatar if available
+ */
+function LeaderboardAvatar({ workerId, isCurrentUser }: { workerId: string; isCurrentUser: boolean }) {
+  const avatar = isCurrentUser ? loadUserAvatar(workerId) : null;
+  
+  if (avatar && (avatar.emoji || avatar.colorClass !== 'bg-primary text-primary-foreground')) {
+    return (
+      <div className={cn(
+        'h-9 w-9 rounded-full flex items-center justify-center text-sm font-medium shrink-0',
+        avatar.colorClass
+      )}>
+        {avatar.emoji || workerId.substring(0, 2).toUpperCase()}
+      </div>
+    );
+  }
+  
+  return (
+    <div className={cn(
+      'h-9 w-9 rounded-full flex items-center justify-center text-sm font-medium shrink-0',
+      isCurrentUser 
+        ? 'bg-primary text-primary-foreground' 
+        : 'bg-muted text-muted-foreground'
+    )}>
+      {workerId.substring(0, 2).toUpperCase()}
+    </div>
+  );
 }
