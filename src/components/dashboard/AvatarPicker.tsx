@@ -7,12 +7,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 interface AvatarPickerProps {
   userId: string | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onAvatarChange?: (avatar: string) => void;
 }
 
@@ -67,8 +68,14 @@ export function loadUserAvatar(userId: string | null): UserAvatar | null {
   return null;
 }
 
-export function AvatarPicker({ userId, onAvatarChange }: AvatarPickerProps) {
-  const [open, setOpen] = useState(false);
+export function AvatarPicker({ userId, open: controlledOpen, onOpenChange, onAvatarChange }: AvatarPickerProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (!isControlled) setInternalOpen(v);
+    onOpenChange?.(v);
+  };
   const [selectedEmoji, setSelectedEmoji] = useState('');
   const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0]);
 
@@ -98,25 +105,27 @@ export function AvatarPicker({ userId, onAvatarChange }: AvatarPickerProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            'relative h-10 w-10 rounded-full flex items-center justify-center font-medium',
-            'transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-primary/50',
-            'focus:outline-none focus:ring-2 focus:ring-primary',
-            selectedColor.class
-          )}
-          title="Customize your avatar"
-        >
-          {selectedEmoji || displayInitials}
-          <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-background border-2 border-background flex items-center justify-center">
-            <Sparkles className="h-2.5 w-2.5 text-primary" />
-          </div>
-        </button>
-      </DialogTrigger>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
+        className={cn(
+          'relative h-10 w-10 rounded-full flex items-center justify-center font-medium',
+          'transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-primary/50',
+          'focus:outline-none focus:ring-2 focus:ring-primary',
+          selectedColor.class
+        )}
+        title="Customize your avatar"
+      >
+        {selectedEmoji || displayInitials}
+        <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-background border-2 border-background flex items-center justify-center">
+          <Sparkles className="h-2.5 w-2.5 text-primary" />
+        </div>
+      </button>
 
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />

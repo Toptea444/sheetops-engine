@@ -59,6 +59,8 @@ const Index = () => {
   } = useUserIdentity();
 
   const [showWelcome, setShowWelcome] = useState(false);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+  const [avatarKey, setAvatarKey] = useState(0);
   const [showIdentityConfirmation, setShowIdentityConfirmation] = useState(false);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
   const [results, setResults] = useState<BonusResult[]>([]);
@@ -556,13 +558,18 @@ const Index = () => {
             {userId && identityConfirmed && (
               <div 
                 className="flex items-center gap-3 p-3 border rounded-lg bg-card cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => {
-                  // Find and click the avatar picker button
-                  const avatarBtn = document.querySelector('[title="Customize your avatar"]') as HTMLButtonElement;
-                  if (avatarBtn) avatarBtn.click();
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!avatarPickerOpen) setAvatarPickerOpen(true);
                 }}
               >
-                <AvatarPicker userId={userId} />
+                <AvatarPicker
+                  key={avatarKey}
+                  userId={userId}
+                  open={avatarPickerOpen}
+                  onOpenChange={setAvatarPickerOpen}
+                  onAvatarChange={() => setAvatarKey(k => k + 1)}
+                />
                 <div className="flex-1 min-w-0 pointer-events-none">
                   <p className="text-sm font-medium truncate">{userName || userId}</p>
                   <p className="text-xs text-muted-foreground">Click to customize</p>
