@@ -1,4 +1,5 @@
 import { Crown, Medal, Trophy, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { LeaderboardEntry } from '@/hooks/useLeaderboard';
 
@@ -21,6 +22,13 @@ export function LeaderboardPodium({ entries, currentUserId }: LeaderboardPodiumP
 
   const [first, second, third] = top3;
 
+  // Calculate slide direction for podium based on rank changes
+  const getRankChangeOffset = (entry: LeaderboardEntry) => {
+    if (entry.rankChange === undefined || entry.rankChange === 0) return 0;
+    // Clamp to prevent wild offsets
+    return Math.max(-3, Math.min(3, entry.rankChange));
+  };
+
   return (
     <div className="relative py-6 px-4">
       {/* Decorative sparkles */}
@@ -32,38 +40,56 @@ export function LeaderboardPodium({ entries, currentUserId }: LeaderboardPodiumP
 
       <div className="flex items-end justify-center gap-2 sm:gap-4">
         {/* Second Place */}
-        <PodiumPlace
-          entry={second}
-          rank={2}
-          isCurrentUser={second.isCurrentUser}
-          height="h-20"
-          bgGradient="from-slate-400/20 to-slate-300/10"
-          borderColor="border-slate-400/40"
-          icon={<Medal className="h-5 w-5 text-slate-400" />}
-        />
+        <motion.div
+          initial={{ y: getRankChangeOffset(second) * 40, opacity: 0, scale: 0.8 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 80, damping: 14, delay: 0.1 }}
+        >
+          <PodiumPlace
+            entry={second}
+            rank={2}
+            isCurrentUser={second.isCurrentUser}
+            height="h-20"
+            bgGradient="from-slate-400/20 to-slate-300/10"
+            borderColor="border-slate-400/40"
+            icon={<Medal className="h-5 w-5 text-slate-400" />}
+          />
+        </motion.div>
 
         {/* First Place */}
-        <PodiumPlace
-          entry={first}
-          rank={1}
-          isCurrentUser={first.isCurrentUser}
-          height="h-28"
-          bgGradient="from-amber-500/20 to-yellow-400/10"
-          borderColor="border-amber-500/50"
-          icon={<Crown className="h-6 w-6 text-amber-500 animate-pulse" />}
-          isWinner
-        />
+        <motion.div
+          initial={{ y: getRankChangeOffset(first) * 40, opacity: 0, scale: 0.8 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 80, damping: 14, delay: 0.0 }}
+        >
+          <PodiumPlace
+            entry={first}
+            rank={1}
+            isCurrentUser={first.isCurrentUser}
+            height="h-28"
+            bgGradient="from-amber-500/20 to-yellow-400/10"
+            borderColor="border-amber-500/50"
+            icon={<Crown className="h-6 w-6 text-amber-500 animate-pulse" />}
+            isWinner
+          />
+        </motion.div>
 
         {/* Third Place */}
-        <PodiumPlace
-          entry={third}
-          rank={3}
-          isCurrentUser={third.isCurrentUser}
-          height="h-16"
-          bgGradient="from-amber-600/20 to-orange-500/10"
-          borderColor="border-amber-600/40"
-          icon={<Trophy className="h-5 w-5 text-amber-600" />}
-        />
+        <motion.div
+          initial={{ y: getRankChangeOffset(third) * 40, opacity: 0, scale: 0.8 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 80, damping: 14, delay: 0.2 }}
+        >
+          <PodiumPlace
+            entry={third}
+            rank={3}
+            isCurrentUser={third.isCurrentUser}
+            height="h-16"
+            bgGradient="from-amber-600/20 to-orange-500/10"
+            borderColor="border-amber-600/40"
+            icon={<Trophy className="h-5 w-5 text-amber-600" />}
+          />
+        </motion.div>
       </div>
     </div>
   );
@@ -91,7 +117,7 @@ function PodiumPlace({
   isWinner,
 }: PodiumPlaceProps) {
   return (
-    <div className="flex flex-col items-center gap-2 animate-fade-in" style={{ animationDelay: `${(rank - 1) * 100}ms` }}>
+    <div className="flex flex-col items-center gap-2">
       {/* Avatar */}
       <div className="relative">
         <div

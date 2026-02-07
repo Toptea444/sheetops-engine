@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Trophy, Medal, Crown, User, Calendar, AlertCircle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -203,22 +204,24 @@ export function LeaderboardPanel({
               </p>
             </div>
           ) : (
-            <>
+            <div key={`week-${selectedWeekIndex}`}>
               {/* Animated Podium for top 3 */}
               {leaderboard.length >= 3 && (
                 <LeaderboardPodium entries={leaderboard} currentUserId={currentUserId} />
               )}
               <LeaderboardList entries={displayedEntries} currentUserId={currentUserId} showPodium={leaderboard.length >= 3} />
-            </>
+            </div>
           )}
         </TabsContent>
 
         <TabsContent value="cycle" className="mt-4">
-          {/* Animated Podium for top 3 */}
-          {leaderboard.length >= 3 && (
-            <LeaderboardPodium entries={leaderboard} currentUserId={currentUserId} />
-          )}
-          <LeaderboardList entries={displayedEntries} currentUserId={currentUserId} showPodium={leaderboard.length >= 3} />
+          <div key="cycle-view">
+            {/* Animated Podium for top 3 */}
+            {leaderboard.length >= 3 && (
+              <LeaderboardPodium entries={leaderboard} currentUserId={currentUserId} />
+            )}
+            <LeaderboardList entries={displayedEntries} currentUserId={currentUserId} showPodium={leaderboard.length >= 3} />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
@@ -239,12 +242,14 @@ interface LeaderboardListProps {
   showPodium?: boolean;
 }
 
+const ROW_HEIGHT = 56; // approximate height of each leaderboard row in px
+const MAX_POSITION_OFFSET = 6; // cap animation distance
+
 function LeaderboardList({ entries, currentUserId, showPodium }: LeaderboardListProps) {
   // Skip first 3 entries if podium is shown
   const listEntries = showPodium ? entries.filter(e => e.rank > 3 || e.showDivider) : entries;
   if (listEntries.length === 0) {
     if (showPodium) {
-      // Podium is showing, just return empty for the list part
       return null;
     }
     return (
@@ -256,83 +261,109 @@ function LeaderboardList({ entries, currentUserId, showPodium }: LeaderboardList
 
   return (
     <div className="space-y-2">
-      {listEntries.map((entry, idx) => (
-        <div key={`${entry.workerId}-${entry.rank}-${idx}`}>
-          {entry.showDivider && (
-            <div className="flex items-center gap-2 py-2">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground">Your position</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-          )}
-          <div
-            className={cn(
-              'flex items-center gap-3 p-3 rounded-lg border transition-colors',
-              getRankBg(entry.rank, entry.isCurrentUser)
-            )}
+      {listEntries.map((entry, idx) => {
+        // Calculate initial Y offset based on rank change
+        // rankChange > 0 means moved UP (was at a higher rank number = lower in list)
+        // So they should animate FROM below (positive Y) TO current position
+        const clampedChange = entry.rankChange !== undefined
+          ? Math.max(-MAX_POSITION_OFFSET, Math.min(MAX_POSITION_OFFSET, entry.rankChange))
+          : 0;
+        const initialY = clampedChange * ROW_HEIGHT;
+
+        return (
+          <motion.div
+            key={`${entry.workerId}-${entry.rank}-${idx}`}
+            initial={{ y: initialY, opacity: initialY !== 0 ? 0.4 : 0, scale: initialY !== 0 ? 0.97 : 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            transition={{
+              type: 'spring',
+              stiffness: 70,
+              damping: 14,
+              mass: 0.8,
+              delay: idx * 0.06,
+            }}
           >
-            {/* Rank */}
-            <div className="flex items-center justify-center w-8">
-              {getRankIcon(entry.rank)}
-            </div>
+            {entry.showDivider && (
+              <div className="flex items-center gap-2 py-2">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground">Your position</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+            )}
+            <div
+              className={cn(
+                'flex items-center gap-3 p-3 rounded-lg border transition-colors',
+                getRankBg(entry.rank, entry.isCurrentUser)
+              )}
+            >
+              {/* Rank */}
+              <div className="flex items-center justify-center w-8">
+                {getRankIcon(entry.rank)}
+              </div>
 
-            {/* Avatar */}
-            <LeaderboardAvatar workerId={entry.workerId} isCurrentUser={entry.isCurrentUser} />
+              {/* Avatar */}
+              <LeaderboardAvatar workerId={entry.workerId} isCurrentUser={entry.isCurrentUser} />
 
-            {/* Name and Rank Change */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className={cn(
-                  'font-medium truncate',
-                  entry.isCurrentUser && 'text-primary'
-                )}>
-                  {entry.isCurrentUser ? 'You' : maskWorkerId(entry.workerId)}
-                </span>
-                {entry.isCurrentUser && (
-                  <User className="h-4 w-4 text-primary" />
-                )}
-                {/* Rank Change Indicator */}
-                {entry.rankChange !== undefined && entry.rankChange !== 0 && (
+              {/* Name and Rank Change */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
                   <span className={cn(
-                    'flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full',
-                    entry.rankChange > 0 
-                      ? 'bg-green-500/10 text-green-600 dark:text-green-400' 
-                      : 'bg-red-500/10 text-red-600 dark:text-red-400'
+                    'font-medium truncate',
+                    entry.isCurrentUser && 'text-primary'
                   )}>
-                    {entry.rankChange > 0 ? (
-                      <>
-                        <TrendingUp className="h-3 w-3" />
-                        +{entry.rankChange}
-                      </>
-                    ) : (
-                      <>
-                        <TrendingDown className="h-3 w-3" />
-                        {entry.rankChange}
-                      </>
-                    )}
+                    {entry.isCurrentUser ? 'You' : maskWorkerId(entry.workerId)}
                   </span>
-                )}
-                {entry.rankChange === 0 && (
-                  <span className="flex items-center text-xs text-muted-foreground px-1.5 py-0.5">
-                    <Minus className="h-3 w-3" />
+                  {entry.isCurrentUser && (
+                    <User className="h-4 w-4 text-primary" />
+                  )}
+                  {/* Animated Rank Change Indicator */}
+                  {entry.rankChange !== undefined && entry.rankChange !== 0 && (
+                    <motion.span
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 15, delay: idx * 0.06 + 0.3 }}
+                      className={cn(
+                        'flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full',
+                        entry.rankChange > 0
+                          ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                          : 'bg-red-500/10 text-red-600 dark:text-red-400'
+                      )}
+                    >
+                      {entry.rankChange > 0 ? (
+                        <>
+                          <TrendingUp className="h-3 w-3" />
+                          +{entry.rankChange}
+                        </>
+                      ) : (
+                        <>
+                          <TrendingDown className="h-3 w-3" />
+                          {entry.rankChange}
+                        </>
+                      )}
+                    </motion.span>
+                  )}
+                  {entry.rankChange === 0 && (
+                    <span className="flex items-center text-xs text-muted-foreground px-1.5 py-0.5">
+                      <Minus className="h-3 w-3" />
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Amount */}
+              <div className="text-right">
+                {entry.isCurrentUser ? (
+                  <span className="font-semibold text-primary">
+                    ₦{entry.total.toLocaleString()}
                   </span>
+                ) : (
+                  <span className="text-muted-foreground text-sm">•••</span>
                 )}
               </div>
             </div>
-
-            {/* Amount */}
-            <div className="text-right">
-              {entry.isCurrentUser ? (
-                <span className="font-semibold text-primary">
-                  ₦{entry.total.toLocaleString()}
-                </span>
-              ) : (
-                <span className="text-muted-foreground text-sm">•••</span>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
+          </motion.div>
+        );
+      })}
     </div>
   );
 }
