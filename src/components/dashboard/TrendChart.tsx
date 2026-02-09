@@ -125,9 +125,9 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
           </Button>
         </div>
       </div>
-      <div className="w-full min-w-0 overflow-hidden">
-        <ResponsiveContainer width="100%" height={140}>
-          <AreaChart data={chartData} margin={{ top: 5, right: 15, left: -15, bottom: 0 }}>
+      <div className="w-full min-w-0 overflow-hidden" style={{ maxWidth: '100%' }}>
+        <ResponsiveContainer width="99%" height={140}>
+          <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
@@ -141,7 +141,7 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
               tickLine={false}
               axisLine={false}
               tick={{ fill: 'hsl(var(--muted-foreground))' }}
-              interval={chartData.length <= 10 ? 0 : chartData.length <= 20 ? 2 : Math.floor(chartData.length / 5)}
+              interval={chartData.length <= 7 ? 0 : Math.floor(chartData.length / 5)}
             />
             <YAxis
               tickFormatter={formatShortCurrency}
@@ -149,7 +149,7 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
               tickLine={false}
               axisLine={false}
               tick={{ fill: 'hsl(var(--muted-foreground))' }}
-              width={45}
+              width={40}
             />
             <Tooltip
               content={({ active, payload }) => {
