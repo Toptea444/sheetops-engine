@@ -132,14 +132,14 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
                 <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <XAxis
+             <XAxis
               dataKey="date"
               tickFormatter={formatShortDate}
               fontSize={10}
               tickLine={false}
               axisLine={false}
               tick={{ fill: 'hsl(var(--muted-foreground))' }}
-              interval="preserveStartEnd"
+              interval={chartData.length <= 10 ? 0 : chartData.length <= 20 ? 2 : Math.floor(chartData.length / 7)}
             />
             <YAxis
               tickFormatter={formatShortCurrency}
