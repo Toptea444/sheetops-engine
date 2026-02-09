@@ -408,15 +408,44 @@ const Index = () => {
     return null;
   }, [results]);
 
-  // Get first sheet's data for leaderboard
+  // Merge all Daily & Performance sheets for leaderboard (combines data across sheets in the same cycle)
   const leaderboardSheetData = useMemo(() => {
     if (selectedSheets.length === 0) return null;
-    // Prefer Daily & Performance sheet
-    const dpSheet = selectedSheets.find(s => 
-      s.toUpperCase().includes('DAILY') || s.toUpperCase().includes('PERFORMANCE')
-    );
-    const sheetName = dpSheet || selectedSheets[0];
-    return sheetDataCache[sheetName] || null;
+    
+    // Find all Daily & Performance sheets that have cached data
+    const dpSheets = selectedSheets.filter(s => {
+      const upper = s.toUpperCase();
+      return upper.includes('DAILY') || upper.includes('PERFORMANCE');
+    });
+    
+    if (dpSheets.length === 0) {
+      // Fallback to first sheet
+      return sheetDataCache[selectedSheets[0]] || null;
+    }
+    
+    // If only one D&P sheet, return it directly
+    if (dpSheets.length === 1) {
+      return sheetDataCache[dpSheets[0]] || null;
+    }
+    
+    // Merge multiple D&P sheets: concatenate their rows so the leaderboard parser
+    // finds date blocks from all sheets
+    const allData = dpSheets.map(name => sheetDataCache[name]).filter(Boolean) as SheetData[];
+    if (allData.length === 0) return null;
+    if (allData.length === 1) return allData[0];
+    
+    // Combine rows from all sheets (each sheet's header row becomes a regular row in the merged set)
+    const mergedRows: string[][] = [];
+    for (const sd of allData) {
+      mergedRows.push(sd.headers); // header row contains date info in some formats
+      mergedRows.push(...sd.rows);
+    }
+    
+    return {
+      headers: allData[0].headers,
+      rows: mergedRows,
+      sheetName: 'Combined Daily & Performance',
+    } as SheetData;
   }, [selectedSheets, sheetDataCache]);
 
   const isLoading = sheetsLoading || identityLoading || isFetchingData;
