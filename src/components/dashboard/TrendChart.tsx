@@ -85,7 +85,9 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
 
   const formatShortDate = (date: string) => {
     const parts = date.split(',');
-    return parts[0] || date;
+    const label = parts[0] || date;
+    const match = label.match(/\d+/);
+    return match ? match[0] : label;
   };
 
   if (isLoading) {
@@ -123,9 +125,9 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
           </Button>
         </div>
       </div>
-      <div className="w-full overflow-hidden">
+      <div className="w-full min-w-0 overflow-hidden">
         <ResponsiveContainer width="100%" height={140}>
-          <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 5, right: 15, left: -15, bottom: 0 }}>
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
@@ -139,7 +141,7 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
               tickLine={false}
               axisLine={false}
               tick={{ fill: 'hsl(var(--muted-foreground))' }}
-              interval={chartData.length <= 10 ? 0 : chartData.length <= 20 ? 2 : Math.floor(chartData.length / 7)}
+              interval={chartData.length <= 10 ? 0 : chartData.length <= 20 ? 2 : Math.floor(chartData.length / 5)}
             />
             <YAxis
               tickFormatter={formatShortCurrency}
