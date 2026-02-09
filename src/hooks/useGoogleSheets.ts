@@ -11,6 +11,26 @@ import type {
 
 const SPREADSHEET_ID = '1ikKuPzsD5yDNMLtO11r7OT9hFLffykzW6on0VGXBE20';
 
+/** Extract a user-friendly message from edge function errors */
+function extractUserFriendlyError(err: unknown, fallback: string): string {
+  if (err instanceof Error) {
+    const msg = err.message;
+    // The edge function now returns descriptive messages — pass them through
+    if (msg.includes('Access denied') || msg.includes('not publicly accessible')) return msg;
+    if (msg.includes('could not be found')) return msg;
+    if (msg.includes('rate-limited') || msg.includes('Too many requests')) return msg;
+    if (msg.includes('temporarily unavailable')) return msg;
+    // Generic edge function wrapper error — try to extract the JSON body
+    const jsonMatch = msg.match(/\{.*"error"\s*:\s*"(.+?)"\s*.*\}/);
+    if (jsonMatch?.[1]) return jsonMatch[1];
+    // "Edge function returned 403" style
+    if (msg.includes('403')) return 'Access denied — the spreadsheet is not publicly accessible right now. The sheet owner may have restricted permissions or is updating data. Please try again later.';
+    if (msg.includes('404')) return 'The spreadsheet or sheet could not be found. It may have been moved or deleted.';
+    return msg;
+  }
+  return fallback;
+}
+
 export function useGoogleSheets() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +52,7 @@ export function useGoogleSheets() {
       setSheets(list);
       return list;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch sheets';
+      const message = extractUserFriendlyError(err, 'Failed to fetch sheets');
       setError(message);
       return [] as SheetInfo[];
     } finally {
@@ -60,7 +80,7 @@ export function useGoogleSheets() {
       setSheetData(result);
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch sheet data';
+      const message = extractUserFriendlyError(err, 'Failed to fetch sheet data');
       setError(message);
       return null;
     } finally {
