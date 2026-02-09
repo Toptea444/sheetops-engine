@@ -32,6 +32,31 @@ function isValidSheetName(value: unknown): value is string {
   return value.trim().length > 0 && value.length <= 200;
 }
 
+function safeJsonParse(text: string): any {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function friendlyError(httpCode: number, reason: string, resource: string): string {
+  const upper = reason.toUpperCase();
+  if (httpCode === 403 || upper.includes("PERMISSION_DENIED")) {
+    return `Access denied — the spreadsheet is not publicly accessible right now. The sheet owner may have restricted permissions or is updating data. Please try again later or contact the sheet owner.`;
+  }
+  if (httpCode === 404 || upper.includes("NOT_FOUND")) {
+    return `The ${resource} could not be found. The spreadsheet may have been moved, deleted, or the link may be incorrect.`;
+  }
+  if (httpCode === 429 || upper.includes("RATE_LIMIT") || upper.includes("RESOURCE_EXHAUSTED")) {
+    return `Too many requests — the service is temporarily rate-limited. Please wait a moment and try again.`;
+  }
+  if (httpCode >= 500) {
+    return `Google Sheets is temporarily unavailable (server error). Please try again in a few minutes.`;
+  }
+  return `Unable to load ${resource} (error ${httpCode}). Please try again later.`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -68,7 +93,10 @@ serve(async (req) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Google Sheets API error:", errorText);
-        return jsonResponse({ error: "Failed to fetch spreadsheet metadata" }, response.status);
+        const parsed = safeJsonParse(errorText);
+        const code = response.status;
+        const reason = parsed?.error?.status || parsed?.error?.message || "";
+        return jsonResponse({ error: friendlyError(code, reason, "spreadsheet metadata") }, code);
       }
 
       const data = await response.json();
@@ -95,7 +123,10 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Google Sheets API error:", errorText);
-      return jsonResponse({ error: `Failed to fetch sheet data: ${sheetName}` }, response.status);
+      const parsed = safeJsonParse(errorText);
+      const code = response.status;
+      const reason = parsed?.error?.status || parsed?.error?.message || "";
+      return jsonResponse({ error: friendlyError(code, reason, `sheet "${sheetName}"`) }, code);
     }
 
     const data = await response.json();
