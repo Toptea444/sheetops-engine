@@ -15,13 +15,13 @@ const SPREADSHEET_ID = '1ikKuPzsD5yDNMLtO11r7OT9hFLffykzW6on0VGXBE20';
 function extractUserFriendlyError(err: unknown, fallback: string): string {
   if (err instanceof Error) {
     const msg = err.message;
-    // The edge function now returns descriptive messages — pass them through
+    // Already a friendly message from our edge function
     if (msg.includes('Access denied') || msg.includes('not publicly accessible')) return msg;
     if (msg.includes('could not be found')) return msg;
     if (msg.includes('rate-limited') || msg.includes('Too many requests')) return msg;
     if (msg.includes('temporarily unavailable')) return msg;
     // Generic edge function wrapper error — try to extract the JSON body
-    const jsonMatch = msg.match(/\{.*"error"\s*:\s*"(.+?)"\s*.*\}/);
+    const jsonMatch = msg.match(/"error"\s*:\s*"([^"]+)"/);
     if (jsonMatch?.[1]) return jsonMatch[1];
     // "Edge function returned 403" style
     if (msg.includes('403')) return 'Access denied — the spreadsheet is not publicly accessible right now. The sheet owner may have restricted permissions or is updating data. Please try again later.';
@@ -29,6 +29,27 @@ function extractUserFriendlyError(err: unknown, fallback: string): string {
     return msg;
   }
   return fallback;
+}
+
+/** Try to extract the friendly error from a FunctionsHttpError or invoke result */
+async function extractEdgeFunctionError(fnError: unknown): Promise<string | null> {
+  if (!fnError) return null;
+  // supabase-js FunctionsHttpError has a `context` property (the Response)
+  const ctx = (fnError as any)?.context;
+  if (ctx && typeof ctx.json === 'function') {
+    try {
+      const body = await ctx.json();
+      if (body?.error && typeof body.error === 'string') return body.error;
+    } catch {
+      // response body already consumed or not JSON
+    }
+  }
+  // Fallback: the error message itself may contain the JSON body
+  if (fnError instanceof Error) {
+    const match = fnError.message.match(/"error"\s*:\s*"([^"]+)"/);
+    if (match?.[1]) return match[1];
+  }
+  return null;
 }
 
 export function useGoogleSheets() {
@@ -45,7 +66,10 @@ export function useGoogleSheets() {
         body: { action: 'getSheets', spreadsheetId: SPREADSHEET_ID },
       });
 
-      if (fnError) throw fnError;
+      if (fnError) {
+        const friendly = await extractEdgeFunctionError(fnError);
+        throw new Error(friendly || extractUserFriendlyError(fnError, 'Failed to fetch sheets'));
+      }
       if (data?.error) throw new Error(data.error);
 
       const list: SheetInfo[] = data?.sheets || [];
@@ -68,7 +92,10 @@ export function useGoogleSheets() {
         body: { action: 'getSheetData', spreadsheetId: SPREADSHEET_ID, sheetName },
       });
 
-      if (fnError) throw fnError;
+      if (fnError) {
+        const friendly = await extractEdgeFunctionError(fnError);
+        throw new Error(friendly || extractUserFriendlyError(fnError, 'Failed to fetch sheet data'));
+      }
       if (data?.error) throw new Error(data.error);
 
       const result: SheetData = {
