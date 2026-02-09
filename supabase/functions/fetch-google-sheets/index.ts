@@ -43,7 +43,7 @@ function safeJsonParse(text: string): any {
 function friendlyError(httpCode: number, reason: string, resource: string): string {
   const upper = reason.toUpperCase();
   if (httpCode === 403 || upper.includes("PERMISSION_DENIED")) {
-    return `Access denied — the spreadsheet is not publicly accessible right now. The sheet owner may have restricted permissions or is updating data. Please try again later or contact the sheet owner.`;
+    return `Access denied — the spreadsheet is not publicly accessible right now. The sheet owner may have restricted permissions or is updating data. Please try again later.`;
   }
   if (httpCode === 404 || upper.includes("NOT_FOUND")) {
     return `The ${resource} could not be found. The spreadsheet may have been moved, deleted, or the link may be incorrect.`;
