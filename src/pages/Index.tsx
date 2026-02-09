@@ -16,6 +16,7 @@ import { EarningsProjection } from '@/components/dashboard/EarningsProjection';
 import { LeaderboardPanel } from '@/components/dashboard/LeaderboardPanel';
 import { LeaderboardWelcome } from '@/components/dashboard/LeaderboardWelcome';
 import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
+import { RankingBonusAlert } from '@/components/dashboard/RankingBonusAlert';
 import { WeeklyChallenges } from '@/components/dashboard/WeeklyChallenges';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { WeeklyMVPs } from '@/components/dashboard/WeeklyMVPs';
@@ -112,13 +113,20 @@ const Index = () => {
            (n.includes('WEEKLY') && n.includes('BONUS') && n.includes('GH'));
   };
 
+  // Helper to check if a sheet is the "Ranking Bonus GH" sheet
+  const isRankingBonusGhSheet = (name: string): boolean => {
+    const n = name.toUpperCase().replace(/[^A-Z]/g, '');
+    return n.includes('RANKINGBONUSGH') || 
+           (n.includes('RANKING') && n.includes('BONUS') && n.includes('GH'));
+  };
+
   useEffect(() => {
     const init = async () => {
       const sheetsList = await fetchSheets();
       if (sheetsList.length > 0) {
         // Exclude disabled sheets AND the Weekly Bonus GH sheet
         const enabledSheets = sheetsList.filter(s => 
-          !s.disabled && !isWeeklyBonusGhSheet(s.name)
+          !s.disabled && !isWeeklyBonusGhSheet(s.name) && !isRankingBonusGhSheet(s.name)
         );
         setSelectedSheets(enabledSheets.map(s => s.name));
       }
@@ -462,6 +470,7 @@ const Index = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Weekly Bonus Alert */}
       <WeeklyBonusAlert />
+      <RankingBonusAlert />
       
       <WelcomeModal
         open={showWelcome}
