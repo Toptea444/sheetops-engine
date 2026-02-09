@@ -2,36 +2,30 @@ import { useState, useEffect } from 'react';
 import { Info, X, FileSpreadsheet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const STORAGE_KEY = 'ranking-bonus-alert-dismissed';
-
 export function RankingBonusAlert() {
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
-    const dismissed = sessionStorage.getItem(STORAGE_KEY);
-    if (!dismissed) {
-      const showTimer = setTimeout(() => {
-        setIsVisible(true);
-        setIsAnimating(true);
-      }, 3500);
+    const showTimer = setTimeout(() => {
+      setIsVisible(true);
+      setIsAnimating(true);
+    }, 3500);
 
-      const hideTimer = setTimeout(() => {
-        handleDismiss();
-      }, 15000);
+    const hideTimer = setTimeout(() => {
+      handleDismiss();
+    }, 15000);
 
-      return () => {
-        clearTimeout(showTimer);
-        clearTimeout(hideTimer);
-      };
-    }
+    return () => {
+      clearTimeout(showTimer);
+      clearTimeout(hideTimer);
+    };
   }, []);
 
   const handleDismiss = () => {
     setIsAnimating(false);
     setTimeout(() => {
       setIsVisible(false);
-      sessionStorage.setItem(STORAGE_KEY, 'true');
     }, 300);
   };
 
@@ -40,7 +34,7 @@ export function RankingBonusAlert() {
   return (
     <div
       className={cn(
-        'fixed bottom-16 left-4 z-50 max-w-xs transition-all duration-300 ease-out',
+        'fixed bottom-28 left-4 z-50 max-w-xs transition-all duration-300 ease-out',
         isAnimating
           ? 'opacity-100 translate-x-0'
           : 'opacity-0 -translate-x-4'
@@ -48,7 +42,7 @@ export function RankingBonusAlert() {
     >
       <div className="bg-card border border-border rounded-xl shadow-lg overflow-hidden">
         <div className="relative px-4 py-3">
-          <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-amber-500 via-amber-400/60 to-transparent" />
+          <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary via-primary/60 to-transparent" />
 
           <button
             onClick={handleDismiss}
@@ -59,8 +53,8 @@ export function RankingBonusAlert() {
           </button>
 
           <div className="flex items-start gap-3 pr-6 pl-1">
-            <div className="flex-shrink-0 p-2 rounded-lg bg-amber-500/10">
-              <Info className="h-5 w-5 text-amber-500" />
+            <div className="flex-shrink-0 p-2 rounded-lg bg-primary/10">
+              <Info className="h-5 w-5 text-primary" />
             </div>
             <div className="space-y-2">
               <p className="font-medium text-sm text-foreground">
