@@ -1,11 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   Area,
   AreaChart,
 } from 'recharts';
@@ -27,8 +26,6 @@ function normalizeSheetName(value?: string): string {
 
 function isWeeklyBonusGhSheet(sheetName?: string): boolean {
   const n = normalizeSheetName(sheetName);
-  // Be tolerant of naming variations: "WEEKLY BONUS GH", "Weekly Bonus (GH)", "WEEKLY B/GH", "WEEKLYBONUSGH"
-  // Also match just "WEEKLYBONUSGH" or contains "WEEKLYBONUS" with "GH"
   return n.includes('WEEKLYBONUSGH') || n.includes('WEEKLYBGH') || 
          (n.includes('WEEKLY') && n.includes('BONUS') && n.includes('GH'));
 }
@@ -41,15 +38,31 @@ function formatShortCurrency(value: number): string {
 
 export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [chartWidth, setChartWidth] = useState(0);
+
+  // Measure container width precisely, avoiding ResponsiveContainer issues
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const w = el.getBoundingClientRect().width;
+      if (w > 0) setChartWidth(Math.floor(w));
+    };
+
+    measure();
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const chartData = useMemo(() => {
     const dayMap = new Map<number, { date: string; fullDate: number; value: number }>();
 
     results.forEach((result) => {
-      // Skip percentage-based sheets in chart
       if (result.valueType === 'percent') return;
-      
-      // Skip "Weekly Bonus GH" sheet from earnings trend (always omit)
       if (isWeeklyBonusGhSheet(result.sheetName)) return;
 
       result.dailyBreakdown?.forEach((day) => {
@@ -125,16 +138,22 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
           </Button>
         </div>
       </div>
-      <div className="w-full min-w-0 overflow-hidden" style={{ maxWidth: '100%' }}>
-        <ResponsiveContainer width="99%" height={140}>
-          <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+      {/* Use a measured container + fixed-size AreaChart instead of ResponsiveContainer */}
+      <div ref={containerRef} className="w-full overflow-hidden">
+        {chartWidth > 0 && (
+          <AreaChart
+            width={chartWidth}
+            height={140}
+            data={chartData}
+            margin={{ top: 5, right: 5, left: 0, bottom: 0 }}
+          >
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
                 <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
               </linearGradient>
             </defs>
-             <XAxis
+            <XAxis
               dataKey="date"
               tickFormatter={formatShortDate}
               fontSize={10}
@@ -178,7 +197,7 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
               activeDot={{ r: 3, fill: 'hsl(var(--primary))' }}
             />
           </AreaChart>
-        </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

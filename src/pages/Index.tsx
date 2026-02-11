@@ -21,6 +21,7 @@ import { WeeklyChallenges } from '@/components/dashboard/WeeklyChallenges';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { WeeklyMVPs } from '@/components/dashboard/WeeklyMVPs';
 import { AvatarPicker } from '@/components/dashboard/AvatarPicker';
+import { CacheIndicator } from '@/components/dashboard/CacheIndicator';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
@@ -72,6 +73,7 @@ const Index = () => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
+  const [isFromCache, setIsFromCache] = useState(false);
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
@@ -185,6 +187,7 @@ const Index = () => {
 
     setDataError(null);
     setIsFetchingData(true);
+    setIsFromCache(false);
     const newResults: BonusResult[] = [];
     const newCache: Record<string, SheetData> = { ...sheetDataCache };
     let foundInAnySheet = false;
@@ -227,6 +230,7 @@ const Index = () => {
       const cachedResults = await loadWorkerResults(userId, currentCycleKey);
       if (cachedResults.length > 0) {
         setResults(cachedResults);
+        setIsFromCache(true);
         setIsFetchingData(false);
         // Also load cached sheet snapshots for leaderboard etc.
         const cachedSheets = await loadAllSheetSnapshots(currentCycleKey);
@@ -268,6 +272,7 @@ const Index = () => {
     const loadCachedCycleData = async () => {
       const cachedResults = await loadWorkerResults(userId, cycleKey);
       if (cachedResults.length > 0) {
+        setIsFromCache(true);
         // Merge cached results with any live results (live takes priority)
         setResults(prev => {
           const liveSheets = new Set(prev.map(r => r.sheetName));
@@ -590,12 +595,15 @@ const Index = () => {
 
         {/* Controls */}
         <div className="flex items-center justify-between gap-2 mb-4">
-          <CycleSelector
-            cycles={cycleOptions}
-            selectedCycle={selectedCycle}
-            onCycleChange={setSelectedCycle}
-            isLoading={isLoading}
-          />
+          <div className="flex items-center gap-2">
+            <CycleSelector
+              cycles={cycleOptions}
+              selectedCycle={selectedCycle}
+              onCycleChange={setSelectedCycle}
+              isLoading={isLoading}
+            />
+            <CacheIndicator isFromCache={isFromCache} />
+          </div>
           <SheetSelector
             sheets={sheets}
             selectedSheets={selectedSheets}
