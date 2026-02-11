@@ -27,6 +27,7 @@ import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
 import { useTheme } from '@/hooks/useTheme';
 import { useNotifications, generateDataHash } from '@/hooks/useNotifications';
 import { useSessionLock } from '@/hooks/useSessionLock';
+import { useCycleCache } from '@/hooks/useCycleCache';
 import { getCycleOptions, isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
@@ -97,6 +98,14 @@ const Index = () => {
     stopHeartbeat,
     bindDeviceToWorker,
   } = useSessionLock();
+
+  // Cycle cache for persisting data across sheet disabling
+  const {
+    saveWorkerResult,
+    saveSheetSnapshot,
+    loadWorkerResults,
+    loadAllSheetSnapshots,
+  } = useCycleCache();
 
   // Streaks & Achievements
   const { streakData, achievements, totalUnlocked } = useStreaksAndAchievements(
@@ -182,12 +191,17 @@ const Index = () => {
 
     const allTimeStart = new Date(2020, 0, 1);
     const endDate = new Date();
+    const currentCycleKey = getCycleKey(selectedCycle);
 
     for (const sheetName of selectedSheets) {
       let data = forceRefetch ? null : sheetDataCache[sheetName];
       if (!data) {
         data = await fetchSheetData(sheetName);
-        if (data) newCache[sheetName] = data;
+        if (data) {
+          newCache[sheetName] = data;
+          // Cache the sheet snapshot for this cycle
+          saveSheetSnapshot(sheetName, selectedCycle, data);
+        }
       }
       
       if (data) {
@@ -198,13 +212,29 @@ const Index = () => {
               setUserName(worker.userName);
             }
             const result = calculateBonus(worker, allTimeStart, endDate);
-            // Add sheetName to the result
-            newResults.push({ ...result, sheetName: sheetName });
+            const resultWithSheet = { ...result, sheetName: sheetName };
+            newResults.push(resultWithSheet);
+            // Cache the worker result for this cycle
+            saveWorkerResult(userId, sheetName, selectedCycle, resultWithSheet);
           }
       }
     }
 
     setSheetDataCache(newCache);
+
+    // If no live data found, try loading from cache (sheet may have been disabled)
+    if (!foundInAnySheet && userId) {
+      const cachedResults = await loadWorkerResults(userId, currentCycleKey);
+      if (cachedResults.length > 0) {
+        setResults(cachedResults);
+        setIsFetchingData(false);
+        // Also load cached sheet snapshots for leaderboard etc.
+        const cachedSheets = await loadAllSheetSnapshots(currentCycleKey);
+        setSheetDataCache(prev => ({ ...prev, ...cachedSheets }));
+        return;
+      }
+    }
+
     setResults(newResults);
     setIsFetchingData(false);
 
@@ -217,13 +247,50 @@ const Index = () => {
     if (!foundInAnySheet && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed]);
+  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots]);
 
   useEffect(() => {
     if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
       fetchUserData();
     }
   }, [userId, selectedSheets, isInitializing, identityConfirmed]);
+
+  // When switching cycles, try to load cached data for past cycles
+  useEffect(() => {
+    if (!userId || !identityConfirmed || isInitializing) return;
+
+    const cycleKey = getCycleKey(selectedCycle);
+    const currentCycleKey = getCycleKey(getCycleOptions(0)[0]);
+
+    // Only use cache fallback for past cycles
+    if (cycleKey === currentCycleKey) return;
+
+    const loadCachedCycleData = async () => {
+      const cachedResults = await loadWorkerResults(userId, cycleKey);
+      if (cachedResults.length > 0) {
+        // Merge cached results with any live results (live takes priority)
+        setResults(prev => {
+          const liveSheets = new Set(prev.map(r => r.sheetName));
+          const cachedOnly = cachedResults.filter(r => !liveSheets.has(r.sheetName));
+          return cachedOnly.length > 0 ? [...prev, ...cachedOnly] : prev;
+        });
+      }
+
+      // Load cached sheet snapshots for leaderboard
+      const cachedSheets = await loadAllSheetSnapshots(cycleKey);
+      if (Object.keys(cachedSheets).length > 0) {
+        setSheetDataCache(prev => {
+          const merged = { ...prev };
+          for (const [name, data] of Object.entries(cachedSheets)) {
+            if (!merged[name]) merged[name] = data;
+          }
+          return merged;
+        });
+      }
+    };
+
+    loadCachedCycleData();
+  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots]);
 
   // Validate ID exists in sheets (used by WelcomeModal before PIN step)
   const handleIdValidation = async (newUserId: string): Promise<boolean> => {

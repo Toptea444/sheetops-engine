@@ -35,6 +35,57 @@ export type Database = {
         }
         Relationships: []
       }
+      cycle_sheet_cache: {
+        Row: {
+          cycle_key: string
+          id: string
+          sheet_data: Json
+          sheet_name: string
+          updated_at: string
+        }
+        Insert: {
+          cycle_key: string
+          id?: string
+          sheet_data: Json
+          sheet_name: string
+          updated_at?: string
+        }
+        Update: {
+          cycle_key?: string
+          id?: string
+          sheet_data?: Json
+          sheet_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cycle_worker_cache: {
+        Row: {
+          cycle_key: string
+          id: string
+          result_data: Json
+          sheet_name: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          cycle_key: string
+          id?: string
+          result_data: Json
+          sheet_name: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          cycle_key?: string
+          id?: string
+          result_data?: Json
+          sheet_name?: string
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: []
+      }
       worker_pins: {
         Row: {
           created_at: string
