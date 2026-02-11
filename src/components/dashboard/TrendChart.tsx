@@ -48,7 +48,8 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
 
     const measure = () => {
       const w = el.getBoundingClientRect().width;
-      if (w > 0) setChartWidth(Math.floor(w));
+      // Subtract a small buffer to prevent sub-pixel overflow
+      if (w > 0) setChartWidth(Math.floor(w) - 2);
     };
 
     measure();
@@ -116,7 +117,7 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 min-w-0 overflow-hidden">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">Earnings Trend</p>
         <div className="flex gap-0.5">
@@ -139,7 +140,7 @@ export function TrendChart({ results, cycle, isLoading }: TrendChartProps) {
         </div>
       </div>
       {/* Use a measured container + fixed-size AreaChart instead of ResponsiveContainer */}
-      <div ref={containerRef} className="w-full overflow-hidden">
+      <div ref={containerRef} className="w-full min-w-0 overflow-hidden">
         {chartWidth > 0 && (
           <AreaChart
             width={chartWidth}
