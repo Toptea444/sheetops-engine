@@ -6,7 +6,7 @@ import { CycleSelector } from '@/components/dashboard/CycleSelector';
 import { CycleSummaryCard } from '@/components/dashboard/CycleSummaryCard';
 import { SheetBreakdownCards } from '@/components/dashboard/SheetBreakdownCards';
 import { DailyEarningsTable } from '@/components/dashboard/DailyEarningsTable';
-import { TrendChart } from '@/components/dashboard/TrendChart';
+import { WeeklyBreakdown } from '@/components/dashboard/WeeklyBreakdown';
 import { GoalsPanel } from '@/components/dashboard/GoalsPanel';
 import { SheetSelector } from '@/components/dashboard/SheetSelector';
 import { ErrorAlert } from '@/components/dashboard/ErrorAlert';
@@ -626,9 +626,9 @@ const Index = () => {
               isLoading={isLoading}
             />
 
-            {/* Chart */}
+            {/* Weekly Breakdown */}
             <div className="p-4 border rounded-lg bg-card">
-              <TrendChart 
+              <WeeklyBreakdown 
                 results={results} 
                 cycle={selectedCycle}
                 isLoading={isLoading} 
