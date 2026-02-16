@@ -461,6 +461,12 @@ const Index = () => {
     results.forEach((result) => {
       if (result.valueType === 'percent') return;
 
+      // Exclude sheets not currently selected
+      if (result.sheetName && !selectedSheets.includes(result.sheetName)) return;
+
+      // Exclude Weekly Bonus GH and Ranking Bonus GH from totals
+      if (result.sheetName && (isWeeklyBonusGhSheet(result.sheetName) || isRankingBonusGhSheet(result.sheetName))) return;
+
       result.dailyBreakdown?.forEach((day) => {
         if (day.fullDate === undefined) return;
         const dayDate = new Date(day.fullDate);
@@ -472,7 +478,7 @@ const Index = () => {
     });
 
     return { totalEarnings, daysActive: activeDays.size };
-  }, [results, selectedCycle]);
+  }, [results, selectedCycle, selectedSheets]);
 
   // Get current user's stage from results
   const userStage = useMemo(() => {
