@@ -16,7 +16,7 @@ import { EarningsProjection } from '@/components/dashboard/EarningsProjection';
 import { LeaderboardPanel } from '@/components/dashboard/LeaderboardPanel';
 import { LeaderboardWelcome } from '@/components/dashboard/LeaderboardWelcome';
 import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
-/*import { RankingBonusAlert } from '@/components/dashboard/RankingBonusAlert';*/
+import { RankingBonusAlert } from '@/components/dashboard/RankingBonusAlert';
 import { WeeklyChallenges } from '@/components/dashboard/WeeklyChallenges';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { WeeklyMVPs } from '@/components/dashboard/WeeklyMVPs';
