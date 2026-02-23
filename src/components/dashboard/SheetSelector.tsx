@@ -59,7 +59,7 @@ export function SheetSelector({
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent align="end" className="w-64 max-h-[60vh] overflow-y-auto">
         <DropdownMenuLabel>Select Data Sources</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {sheets.map((sheet) => {
