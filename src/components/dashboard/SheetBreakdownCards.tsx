@@ -19,8 +19,8 @@ export function SheetBreakdownCards({
   isLoading,
 }: SheetBreakdownCardsProps) {
   const sheetBreakdown = useMemo(() => {
-    return sheetNames.map((name, index) => {
-      const result = results[index];
+    return sheetNames.map((name) => {
+      const result = results.find(r => r.sheetName === name);
       const isPercent = result?.valueType === 'percent';
       
       let total = 0;
