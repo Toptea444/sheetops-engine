@@ -115,14 +115,33 @@ const Index = () => {
 
   const isIdentityLocked = !!userId && !identityConfirmed;
 
-  // Helper to check if a sheet is the "Weekly Bonus GH" sheet
+  // Helper to check if a sheet should be unchecked by default
+  const isDefaultUncheckedSheet = (name: string): boolean => {
+    const n = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    // "WEEKLY BONUS GH" (the original generic one) — always uncheck
+    const isGenericWeeklyBonusGh = (n.includes('WEEKLYBONUSGH') || 
+           (n.includes('WEEKLY') && n.includes('BONUS') && n.includes('GH')));
+    // "RANKING BONUS GH" (generic, no date suffix) — always uncheck
+    const isGenericRankingBonusGh = (n.includes('RANKINGBONUSGH') || 
+           (n.includes('RANKING') && n.includes('BONUS') && n.includes('GH')));
+    // "WEEKLY BONUS FROM ..." sheets — uncheck
+    const isWeeklyBonusFrom = n.includes('WEEKLY') && n.includes('BONUS') && n.includes('FROM');
+    
+    // "RANKING BONUS GH <date>" sheets (with date suffix) should be CHECKED, so exclude them
+    // A date suffix is detected by having digits after the ranking bonus pattern
+    const hasDateSuffix = /RANKINGBONUS.*GH.*\d/.test(n) || /RANKING.*BONUS.*GH.*\d/.test(n);
+    if (hasDateSuffix) return false; // Keep checked — it's a specific dated ranking bonus
+    
+    return isGenericWeeklyBonusGh || isGenericRankingBonusGh || isWeeklyBonusFrom;
+  };
+
+  // Keep these for totals exclusion (always exclude bonus sheets from cumulative totals)
   const isWeeklyBonusGhSheet = (name: string): boolean => {
     const n = name.toUpperCase().replace(/[^A-Z]/g, '');
     return n.includes('WEEKLYBONUSGH') || 
            (n.includes('WEEKLY') && n.includes('BONUS') && n.includes('GH'));
   };
 
-  // Helper to check if a sheet is the "Ranking Bonus GH" sheet
   const isRankingBonusGhSheet = (name: string): boolean => {
     const n = name.toUpperCase().replace(/[^A-Z]/g, '');
     return n.includes('RANKINGBONUSGH') || 
@@ -135,7 +154,7 @@ const Index = () => {
       if (sheetsList.length > 0) {
         // Exclude disabled sheets AND the Weekly Bonus GH sheet
         const enabledSheets = sheetsList.filter(s => 
-          !s.disabled && !isWeeklyBonusGhSheet(s.name) && !isRankingBonusGhSheet(s.name)
+          !s.disabled && !isDefaultUncheckedSheet(s.name)
         );
         setSelectedSheets(enabledSheets.map(s => s.name));
       }
