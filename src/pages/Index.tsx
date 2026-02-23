@@ -143,9 +143,13 @@ const Index = () => {
   };
 
   const isRankingBonusGhSheet = (name: string): boolean => {
-    const n = name.toUpperCase().replace(/[^A-Z]/g, '');
-    return n.includes('RANKINGBONUSGH') || 
+    const n = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const isRanking = n.includes('RANKINGBONUSGH') || 
            (n.includes('RANKING') && n.includes('BONUS') && n.includes('GH'));
+    if (!isRanking) return false;
+    // Dated ranking bonus sheets (with digits after GH) should NOT be excluded
+    const hasDateSuffix = /RANKINGBONUS.*GH.*\d/.test(n) || /RANKING.*BONUS.*GH.*\d/.test(n);
+    return !hasDateSuffix;
   };
 
   useEffect(() => {
