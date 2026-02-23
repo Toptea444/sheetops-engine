@@ -49,12 +49,10 @@ export function DailyEarningsTable({
     }
   }, [sheetNames, activeTab]);
 
-  // Get data for the active sheet only
+  // Get data for the active sheet only — match by sheetName, not index
   const sheetData = useMemo(() => {
-    const activeIndex = sheetNames.indexOf(activeTab);
-    if (activeIndex === -1 || !results[activeIndex]) return [];
-
-    const result = results[activeIndex];
+    const result = results.find(r => r.sheetName === activeTab);
+    if (!result) return [];
     const days: DayData[] = [];
 
     result.dailyBreakdown?.forEach((day) => {
@@ -83,9 +81,9 @@ export function DailyEarningsTable({
 
   // Get value type for the active sheet
   const isPercent = useMemo(() => {
-    const activeIndex = sheetNames.indexOf(activeTab);
-    return results[activeIndex]?.valueType === 'percent';
-  }, [results, sheetNames, activeTab]);
+    const result = results.find(r => r.sheetName === activeTab);
+    return result?.valueType === 'percent';
+  }, [results, activeTab]);
 
   // Stats for this sheet
   const stats = useMemo(() => {
