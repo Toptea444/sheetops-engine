@@ -1,0 +1,236 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const ADMIN_SECRET = Deno.env.get('ADMIN_PIN_RESET_SECRET') || 'default-admin-secret-change-me';
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { admin_secret, action, params } = await req.json();
+
+    if (!admin_secret || admin_secret !== ADMIN_SECRET) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid admin secret' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    let result: unknown;
+
+    switch (action) {
+      case 'get_workers': {
+        // Get all workers with PIN status and session info
+        const { data: pins } = await supabase.from('worker_pins').select('worker_id, created_at');
+        const { data: sessions } = await supabase.from('worker_sessions').select('worker_id, last_heartbeat, device_fingerprint, created_at');
+        const { data: identities } = await supabase.from('confirmed_identities').select('worker_id, confirmed_at, device_fingerprint');
+
+        const workerMap = new Map<string, any>();
+
+        pins?.forEach(p => {
+          workerMap.set(p.worker_id, {
+            worker_id: p.worker_id,
+            has_pin: true,
+            pin_created: p.created_at,
+            sessions: [],
+            identity_confirmed: false,
+          });
+        });
+
+        sessions?.forEach(s => {
+          const existing = workerMap.get(s.worker_id) || {
+            worker_id: s.worker_id,
+            has_pin: false,
+            pin_created: null,
+            sessions: [],
+            identity_confirmed: false,
+          };
+          existing.sessions.push({
+            last_heartbeat: s.last_heartbeat,
+            device: s.device_fingerprint?.substring(0, 8) + '...',
+            created_at: s.created_at,
+          });
+          workerMap.set(s.worker_id, existing);
+        });
+
+        identities?.forEach(i => {
+          const existing = workerMap.get(i.worker_id);
+          if (existing) {
+            existing.identity_confirmed = true;
+            existing.identity_confirmed_at = i.confirmed_at;
+          }
+        });
+
+        result = {
+          workers: Array.from(workerMap.values()).sort((a, b) => a.worker_id.localeCompare(b.worker_id)),
+          total_workers: workerMap.size,
+          total_with_pins: pins?.length || 0,
+          total_confirmed: identities?.length || 0,
+          total_active_sessions: sessions?.filter(s => {
+            const hb = new Date(s.last_heartbeat);
+            return (Date.now() - hb.getTime()) < 15 * 60 * 1000;
+          }).length || 0,
+        };
+        break;
+      }
+
+      case 'get_cache_stats': {
+        const { data: sheetCache } = await supabase.from('cycle_sheet_cache').select('id, sheet_name, cycle_key, updated_at');
+        const { data: workerCache } = await supabase.from('cycle_worker_cache').select('id, worker_id, sheet_name, cycle_key, updated_at');
+
+        const cycleGroups = new Map<string, { sheets: number; workers: number; lastUpdated: string }>();
+
+        sheetCache?.forEach(s => {
+          const group = cycleGroups.get(s.cycle_key) || { sheets: 0, workers: 0, lastUpdated: s.updated_at };
+          group.sheets++;
+          if (s.updated_at > group.lastUpdated) group.lastUpdated = s.updated_at;
+          cycleGroups.set(s.cycle_key, group);
+        });
+
+        workerCache?.forEach(w => {
+          const group = cycleGroups.get(w.cycle_key) || { sheets: 0, workers: 0, lastUpdated: w.updated_at };
+          group.workers++;
+          if (w.updated_at > group.lastUpdated) group.lastUpdated = w.updated_at;
+          cycleGroups.set(w.cycle_key, group);
+        });
+
+        result = {
+          cycles: Array.from(cycleGroups.entries()).map(([key, val]) => ({
+            cycle_key: key,
+            ...val,
+          })).sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated)),
+          total_sheet_cache: sheetCache?.length || 0,
+          total_worker_cache: workerCache?.length || 0,
+        };
+        break;
+      }
+
+      case 'clear_cache': {
+        const cycleKey = params?.cycle_key;
+        if (cycleKey) {
+          await supabase.from('cycle_sheet_cache').delete().eq('cycle_key', cycleKey);
+          await supabase.from('cycle_worker_cache').delete().eq('cycle_key', cycleKey);
+          result = { cleared: true, cycle_key: cycleKey };
+        } else {
+          result = { cleared: false, error: 'No cycle_key provided' };
+        }
+        break;
+      }
+
+      case 'get_earnings_overview': {
+        // Get all worker cache data for earnings analytics
+        const { data: workerCache } = await supabase
+          .from('cycle_worker_cache')
+          .select('worker_id, sheet_name, cycle_key, result_data, updated_at');
+
+        const earningsByWorker = new Map<string, number>();
+        const earningsBySheet = new Map<string, number>();
+        const earningsByCycle = new Map<string, number>();
+
+        workerCache?.forEach(w => {
+          const data = w.result_data as any;
+          const total = data?.totalBonus || data?.total || 0;
+
+          earningsByWorker.set(w.worker_id, (earningsByWorker.get(w.worker_id) || 0) + total);
+          earningsBySheet.set(w.sheet_name, (earningsBySheet.get(w.sheet_name) || 0) + total);
+          earningsByCycle.set(w.cycle_key, (earningsByCycle.get(w.cycle_key) || 0) + total);
+        });
+
+        const topEarners = Array.from(earningsByWorker.entries())
+          .map(([id, total]) => ({ worker_id: id, total }))
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 20);
+
+        result = {
+          top_earners: topEarners,
+          by_sheet: Array.from(earningsBySheet.entries()).map(([name, total]) => ({ sheet: name, total })),
+          by_cycle: Array.from(earningsByCycle.entries()).map(([key, total]) => ({ cycle: key, total })),
+          total_records: workerCache?.length || 0,
+        };
+        break;
+      }
+
+      case 'reset_pin': {
+        const workerId = params?.worker_id;
+        if (!workerId) {
+          result = { success: false, error: 'No worker_id provided' };
+          break;
+        }
+
+        const { data: existingPin } = await supabase
+          .from('worker_pins')
+          .select('id')
+          .eq('worker_id', workerId.toUpperCase())
+          .maybeSingle();
+
+        if (!existingPin) {
+          result = { success: false, error: 'No PIN found for this Worker ID' };
+          break;
+        }
+
+        const { error: deleteError } = await supabase
+          .from('worker_pins')
+          .delete()
+          .eq('worker_id', workerId.toUpperCase());
+
+        if (deleteError) {
+          result = { success: false, error: 'Failed to reset PIN' };
+        } else {
+          result = { success: true, message: `PIN reset for ${workerId.toUpperCase()}` };
+        }
+        break;
+      }
+
+      case 'get_activity': {
+        const { data: recentPins } = await supabase
+          .from('worker_pins')
+          .select('worker_id, created_at')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        const { data: recentIdentities } = await supabase
+          .from('confirmed_identities')
+          .select('worker_id, confirmed_at, device_fingerprint')
+          .order('confirmed_at', { ascending: false })
+          .limit(20);
+
+        const { data: recentSessions } = await supabase
+          .from('worker_sessions')
+          .select('worker_id, created_at, last_heartbeat, device_fingerprint')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        result = {
+          recent_pins: recentPins || [],
+          recent_identities: recentIdentities || [],
+          recent_sessions: recentSessions || [],
+        };
+        break;
+      }
+
+      default:
+        result = { error: 'Unknown action' };
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, data: result }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Admin data error:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: 'An unexpected error occurred' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
