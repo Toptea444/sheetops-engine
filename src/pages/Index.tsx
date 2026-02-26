@@ -640,162 +640,179 @@ const Index = () => {
           onDisableNotifications={disableNotifications}
         />
 
-        <main className="flex-1 container mx-auto px-4 py-4 max-w-4xl">
-        {/* Error */}
-        {(error || dataError) && (
-          <div className="mb-4">
-            <ErrorAlert 
-              message={error || dataError || ''} 
-              onDismiss={() => setDataError(null)} 
-            />
-          </div>
-        )}
-
-        {/* Controls */}
-        <div className="flex items-center justify-between gap-2 mb-4">
-          <CycleSelector
-            cycles={cycleOptions}
-            selectedCycle={selectedCycle}
-            onCycleChange={setSelectedCycle}
-            isLoading={isLoading}
-          />
-          <SheetSelector
-            sheets={sheets}
-            selectedSheets={selectedSheets}
-            onSelectionChange={handleSheetSelectionChange}
-            isLoading={isLoading}
-          />
-        </div>
-
-        {/* Main content */}
-        <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-          {/* Left column */}
-          <div className="space-y-4">
-            {/* Summary */}
-            <div className="p-4 border rounded-lg bg-card">
-              <CycleSummaryCard
-                cycle={selectedCycle}
-                totalEarnings={cycleStats.totalEarnings}
-                daysActive={cycleStats.daysActive}
-                isLoading={isLoading}
-              />
-            </div>
-
-            {/* Breakdown */}
-            <SheetBreakdownCards
-              results={results}
-              sheetNames={selectedSheets}
-              cycle={selectedCycle}
-              isLoading={isLoading}
-            />
-
-            {/* Weekly Breakdown */}
-            <div className="p-4 border rounded-lg bg-card">
-              <WeeklyBreakdown 
-                results={results} 
-                cycle={selectedCycle}
-                isLoading={isLoading} 
-              />
-            </div>
-
-            {/* Table */}
-            <div className="p-4 border rounded-lg bg-card">
-              <DailyEarningsTable
-                results={results}
-                sheetNames={selectedSheets}
-                cycle={selectedCycle}
-                isLoading={isLoading}
-              />
-            </div>
-
-            {/* Leaderboard */}
-            <div className="p-4 border rounded-lg bg-card">
-              <LeaderboardPanel
-                sheetData={leaderboardSheetData}
-                currentUserId={userId}
-                currentUserName={userName}
-                userStage={userStage}
-                cycle={selectedCycle}
-              />
-            </div>
-          </div>
-
-          {/* Right column - Goals, Challenges, Streaks, Activity */}
-          <div className="lg:sticky lg:top-20 lg:h-fit space-y-4">
-            {/* Avatar Picker - shown at top */}
-            {userId && identityConfirmed && (
-              <div 
-                className="flex items-center gap-3 p-3 border rounded-lg bg-card cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!avatarPickerOpen) setAvatarPickerOpen(true);
-                }}
-              >
-                <AvatarPicker
-                  key={avatarKey}
-                  userId={userId}
-                  open={avatarPickerOpen}
-                  onOpenChange={setAvatarPickerOpen}
-                  onAvatarChange={() => setAvatarKey(k => k + 1)}
+        <main className="flex-1 w-full overflow-x-hidden px-4 sm:px-6 py-6">
+          <div className="w-full max-w-7xl mx-auto">
+            {/* Error */}
+            {(error || dataError) && (
+              <div className="mb-6">
+                <ErrorAlert 
+                  message={error || dataError || ''} 
+                  onDismiss={() => setDataError(null)} 
                 />
-                <div className="flex-1 min-w-0 pointer-events-none">
-                  <p className="text-sm font-medium truncate">{userName || userId}</p>
-                  <p className="text-xs text-muted-foreground">Click to customize</p>
+              </div>
+            )}
+
+            {/* Top Controls Section */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-8">
+              <div className="flex-1 min-w-0">
+                <CycleSelector
+                  cycles={cycleOptions}
+                  selectedCycle={selectedCycle}
+                  onCycleChange={setSelectedCycle}
+                  isLoading={isLoading}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <SheetSelector
+                  sheets={sheets}
+                  selectedSheets={selectedSheets}
+                  onSelectionChange={handleSheetSelectionChange}
+                  isLoading={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* Hero Summary Section */}
+            <div className="mb-8">
+              <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6 sm:p-8">
+                <CycleSummaryCard
+                  cycle={selectedCycle}
+                  totalEarnings={cycleStats.totalEarnings}
+                  daysActive={cycleStats.daysActive}
+                  isLoading={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* User Profile Card - Top Right */}
+            {userId && identityConfirmed && (
+              <div className="mb-8">
+                <div 
+                  className="flex items-center gap-4 p-4 sm:p-6 border border-primary/20 rounded-2xl bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!avatarPickerOpen) setAvatarPickerOpen(true);
+                  }}
+                >
+                  <div className="flex-shrink-0">
+                    <AvatarPicker
+                      key={avatarKey}
+                      userId={userId}
+                      open={avatarPickerOpen}
+                      onOpenChange={setAvatarPickerOpen}
+                      onAvatarChange={() => setAvatarKey(k => k + 1)}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-lg font-semibold truncate">{userName || userId}</p>
+                    <p className="text-sm text-muted-foreground">Click to customize your avatar</p>
+                  </div>
                 </div>
               </div>
             )}
 
-            <div className="p-4 border rounded-lg bg-card">
-              <GoalsPanel
-                results={results}
-                cycle={selectedCycle}
-                cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
-                onUpdateCycleTarget={setCycleTarget}
-              />
+            {/* Main Grid Layout - Responsive */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {/* Sheet Breakdown Cards */}
+              <div className="md:col-span-2 lg:col-span-3">
+                <SheetBreakdownCards
+                  results={results}
+                  sheetNames={selectedSheets}
+                  cycle={selectedCycle}
+                  isLoading={isLoading}
+                />
+              </div>
+
+              {/* Goals Panel */}
+              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+                <GoalsPanel
+                  results={results}
+                  cycle={selectedCycle}
+                  cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
+                  onUpdateCycleTarget={setCycleTarget}
+                />
+              </div>
+
+              {/* Streaks Panel */}
+              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+                <StreaksPanel
+                  streakData={streakData}
+                  achievements={achievements}
+                  totalUnlocked={totalUnlocked}
+                  isLoading={isLoading}
+                />
+              </div>
+
+              {/* Earnings Projection */}
+              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+                <EarningsProjection
+                  results={results}
+                  cycle={selectedCycle}
+                  cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
+                  isLoading={isLoading}
+                />
+              </div>
+
+              {/* Weekly Challenges */}
+              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+                <WeeklyChallenges
+                  results={results}
+                  cycle={selectedCycle}
+                />
+              </div>
+
+              {/* Weekly MVPs */}
+              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+                <WeeklyMVPs
+                  sheetData={leaderboardSheetData}
+                  currentUserId={userId}
+                  cycle={selectedCycle}
+                />
+              </div>
+
+              {/* Activity Feed */}
+              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+                <ActivityFeed
+                  sheetData={leaderboardSheetData}
+                  currentUserId={userId}
+                  cycle={selectedCycle}
+                />
+              </div>
             </div>
 
-            <div className="p-4 border rounded-lg bg-card">
-              <WeeklyChallenges
-                results={results}
-                cycle={selectedCycle}
-              />
-            </div>
+            {/* Large Cards - Full Width */}
+            <div className="grid grid-cols-1 gap-6 mb-8">
+              {/* Weekly Breakdown */}
+              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+                <WeeklyBreakdown 
+                  results={results} 
+                  cycle={selectedCycle}
+                  isLoading={isLoading} 
+                />
+              </div>
 
-            <div className="p-4 border rounded-lg bg-card">
-              <StreaksPanel
-                streakData={streakData}
-                achievements={achievements}
-                totalUnlocked={totalUnlocked}
-                isLoading={isLoading}
-              />
-            </div>
+              {/* Daily Earnings Table */}
+              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto">
+                <DailyEarningsTable
+                  results={results}
+                  sheetNames={selectedSheets}
+                  cycle={selectedCycle}
+                  isLoading={isLoading}
+                />
+              </div>
 
-            <div className="p-4 border rounded-lg bg-card">
-              <WeeklyMVPs
-                sheetData={leaderboardSheetData}
-                currentUserId={userId}
-                cycle={selectedCycle}
-              />
-            </div>
-
-            <div className="p-4 border rounded-lg bg-card">
-              <ActivityFeed
-                sheetData={leaderboardSheetData}
-                currentUserId={userId}
-                cycle={selectedCycle}
-              />
-            </div>
-
-            <div className="p-4 border rounded-lg bg-card">
-              <EarningsProjection
-                results={results}
-                cycle={selectedCycle}
-                cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
-                isLoading={isLoading}
-              />
+              {/* Leaderboard */}
+              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+                <LeaderboardPanel
+                  sheetData={leaderboardSheetData}
+                  currentUserId={userId}
+                  currentUserName={userName}
+                  userStage={userStage}
+                  cycle={selectedCycle}
+                />
+              </div>
             </div>
           </div>
-        </div>
         </main>
 
         <footer className="border-t py-3 text-center text-xs text-muted-foreground mt-auto">
