@@ -104,7 +104,7 @@ export function DailyEarningsTable({
     return formatCurrency(value);
   };
 
-  const displayedDays = showAll ? sheetData : sheetData.slice(0, 8);
+  const displayedDays = showAll ? sheetData : sheetData.slice(0, 6);
 
   const tabLabel = (name: string) => (name.split(' ')[0] || name).toUpperCase();
 
@@ -242,16 +242,14 @@ export function DailyEarningsTable({
                       </Table>
                     </div>
                     
-                    {sheetData.length > 8 && (
-                      <div className="flex justify-center pt-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
+                    {sheetData.length > 6 && (
+                      <div className="flex justify-center pt-3">
+                        <button 
                           onClick={() => setShowAll(!showAll)}
-                          className="h-7 text-xs"
+                          className="text-xs text-primary underline hover:no-underline transition-all"
                         >
-                          {showAll ? 'Show less' : `Show all ${sheetData.length}`}
-                        </Button>
+                          {showAll ? 'View less' : `View more`}
+                        </button>
                       </div>
                     )}
                   </>
