@@ -218,6 +218,121 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'get_site_settings': {
+        // Get current site settings or create default
+        const { data: settings } = await supabase
+          .from('admin_settings')
+          .select('*')
+          .maybeSingle();
+
+        if (!settings) {
+          // Create default settings
+          await supabase.from('admin_settings').insert({
+            is_restricted: false,
+            restriction_message: 'The site is currently under maintenance. Please check back later.',
+            currency_symbol: '₦',
+          });
+          result = {
+            is_restricted: false,
+            restriction_message: 'The site is currently under maintenance. Please check back later.',
+            currency_symbol: '₦',
+          };
+        } else {
+          result = settings;
+        }
+        break;
+      }
+
+      case 'toggle_site_restriction': {
+        const isRestricted = params?.is_restricted;
+        const message = params?.restriction_message;
+
+        const { data: existing } = await supabase
+          .from('admin_settings')
+          .select('id')
+          .maybeSingle();
+
+        if (existing) {
+          await supabase
+            .from('admin_settings')
+            .update({
+              is_restricted: isRestricted,
+              restriction_message: message,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id);
+        } else {
+          await supabase.from('admin_settings').insert({
+            is_restricted: isRestricted,
+            restriction_message: message,
+            currency_symbol: '₦',
+          });
+        }
+
+        result = { success: true, is_restricted: isRestricted };
+        break;
+      }
+
+      case 'get_alerts': {
+        const { data: alerts } = await supabase
+          .from('admin_alerts')
+          .select('*')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+
+        result = { alerts: alerts || [] };
+        break;
+      }
+
+      case 'create_alert': {
+        const { title, message, type } = params;
+
+        if (!title || !message) {
+          result = { success: false, error: 'Title and message are required' };
+          break;
+        }
+
+        const { data, error } = await supabase
+          .from('admin_alerts')
+          .insert({
+            title,
+            message,
+            type: type || 'info',
+            is_active: true,
+            created_at: new Date().toISOString(),
+          })
+          .select()
+          .maybeSingle();
+
+        if (error) {
+          result = { success: false, error: error.message };
+        } else {
+          result = { success: true, alert: data };
+        }
+        break;
+      }
+
+      case 'delete_alert': {
+        const alertId = params?.alert_id;
+
+        if (!alertId) {
+          result = { success: false, error: 'Alert ID is required' };
+          break;
+        }
+
+        const { error } = await supabase
+          .from('admin_alerts')
+          .delete()
+          .eq('id', alertId);
+
+        if (error) {
+          result = { success: false, error: error.message };
+        } else {
+          result = { success: true };
+        }
+        break;
+      }
+
       default:
         result = { error: 'Unknown action' };
     }

@@ -4,7 +4,7 @@ import {
   Shield, KeyRound, AlertTriangle, CheckCircle2, ArrowLeft,
   Users, BarChart3, Database, Activity, Lock, Unlock, RefreshCw,
   Trash2, Search, UserCheck, Wifi, WifiOff, Clock, TrendingUp,
-  Eye,
+  Eye, Settings, Bell, AlertCircle, CheckIcon, Copy, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import { useAdminData } from '@/hooks/useAdminData';
 import { toast } from 'sonner';
+import { formatNaira } from '@/utils/currencyUtils';
 
 // ─── Admin Auth Gate ─────────────────────────────────────────
 function AdminLogin({ onAuth }: { onAuth: (secret: string) => void }) {
@@ -189,10 +191,11 @@ function WorkersTab({ adminSecret }: { adminSecret: string }) {
   );
 }
 
-// ─── Analytics Tab ───────────────────────────────────────────
-function AnalyticsTab({ adminSecret }: { adminSecret: string }) {
+// ─── Earnings Audit Tab ──────────────────────────────────────
+function EarningsTab({ adminSecret }: { adminSecret: string }) {
   const { adminRequest, isLoading } = useAdminData();
   const [data, setData] = useState<any>(null);
+  const [expandedSheet, setExpandedSheet] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await adminRequest(adminSecret, 'get_earnings_overview');
@@ -209,24 +212,24 @@ function AnalyticsTab({ adminSecret }: { adminSecret: string }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <StatCard label="Cached Records" value={data.total_records} icon={Database} />
-        <StatCard label="Grand Total" value={`$${grandTotal.toFixed(2)}`} icon={TrendingUp} />
+        <StatCard label="Grand Total" value={formatNaira(grandTotal)} icon={TrendingUp} />
       </div>
 
       {/* Top Earners */}
       <Card>
         <CardHeader className="py-3 px-4">
-          <CardTitle className="text-sm flex items-center gap-1.5"><TrendingUp className="h-4 w-4" />Top Earners</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-1.5"><TrendingUp className="h-4 w-4" />Top 10 Earners</CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-3">
           <ScrollArea className="h-[200px]">
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {data.top_earners?.map((e: any, i: number) => (
-                <div key={e.worker_id} className="flex items-center justify-between text-sm">
+                <div key={e.worker_id} className="flex items-center justify-between text-sm p-2 rounded hover:bg-muted/50">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-5">{i + 1}.</span>
+                    <span className="text-xs text-muted-foreground w-5 font-bold">{i + 1}.</span>
                     <span className="font-medium">{e.worker_id}</span>
                   </div>
-                  <span className="font-mono text-xs">${e.total.toFixed(2)}</span>
+                  <span className="font-mono text-xs font-semibold">{formatNaira(e.total)}</span>
                 </div>
               ))}
               {(!data.top_earners || data.top_earners.length === 0) && (
@@ -237,20 +240,40 @@ function AnalyticsTab({ adminSecret }: { adminSecret: string }) {
         </CardContent>
       </Card>
 
-      {/* By Sheet */}
+      {/* Earnings by Sheet */}
       <Card>
         <CardHeader className="py-3 px-4">
-          <CardTitle className="text-sm flex items-center gap-1.5"><Eye className="h-4 w-4" />Earnings by Sheet</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-1.5"><Eye className="h-4 w-4" />Earnings Per Sheet</CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-3">
-          <div className="space-y-1.5">
-            {data.by_sheet?.map((s: any) => (
-              <div key={s.sheet} className="flex items-center justify-between text-sm">
-                <span className="truncate max-w-[200px]">{s.sheet}</span>
-                <span className="font-mono text-xs">${s.total.toFixed(2)}</span>
-              </div>
-            ))}
-          </div>
+          <ScrollArea className="h-[250px]">
+            <div className="space-y-2">
+              {data.by_sheet?.map((s: any) => (
+                <div key={s.sheet} className="border rounded-md p-2">
+                  <button
+                    onClick={() => setExpandedSheet(expandedSheet === s.sheet ? null : s.sheet)}
+                    className="w-full flex items-center justify-between text-sm hover:bg-muted/50 p-1 rounded transition-colors"
+                  >
+                    <div className="flex items-center gap-2 flex-1 text-left min-w-0">
+                      <span className="truncate max-w-[150px] font-medium">{s.sheet}</span>
+                      <Badge variant="outline" className="text-[10px] shrink-0">{s.worker_count || 0} workers</Badge>
+                    </div>
+                    <span className="font-mono text-xs font-semibold whitespace-nowrap">{formatNaira(s.total)}</span>
+                  </button>
+                  {expandedSheet === s.sheet && s.workers && (
+                    <div className="mt-2 pt-2 border-t space-y-1 text-xs">
+                      {s.workers.map((w: any, i: number) => (
+                        <div key={i} className="flex justify-between text-[11px] text-muted-foreground pl-2">
+                          <span>{w.worker_id}</span>
+                          <span>{formatNaira(w.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
         </CardContent>
       </Card>
 
@@ -401,6 +424,254 @@ function ActivityTab({ adminSecret }: { adminSecret: string }) {
   );
 }
 
+// ─── Settings Tab ────────────────────────────────────────────
+function SettingsTab({ adminSecret }: { adminSecret: string }) {
+  const { adminRequest, isLoading } = useAdminData();
+  const [settings, setSettings] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [siteRestricted, setSiteRestricted] = useState(false);
+  const [restrictionMessage, setRestrictionMessage] = useState('The site is currently under maintenance. Please check back later.');
+
+  const load = useCallback(async () => {
+    const res = await adminRequest(adminSecret, 'get_site_settings');
+    if (res) {
+      setSettings(res);
+      setSiteRestricted(res.is_restricted || false);
+      setRestrictionMessage(res.restriction_message || 'The site is currently under maintenance. Please check back later.');
+    }
+  }, [adminRequest, adminSecret]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleToggleRestriction = async () => {
+    setLoading(true);
+    const res = await adminRequest(adminSecret, 'toggle_site_restriction', {
+      is_restricted: !siteRestricted,
+      restriction_message: restrictionMessage,
+    });
+    if (res?.success) {
+      setSiteRestricted(!siteRestricted);
+      toast.success(`Site ${!siteRestricted ? 'restricted' : 'unrestricted'}`);
+    } else {
+      toast.error('Failed to update settings');
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Site Restriction Card */}
+      <Card>
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-sm flex items-center gap-1.5"><Lock className="h-4 w-4" />Site Restriction</CardTitle>
+          <CardDescription className="text-xs">Prevent users from accessing the site with a maintenance message</CardDescription>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 space-y-3">
+          <div className="flex items-center gap-2 p-3 rounded-md bg-muted/50">
+            <div className="flex-1">
+              <p className="text-sm font-medium">
+                {siteRestricted ? 'Site is Restricted' : 'Site is Open'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {siteRestricted ? 'Users will see maintenance page' : 'Users can access normally'}
+              </p>
+            </div>
+            <Button
+              variant={siteRestricted ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={handleToggleRestriction}
+              disabled={loading}
+              className="shrink-0"
+            >
+              {loading ? <RefreshCw className="h-3 w-3 animate-spin" /> : (siteRestricted ? 'Unrestrict' : 'Restrict')}
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="message" className="text-xs font-medium">Maintenance Message</Label>
+            <Textarea
+              id="message"
+              placeholder="Enter the message users will see when site is restricted..."
+              value={restrictionMessage}
+              onChange={(e) => setRestrictionMessage(e.target.value)}
+              className="min-h-[80px] text-sm"
+            />
+            <p className="text-[11px] text-muted-foreground">This message will be shown to users when the site is restricted</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Info Card */}
+      <Card className="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+        <CardContent className="pt-3 px-4 pb-3">
+          <div className="flex gap-2">
+            <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-800 dark:text-blue-300">
+              When enabled, users will be redirected to a maintenance page. Their sessions remain valid and will resume once restriction is lifted.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Alerts Tab ──────────────────────────────────────────────
+function AlertsTab({ adminSecret }: { adminSecret: string }) {
+  const { adminRequest, isLoading } = useAdminData();
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({ title: '', message: '', type: 'info' });
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    const res = await adminRequest(adminSecret, 'get_alerts');
+    if (res?.alerts) setAlerts(res.alerts);
+  }, [adminRequest, adminSecret]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleCreate = async () => {
+    if (!formData.title.trim() || !formData.message.trim()) {
+      toast.error('Title and message are required');
+      return;
+    }
+    setLoading(true);
+    const res = await adminRequest(adminSecret, 'create_alert', formData);
+    if (res?.success) {
+      toast.success('Alert created');
+      setFormData({ title: '', message: '', type: 'info' });
+      setShowForm(false);
+      load();
+    } else {
+      toast.error('Failed to create alert');
+    }
+    setLoading(false);
+  };
+
+  const handleDelete = async (alertId: string) => {
+    const res = await adminRequest(adminSecret, 'delete_alert', { alert_id: alertId });
+    if (res?.success) {
+      toast.success('Alert deleted');
+      load();
+    } else {
+      toast.error('Failed to delete alert');
+    }
+  };
+
+  const typeColors: Record<string, { bg: string; border: string; icon: React.ElementType }> = {
+    info: { bg: 'bg-blue-50 dark:bg-blue-950/20', border: 'border-blue-200 dark:border-blue-800', icon: AlertCircle },
+    warning: { bg: 'bg-yellow-50 dark:bg-yellow-950/20', border: 'border-yellow-200 dark:border-yellow-800', icon: AlertTriangle },
+    error: { bg: 'bg-red-50 dark:bg-red-950/20', border: 'border-red-200 dark:border-red-800', icon: AlertTriangle },
+    success: { bg: 'bg-green-50 dark:bg-green-950/20', border: 'border-green-200 dark:border-green-800', icon: CheckCircle2 },
+  };
+
+  return (
+    <div className="space-y-4">
+      {!showForm ? (
+        <Button onClick={() => setShowForm(true)} className="w-full">
+          <Bell className="h-4 w-4 mr-2" />
+          Create New Alert
+        </Button>
+      ) : (
+        <Card className="bg-muted/30">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm flex items-center justify-between">
+              <span>Create Alert</span>
+              <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="title" className="text-xs font-medium">Title</Label>
+              <Input
+                id="title"
+                placeholder="Alert title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="msg" className="text-xs font-medium">Message</Label>
+              <Textarea
+                id="msg"
+                placeholder="Alert message"
+                value={formData.message}
+                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                className="min-h-[60px] text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="type" className="text-xs font-medium">Type</Label>
+              <select
+                id="type"
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                className="w-full px-2 py-1.5 text-sm border rounded-md bg-background"
+              >
+                <option value="info">Info</option>
+                <option value="warning">Warning</option>
+                <option value="error">Error</option>
+                <option value="success">Success</option>
+              </select>
+            </div>
+            <Button onClick={handleCreate} disabled={loading} className="w-full">
+              {loading ? <RefreshCw className="h-3 w-3 mr-2 animate-spin" /> : <CheckIcon className="h-3 w-3 mr-2" />}
+              Create Alert
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active Alerts */}
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Active Alerts ({alerts.length})</p>
+        {alerts.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No active alerts</p>
+        ) : (
+          <ScrollArea className="h-[350px]">
+            <div className="space-y-2">
+              {alerts.map((alert) => {
+                const colors = typeColors[alert.type] || typeColors.info;
+                const Icon = colors.icon;
+                return (
+                  <Card key={alert.id} className={`${colors.bg} ${colors.border} border`}>
+                    <CardContent className="pt-3 px-4 pb-3">
+                      <div className="flex gap-3">
+                        <Icon className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{alert.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{alert.message}</p>
+                          {alert.created_at && (
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              Created {new Date(alert.created_at).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(alert.id)}
+                          className="h-7 text-destructive hover:text-destructive shrink-0"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Admin Page ─────────────────────────────────────────
 export default function AdminPinReset() {
   const [adminSecret, setAdminSecret] = useState<string | null>(null);
@@ -452,36 +723,50 @@ export default function AdminPinReset() {
       {/* Content */}
       <main className="container mx-auto px-4 py-4 max-w-2xl">
         <Tabs defaultValue="workers" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 h-9">
-            <TabsTrigger value="workers" className="text-xs gap-1">
+          <TabsList className="grid w-full grid-cols-7 h-9 gap-1">
+            <TabsTrigger value="workers" className="text-xs gap-0.5 px-1">
               <Users className="h-3 w-3" />
               <span className="hidden sm:inline">Workers</span>
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="text-xs gap-1">
-              <BarChart3 className="h-3 w-3" />
-              <span className="hidden sm:inline">Analytics</span>
+            <TabsTrigger value="earnings" className="text-xs gap-0.5 px-1">
+              <TrendingUp className="h-3 w-3" />
+              <span className="hidden sm:inline">Earnings</span>
             </TabsTrigger>
-            <TabsTrigger value="cache" className="text-xs gap-1">
+            <TabsTrigger value="cache" className="text-xs gap-0.5 px-1">
               <Database className="h-3 w-3" />
               <span className="hidden sm:inline">Cache</span>
             </TabsTrigger>
-            <TabsTrigger value="activity" className="text-xs gap-1">
+            <TabsTrigger value="activity" className="text-xs gap-0.5 px-1">
               <Activity className="h-3 w-3" />
               <span className="hidden sm:inline">Activity</span>
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="text-xs gap-0.5 px-1">
+              <Bell className="h-3 w-3" />
+              <span className="hidden sm:inline">Alerts</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs gap-0.5 px-1">
+              <Settings className="h-3 w-3" />
+              <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="workers">
             <WorkersTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="analytics">
-            <AnalyticsTab adminSecret={adminSecret} />
+          <TabsContent value="earnings">
+            <EarningsTab adminSecret={adminSecret} />
           </TabsContent>
           <TabsContent value="cache">
             <CacheTab adminSecret={adminSecret} />
           </TabsContent>
           <TabsContent value="activity">
             <ActivityTab adminSecret={adminSecret} />
+          </TabsContent>
+          <TabsContent value="alerts">
+            <AlertsTab adminSecret={adminSecret} />
+          </TabsContent>
+          <TabsContent value="settings">
+            <SettingsTab adminSecret={adminSecret} />
           </TabsContent>
         </Tabs>
       </main>
