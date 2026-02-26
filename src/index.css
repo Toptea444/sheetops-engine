@@ -121,25 +121,19 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden relative;
-    background-image: 
-      radial-gradient(circle at 120% -10%, hsla(210, 50%, 85%, 0.4) 0%, transparent 40%),
-      radial-gradient(circle at -20% 80%, hsla(215, 60%, 88%, 0.3) 0%, transparent 45%),
-      radial-gradient(ellipse at 100% 100%, hsla(210, 45%, 90%, 0.25) 0%, transparent 50%);
-    background-attachment: fixed;
-    background-size: 1px 1px;
+    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
   }
 
   body::before {
     content: '';
     position: fixed;
-    top: -10%;
-    right: -15%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, hsla(210, 55%, 85%, 0.15) 0%, transparent 70%);
+    top: -20%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, hsla(210, 70%, 75%, 0.35) 0%, transparent 70%);
     border-radius: 50%;
-    filter: blur(80px);
+    filter: blur(100px);
     pointer-events: none;
     z-index: 0;
   }
@@ -147,13 +141,13 @@
   body::after {
     content: '';
     position: fixed;
-    bottom: -20%;
-    left: -10%;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, hsla(215, 50%, 88%, 0.1) 0%, transparent 70%);
+    bottom: -30%;
+    left: -15%;
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, hsla(215, 60%, 80%, 0.25) 0%, transparent 70%);
     border-radius: 50%;
-    filter: blur(100px);
+    filter: blur(120px);
     pointer-events: none;
     z-index: 0;
   }
