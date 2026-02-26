@@ -19,10 +19,7 @@ import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
 import { MaintenancePage } from '@/components/MaintenancePage';
 import { AlertsDisplay } from '@/components/AlertsDisplay';
 
-import { WeeklyChallenges } from '@/components/dashboard/WeeklyChallenges';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
-import { WeeklyMVPs } from '@/components/dashboard/WeeklyMVPs';
-import { AvatarPicker } from '@/components/dashboard/AvatarPicker';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
@@ -63,8 +60,6 @@ const Index = () => {
   } = useUserIdentity();
 
   const [showWelcome, setShowWelcome] = useState(false);
-  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
-  const [avatarKey, setAvatarKey] = useState(0);
   const [showIdentityConfirmation, setShowIdentityConfirmation] = useState(false);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
   const [results, setResults] = useState<BonusResult[]>([]);
@@ -672,7 +667,7 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Hero Summary Section */}
+            {/* Hero Summary Section - Main Focus */}
             <div className="mb-8">
               <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6 sm:p-8">
                 <CycleSummaryCard
@@ -684,45 +679,29 @@ const Index = () => {
               </div>
             </div>
 
-            {/* User Profile Card - Top Right */}
-            {userId && identityConfirmed && (
-              <div className="mb-8">
-                <div 
-                  className="flex items-center gap-4 p-4 sm:p-6 border border-primary/20 rounded-2xl bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!avatarPickerOpen) setAvatarPickerOpen(true);
-                  }}
-                >
-                  <div className="flex-shrink-0">
-                    <AvatarPicker
-                      key={avatarKey}
-                      userId={userId}
-                      open={avatarPickerOpen}
-                      onOpenChange={setAvatarPickerOpen}
-                      onAvatarChange={() => setAvatarKey(k => k + 1)}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-lg font-semibold truncate">{userName || userId}</p>
-                    <p className="text-sm text-muted-foreground">Click to customize your avatar</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Main Grid Layout - Responsive */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {/* Sheet Breakdown Cards */}
-              <div className="md:col-span-2 lg:col-span-3">
-                <SheetBreakdownCards
-                  results={results}
-                  sheetNames={selectedSheets}
+            {/* Weekly Breakdown - Important Context Right After Main Amount */}
+            <div className="mb-8">
+              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+                <WeeklyBreakdown 
+                  results={results} 
                   cycle={selectedCycle}
-                  isLoading={isLoading}
+                  isLoading={isLoading} 
                 />
               </div>
+            </div>
 
+            {/* Sheet Breakdown Cards - Details by Sheet */}
+            <div className="mb-8">
+              <SheetBreakdownCards
+                results={results}
+                sheetNames={selectedSheets}
+                cycle={selectedCycle}
+                isLoading={isLoading}
+              />
+            </div>
+
+            {/* Secondary Panels Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {/* Goals Panel */}
               <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
                 <GoalsPanel
@@ -753,23 +732,6 @@ const Index = () => {
                 />
               </div>
 
-              {/* Weekly Challenges */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
-                <WeeklyChallenges
-                  results={results}
-                  cycle={selectedCycle}
-                />
-              </div>
-
-              {/* Weekly MVPs */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
-                <WeeklyMVPs
-                  sheetData={leaderboardSheetData}
-                  currentUserId={userId}
-                  cycle={selectedCycle}
-                />
-              </div>
-
               {/* Activity Feed */}
               <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
                 <ActivityFeed
@@ -782,15 +744,6 @@ const Index = () => {
 
             {/* Large Cards - Full Width */}
             <div className="grid grid-cols-1 gap-6 mb-8">
-              {/* Weekly Breakdown */}
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
-                <WeeklyBreakdown 
-                  results={results} 
-                  cycle={selectedCycle}
-                  isLoading={isLoading} 
-                />
-              </div>
-
               {/* Daily Earnings Table */}
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto">
                 <DailyEarningsTable
