@@ -679,7 +679,17 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Weekly Breakdown - Important Context Right After Main Amount */}
+            {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
+            <div className="mb-8">
+              <SheetBreakdownCards
+                results={results}
+                sheetNames={selectedSheets}
+                cycle={selectedCycle}
+                isLoading={isLoading}
+              />
+            </div>
+
+            {/* Weekly Breakdown */}
             <div className="mb-8">
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
                 <WeeklyBreakdown 
@@ -690,17 +700,32 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Sheet Breakdown Cards - Details by Sheet */}
+            {/* Daily Earnings Table - Detailed breakdown */}
             <div className="mb-8">
-              <SheetBreakdownCards
-                results={results}
-                sheetNames={selectedSheets}
-                cycle={selectedCycle}
-                isLoading={isLoading}
-              />
+              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto">
+                <DailyEarningsTable
+                  results={results}
+                  sheetNames={selectedSheets}
+                  cycle={selectedCycle}
+                  isLoading={isLoading}
+                />
+              </div>
             </div>
 
-            {/* Secondary Panels Grid */}
+            {/* Leaderboard */}
+            <div className="mb-8">
+              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+                <LeaderboardPanel
+                  sheetData={leaderboardSheetData}
+                  currentUserId={userId}
+                  currentUserName={userName}
+                  userStage={userStage}
+                  cycle={selectedCycle}
+                />
+              </div>
+            </div>
+
+            {/* Secondary Panels Grid - Goals, Streaks, Projection at the end */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {/* Goals Panel */}
               <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
@@ -737,30 +762,6 @@ const Index = () => {
                 <ActivityFeed
                   sheetData={leaderboardSheetData}
                   currentUserId={userId}
-                  cycle={selectedCycle}
-                />
-              </div>
-            </div>
-
-            {/* Large Cards - Full Width */}
-            <div className="grid grid-cols-1 gap-6 mb-8">
-              {/* Daily Earnings Table */}
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto">
-                <DailyEarningsTable
-                  results={results}
-                  sheetNames={selectedSheets}
-                  cycle={selectedCycle}
-                  isLoading={isLoading}
-                />
-              </div>
-
-              {/* Leaderboard */}
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
-                <LeaderboardPanel
-                  sheetData={leaderboardSheetData}
-                  currentUserId={userId}
-                  currentUserName={userName}
-                  userStage={userStage}
                   cycle={selectedCycle}
                 />
               </div>
