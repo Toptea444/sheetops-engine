@@ -121,11 +121,51 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
+    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden relative;
+    background-image: 
+      radial-gradient(circle at 120% -10%, hsla(210, 50%, 85%, 0.4) 0%, transparent 40%),
+      radial-gradient(circle at -20% 80%, hsla(215, 60%, 88%, 0.3) 0%, transparent 45%),
+      radial-gradient(ellipse at 100% 100%, hsla(210, 45%, 90%, 0.25) 0%, transparent 50%);
+    background-attachment: fixed;
+    background-size: 1px 1px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -10%;
+    right: -15%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, hsla(210, 55%, 85%, 0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -20%;
+    left: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, hsla(215, 50%, 88%, 0.1) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(100px);
+    pointer-events: none;
+    z-index: 0;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  #root {
+    @apply relative z-10;
   }
 }
 
