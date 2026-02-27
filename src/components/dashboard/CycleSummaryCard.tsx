@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Eye, EyeOff } from 'lucide-react';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { getDaysElapsedInCycle, getDaysRemainingInCycle, getTotalDaysInCycle } from '@/lib/cycleUtils';
 import type { EarningsDisplayMode } from '@/hooks/useDisplayMode';
@@ -10,6 +12,9 @@ interface CycleSummaryCardProps {
   daysActive: number;
   isLoading?: boolean;
   displayMode?: EarningsDisplayMode;
+  onDisplayModeChange?: (mode: EarningsDisplayMode) => void;
+  tooltipDismissed?: boolean;
+  onDismissTooltip?: () => void;
 }
 
 export function CycleSummaryCard({
@@ -17,8 +22,12 @@ export function CycleSummaryCard({
   totalEarnings,
   daysActive,
   isLoading,
-  displayMode = 'amount',
+  displayMode = 'dots',
+  onDisplayModeChange,
+  tooltipDismissed = false,
+  onDismissTooltip,
 }: CycleSummaryCardProps) {
+  const [showTooltip, setShowTooltip] = useState(!tooltipDismissed);
   const daysElapsed = getDaysElapsedInCycle(cycle);
   const daysRemaining = getDaysRemainingInCycle(cycle);
   const totalDays = getTotalDaysInCycle(cycle);
