@@ -67,7 +67,7 @@ export function CycleSummaryCard({
         <p className="text-sm text-muted-foreground">Total Earnings</p>
         <div className="relative">
           {showTooltip && (
-            <div className="absolute bottom-full right-1/2 translate-x-1/2 mb-3 z-10 animate-in fade-in slide-in-from-bottom-1 duration-200">
+            <div className="absolute bottom-full right-0 mb-3 z-10 animate-in fade-in slide-in-from-bottom-1 duration-200">
               <div className="bg-foreground text-background rounded-lg px-3 py-2 w-44 shadow-md">
                 <p className="text-xs leading-relaxed">
                   {displayMode === 'dots' 
@@ -82,7 +82,7 @@ export function CycleSummaryCard({
                 </button>
               </div>
               {/* Arrow pointing down to the eye icon */}
-              <div className="flex justify-center">
+              <div className="flex justify-end pr-3">
                 <div className="w-2.5 h-2.5 bg-foreground rotate-45 -mt-[5px]" />
               </div>
             </div>
