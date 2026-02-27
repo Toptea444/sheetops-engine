@@ -67,18 +67,24 @@ export function CycleSummaryCard({
         <p className="text-sm text-muted-foreground">Total Earnings</p>
         <div className="relative">
           {showTooltip && (
-            <div className="absolute bottom-full right-0 mb-2 bg-muted border border-border rounded-lg p-3 w-48 shadow-lg z-10">
-              <p className="text-xs text-foreground mb-2">
-                {displayMode === 'dots' 
-                  ? 'Click to show amount' 
-                  : 'Click to show as dots'}
-              </p>
-              <button
-                onClick={handleDismissTooltip}
-                className="text-xs text-primary hover:underline font-medium"
-              >
-                I know
-              </button>
+            <div className="absolute bottom-full right-1/2 translate-x-1/2 mb-3 z-10 animate-in fade-in slide-in-from-bottom-1 duration-200">
+              <div className="bg-foreground text-background rounded-lg px-3 py-2 w-44 shadow-md">
+                <p className="text-xs leading-relaxed">
+                  {displayMode === 'dots' 
+                    ? 'Tap the eye to reveal your earnings' 
+                    : 'Tap to hide your earnings'}
+                </p>
+                <button
+                  onClick={handleDismissTooltip}
+                  className="text-xs text-background/70 hover:text-background font-medium mt-1.5 transition-colors"
+                >
+                  Got it
+                </button>
+              </div>
+              {/* Arrow pointing down to the eye icon */}
+              <div className="flex justify-center">
+                <div className="w-2.5 h-2.5 bg-foreground rotate-45 -mt-[5px]" />
+              </div>
             </div>
           )}
           <Button
