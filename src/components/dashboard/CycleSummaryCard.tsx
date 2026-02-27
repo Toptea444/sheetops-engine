@@ -47,8 +47,7 @@ export function CycleSummaryCard({
 
   // Dot count matches the number of characters in the formatted amount (e.g. "3,900" → 5 dots)
   const formattedAmount = `₦${totalEarnings.toLocaleString()}`;
-  const dotsCount = formattedAmount.length;
-  const dotSize = 'w-2.5 h-2.5';
+  const isHidden = displayMode === 'dots';
 
   const handleToggle = () => {
     const newMode = displayMode === 'amount' ? 'dots' : 'amount';
@@ -105,18 +104,11 @@ export function CycleSummaryCard({
 
       {/* Main earnings display */}
       <div>
-        {displayMode === 'dots' ? (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {Array.from({ length: dotsCount }).map((_, index) => (
-              <div
-                key={index}
-                className={`${dotSize} rounded-full bg-primary transition-all duration-200`}
-              />
-            ))}
-          </div>
+        {isHidden ? (
+          <div className="h-9 w-40 rounded-lg bg-muted animate-pulse" />
         ) : (
           <p className="text-3xl font-bold tracking-tight">
-            ₦{totalEarnings.toLocaleString()}
+            {formattedAmount}
           </p>
         )}
       </div>
@@ -138,7 +130,11 @@ export function CycleSummaryCard({
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Daily Avg</p>
-          <p className="text-lg font-semibold">₦{Math.round(avgDaily).toLocaleString()}</p>
+          {isHidden ? (
+            <div className="h-7 w-20 rounded-md bg-muted animate-pulse mt-0.5" />
+          ) : (
+            <p className="text-lg font-semibold">₦{Math.round(avgDaily).toLocaleString()}</p>
+          )}
         </div>
       </div>
     </div>
