@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { RestrictedRoute } from "@/components/RestrictedRoute";
 import Index from "./pages/Index";
 import TL from "./pages/TL";
 import AdminPinReset from "./pages/AdminPinReset";
@@ -17,11 +18,11 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/tl" element={<TL />} />
+          <Route path="/" element={<RestrictedRoute><Index /></RestrictedRoute>} />
+          <Route path="/tl" element={<RestrictedRoute><TL /></RestrictedRoute>} />
           <Route path="/admin/pin-reset" element={<AdminPinReset />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<RestrictedRoute><NotFound /></RestrictedRoute>} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

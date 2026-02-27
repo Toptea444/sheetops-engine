@@ -16,7 +16,6 @@ import { EarningsProjection } from '@/components/dashboard/EarningsProjection';
 import { LeaderboardPanel } from '@/components/dashboard/LeaderboardPanel';
 import { LeaderboardWelcome } from '@/components/dashboard/LeaderboardWelcome';
 import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
-import { MaintenancePage } from '@/components/MaintenancePage';
 import { AlertsDisplay } from '@/components/AlertsDisplay';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
@@ -70,8 +69,6 @@ const Index = () => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
-  const [siteRestricted, setSiteRestricted] = useState(false);
-  const [restrictionMessage, setRestrictionMessage] = useState('');
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
@@ -154,30 +151,7 @@ const Index = () => {
     const hasDateSuffix = /RANKINGBONUS.*GH.*\d/.test(n) || /RANKING.*BONUS.*GH.*\d/.test(n);
     return !hasDateSuffix;
   };
-
-  // Check for site restrictions on mount
-  useEffect(() => {
-    const checkRestriction = async () => {
-      try {
-        // Check if there's cached restriction info (less reliable)
-        const cached = localStorage.getItem('admin_settings');
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            setSiteRestricted(parsed.is_restricted || false);
-            setRestrictionMessage(parsed.restriction_message || 'The site is currently under maintenance. Please check back later.');
-          } catch {
-            // Invalid cache, ignore
-          }
-        }
-      } catch {
-        // Ignore errors
-      }
-    };
-
-    checkRestriction();
-  }, []);
-
+  
   useEffect(() => {
     const init = async () => {
       const sheetsList = await fetchSheets();
@@ -579,12 +553,7 @@ const Index = () => {
   }, [selectedSheets, sheetDataCache]);
 
   const isLoading = sheetsLoading || identityLoading || isFetchingData;
-
-  // Check if site is restricted
-  if (siteRestricted) {
-    return <MaintenancePage message={restrictionMessage} />;
-  }
-
+  
   if (isInitializing || identityLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
