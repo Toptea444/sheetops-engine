@@ -5,11 +5,14 @@ import type { BonusResult } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { isDateInCycle } from '@/lib/cycleUtils';
 
+import type { EarningsDisplayMode } from '@/hooks/useDisplayMode';
+
 interface SheetBreakdownCardsProps {
   results: BonusResult[];
   sheetNames: string[];
   cycle: CyclePeriod;
   isLoading?: boolean;
+  displayMode?: EarningsDisplayMode;
 }
 
 export function SheetBreakdownCards({
@@ -17,6 +20,7 @@ export function SheetBreakdownCards({
   sheetNames,
   cycle,
   isLoading,
+  displayMode = 'amount',
 }: SheetBreakdownCardsProps) {
   const sheetBreakdown = useMemo(() => {
     return sheetNames.map((name) => {
@@ -66,12 +70,16 @@ export function SheetBreakdownCards({
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">%</Badge>
             )}
           </div>
-          <p className="text-base font-semibold">
-            {sheet.isPercent 
-              ? `${sheet.total.toFixed(1)}%`
-              : `₦${sheet.total.toLocaleString()}`
-            }
-          </p>
+          {displayMode === 'dots' ? (
+            <div className="h-5 w-16 rounded-md bg-muted animate-pulse mt-0.5" />
+          ) : (
+            <p className="text-base font-semibold">
+              {sheet.isPercent 
+                ? `${sheet.total.toFixed(1)}%`
+                : `₦${sheet.total.toLocaleString()}`
+              }
+            </p>
+          )}
         </div>
       ))}
     </div>

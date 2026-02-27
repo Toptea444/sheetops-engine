@@ -663,6 +663,7 @@ const Index = () => {
                 sheetNames={selectedSheets}
                 cycle={selectedCycle}
                 isLoading={isLoading}
+                displayMode={earningsDisplay}
               />
             </div>
 
