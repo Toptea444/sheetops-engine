@@ -45,15 +45,10 @@ export function CycleSummaryCard({
     );
   }
 
-  // Calculate dot count: represent earnings with dots proportional to the amount
-  const getDotsCount = (amount: number) => {
-    if (amount === 0) return 0;
-    // Each dot represents roughly 100 units - adjust divisor to control dot density
-    return Math.ceil(amount / 100);
-  };
-
-  const dotsCount = getDotsCount(totalEarnings);
-  const dotSize = 'w-2.5 h-2.5'; // Small dots for flexibility with large counts
+  // Dot count matches the number of characters in the formatted amount (e.g. "3,900" → 5 dots)
+  const formattedAmount = `₦${totalEarnings.toLocaleString()}`;
+  const dotsCount = formattedAmount.length;
+  const dotSize = 'w-2.5 h-2.5';
 
   const handleToggle = () => {
     const newMode = displayMode === 'amount' ? 'dots' : 'amount';
@@ -105,16 +100,13 @@ export function CycleSummaryCard({
       {/* Main earnings display */}
       <div>
         {displayMode === 'dots' ? (
-          <div className="flex items-center gap-1 flex-wrap">
-            {Array.from({ length: Math.min(dotsCount, 500) }).map((_, index) => (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {Array.from({ length: dotsCount }).map((_, index) => (
               <div
                 key={index}
                 className={`${dotSize} rounded-full bg-primary transition-all duration-200`}
               />
             ))}
-            {dotsCount > 500 && (
-              <span className="text-xs text-muted-foreground ml-1">+{dotsCount - 500}</span>
-            )}
           </div>
         ) : (
           <p className="text-3xl font-bold tracking-tight">
