@@ -703,7 +703,8 @@ const Index = () => {
                 <WeeklyBreakdown 
                   results={results} 
                   cycle={selectedCycle}
-                  isLoading={isLoading} 
+                  isLoading={isLoading}
+                  displayMode={earningsDisplay}
                 />
               </div>
             </div>

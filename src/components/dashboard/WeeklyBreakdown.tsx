@@ -3,11 +3,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { BonusResult } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { isDateInCycle } from '@/lib/cycleUtils';
+import type { EarningsDisplayMode } from '@/hooks/useDisplayMode';
 
 interface WeeklyBreakdownProps {
   results: BonusResult[];
   cycle: CyclePeriod;
   isLoading?: boolean;
+  displayMode?: EarningsDisplayMode;
 }
 
 function normalizeSheetName(value?: string): string {
@@ -58,7 +60,7 @@ function getWeeksFromCycle(cycle: CyclePeriod): { start: Date; end: Date; label:
   return weeks;
 }
 
-export function WeeklyBreakdown({ results, cycle, isLoading }: WeeklyBreakdownProps) {
+export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amount' }: WeeklyBreakdownProps) {
   const weekData = useMemo(() => {
     const weeks = getWeeksFromCycle(cycle);
 
@@ -103,6 +105,20 @@ export function WeeklyBreakdown({ results, cycle, isLoading }: WeeklyBreakdownPr
   const maxTotal = Math.max(...weekData.map((w) => w.total), 1);
   const grandTotal = weekData.reduce((sum, w) => sum + w.total, 0);
 
+  const renderAmount = (amount: number) => {
+    const formatted = `₦${amount.toLocaleString()}`;
+    if (displayMode === 'dots') {
+      return (
+        <span className="inline-flex items-center gap-0.5">
+          {Array.from({ length: formatted.length }).map((_, i) => (
+            <span key={i} className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+          ))}
+        </span>
+      );
+    }
+    return formatted;
+  };
+
   if (grandTotal === 0) {
     return (
       <div className="h-[120px] flex items-center justify-center text-sm text-muted-foreground border rounded-md bg-muted/20">
@@ -124,7 +140,7 @@ export function WeeklyBreakdown({ results, cycle, isLoading }: WeeklyBreakdownPr
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-muted-foreground">{week.days}d</span>
                   <span className="font-semibold tabular-nums">
-                    ₦{week.total.toLocaleString()}
+                    {renderAmount(week.total)}
                   </span>
                 </div>
               </div>
@@ -140,7 +156,7 @@ export function WeeklyBreakdown({ results, cycle, isLoading }: WeeklyBreakdownPr
       </div>
       <div className="flex justify-end pt-1 border-t border-border/50">
         <span className="text-xs font-semibold tabular-nums">
-          Total: ₦{grandTotal.toLocaleString()}
+          Total: {renderAmount(grandTotal)}
         </span>
       </div>
     </div>
