@@ -5,18 +5,27 @@ type EarningsDisplayMode = 'amount' | 'dots';
 interface UseDisplayModeResult {
   earningsDisplay: EarningsDisplayMode;
   setEarningsDisplay: (mode: EarningsDisplayMode) => void;
+  tooltipDismissed: boolean;
+  dismissTooltip: () => void;
 }
 
 const EARNINGS_DISPLAY_KEY = 'performanceTracker_earningsDisplay';
+const TOOLTIP_DISMISSED_KEY = 'performanceTracker_tooltipDismissed';
 
 export function useDisplayMode(): UseDisplayModeResult {
-  const [earningsDisplay, setEarningsDisplayState] = useState<EarningsDisplayMode>('amount');
+  const [earningsDisplay, setEarningsDisplayState] = useState<EarningsDisplayMode>('dots');
+  const [tooltipDismissed, setTooltipDismissedState] = useState(false);
 
-  // Load saved preference
+  // Load saved preferences
   useEffect(() => {
     const savedMode = localStorage.getItem(EARNINGS_DISPLAY_KEY) as EarningsDisplayMode | null;
     if (savedMode) {
       setEarningsDisplayState(savedMode);
+    }
+
+    const savedDismissed = localStorage.getItem(TOOLTIP_DISMISSED_KEY);
+    if (savedDismissed === 'true') {
+      setTooltipDismissedState(true);
     }
   }, []);
 
@@ -25,9 +34,16 @@ export function useDisplayMode(): UseDisplayModeResult {
     localStorage.setItem(EARNINGS_DISPLAY_KEY, mode);
   }, []);
 
+  const dismissTooltip = useCallback(() => {
+    setTooltipDismissedState(true);
+    localStorage.setItem(TOOLTIP_DISMISSED_KEY, 'true');
+  }, []);
+
   return {
     earningsDisplay,
     setEarningsDisplay,
+    tooltipDismissed,
+    dismissTooltip,
   };
 }
 
