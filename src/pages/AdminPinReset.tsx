@@ -22,6 +22,16 @@ import { formatNaira } from '@/utils/currencyUtils';
 // ─── Admin Auth Gate ─────────────────────────────────────────
 function AdminLogin({ onAuth }: { onAuth: (secret: string) => void }) {
   const [secret, setSecret] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setIsLoading(true);
+    try {
+      await onAuth(secret);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -41,12 +51,20 @@ function AdminLogin({ onAuth }: { onAuth: (secret: string) => void }) {
               placeholder="Admin secret"
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && secret && onAuth(secret)}
+              onKeyDown={(e) => e.key === 'Enter' && secret && !isLoading && handleLogin()}
               className="pl-10"
+              disabled={isLoading}
             />
           </div>
-          <Button className="w-full" disabled={!secret} onClick={() => onAuth(secret)}>
-            Unlock
+          <Button className="w-full" disabled={!secret || isLoading} onClick={handleLogin}>
+            {isLoading ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Logging in...
+              </>
+            ) : (
+              'Unlock'
+            )}
           </Button>
           <Link
             to="/"
