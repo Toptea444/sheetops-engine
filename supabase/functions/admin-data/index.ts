@@ -219,53 +219,55 @@ Deno.serve(async (req) => {
       }
 
       case 'get_site_settings': {
-        // Get current site settings or create default
-        const { data: settings } = await supabase
+        // Read from key-value JSONB schema
+        const { data: restrictedRow } = await supabase
           .from('admin_settings')
-          .select('*')
+          .select('setting_value')
+          .eq('setting_key', 'site_restricted')
           .maybeSingle();
 
-        if (!settings) {
-          // Create default settings
-          await supabase.from('admin_settings').insert({
-            is_restricted: false,
-            restriction_message: 'The site is currently under maintenance. Please check back later.',
-            currency_symbol: '₦',
-          });
-          result = {
-            is_restricted: false,
-            restriction_message: 'The site is currently under maintenance. Please check back later.',
-            currency_symbol: '₦',
-          };
-        } else {
-          result = settings;
-        }
+        const { data: currencyRow } = await supabase
+          .from('admin_settings')
+          .select('setting_value')
+          .eq('setting_key', 'currency_symbol')
+          .maybeSingle();
+
+        const restrictedVal = restrictedRow?.setting_value as { enabled?: boolean; message?: string } | null;
+        const currencyVal = currencyRow?.setting_value as string | null;
+
+        result = {
+          is_restricted: restrictedVal?.enabled ?? false,
+          restriction_message: restrictedVal?.message ?? 'The site is currently under maintenance. Please check back later.',
+          currency_symbol: currencyVal ?? '₦',
+        };
         break;
       }
 
       case 'toggle_site_restriction': {
-        const isRestricted = params?.is_restricted;
-        const message = params?.restriction_message;
+        const isRestricted = params?.is_restricted ?? false;
+        const message = params?.restriction_message ?? 'The site is currently under maintenance. Please check back later.';
+
+        const newValue = { enabled: isRestricted, message };
 
         const { data: existing } = await supabase
           .from('admin_settings')
           .select('id')
+          .eq('setting_key', 'site_restricted')
           .maybeSingle();
 
         if (existing) {
           await supabase
             .from('admin_settings')
             .update({
-              is_restricted: isRestricted,
-              restriction_message: message,
+              setting_value: newValue,
               updated_at: new Date().toISOString(),
             })
             .eq('id', existing.id);
         } else {
           await supabase.from('admin_settings').insert({
-            is_restricted: isRestricted,
-            restriction_message: message,
-            currency_symbol: '₦',
+            setting_key: 'site_restricted',
+            setting_value: newValue,
+            description: 'Controls whether the site is restricted',
           });
         }
 
