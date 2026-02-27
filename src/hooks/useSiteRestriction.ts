@@ -1,5 +1,11 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback } from 'react';
+
+const STORAGE_KEY = 'site_restriction';
+
+interface RestrictionState {
+  enabled: boolean;
+  message: string;
+}
 
 interface SiteRestriction {
   isRestricted: boolean;
@@ -7,42 +13,66 @@ interface SiteRestriction {
   isLoading: boolean;
 }
 
+function readRestriction(): RestrictionState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore parse errors
+  }
+  return { enabled: false, message: 'The site is currently under maintenance. Please check back later.' };
+}
+
 export function useSiteRestriction(): SiteRestriction {
-  const [isRestricted, setIsRestricted] = useState(false);
-  const [message, setMessage] = useState('');
+  const [state, setState] = useState<RestrictionState>({ enabled: false, message: '' });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function checkRestriction() {
-      try {
-        const { data, error } = await supabase
-          .from('admin_settings')
-          .select('setting_value')
-          .eq('setting_key', 'site_restricted')
-          .maybeSingle();
+    setState(readRestriction());
+    setIsLoading(false);
 
-        if (error) {
-          console.error('Failed to check site restriction:', error);
-          setIsRestricted(false);
-          setIsLoading(false);
-          return;
-        }
-
-        if (data?.setting_value) {
-          const val = data.setting_value as { enabled?: boolean; message?: string };
-          setIsRestricted(val.enabled ?? false);
-          setMessage(val.message ?? 'The site is currently under maintenance. Please check back later.');
-        }
-      } catch {
-        // If we can't reach the DB, allow access
-        setIsRestricted(false);
-      } finally {
-        setIsLoading(false);
+    // Listen for changes from the admin panel (same tab or other tabs)
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) {
+        setState(readRestriction());
       }
-    }
-
-    checkRestriction();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  return { isRestricted, message, isLoading };
+  return { isRestricted: state.enabled, message: state.message, isLoading };
+}
+
+/** Utility used by the admin settings tab to toggle restriction */
+export function setRestriction(enabled: boolean, message: string) {
+  const val: RestrictionState = { enabled, message };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(val));
+  // Dispatch a custom event so the hook re-reads in the same tab
+  window.dispatchEvent(new Event('site-restriction-changed'));
+}
+
+/** Hook variant for the admin panel that also supports toggling */
+export function useSiteRestrictionAdmin() {
+  const [state, setState] = useState<RestrictionState>(readRestriction);
+
+  const refresh = useCallback(() => setState(readRestriction()), []);
+
+  useEffect(() => {
+    window.addEventListener('site-restriction-changed', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('site-restriction-changed', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [refresh]);
+
+  const toggle = (message: string) => {
+    const newEnabled = !state.enabled;
+    setRestriction(newEnabled, message);
+    setState({ enabled: newEnabled, message });
+    return newEnabled;
+  };
+
+  return { isRestricted: state.enabled, message: state.message, toggle };
 }

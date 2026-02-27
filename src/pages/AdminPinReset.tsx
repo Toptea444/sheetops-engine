@@ -16,6 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useAdminData } from '@/hooks/useAdminData';
+import { useSiteRestrictionAdmin } from '@/hooks/useSiteRestriction';
 import { toast } from 'sonner';
 import { formatNaira } from '@/utils/currencyUtils';
 
@@ -444,36 +445,12 @@ function ActivityTab({ adminSecret }: { adminSecret: string }) {
 
 // ─── Settings Tab ────────────────────────────────────────────
 function SettingsTab({ adminSecret }: { adminSecret: string }) {
-  const { adminRequest, isLoading } = useAdminData();
-  const [settings, setSettings] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [siteRestricted, setSiteRestricted] = useState(false);
-  const [restrictionMessage, setRestrictionMessage] = useState('The site is currently under maintenance. Please check back later.');
+  const { isRestricted, message, toggle } = useSiteRestrictionAdmin();
+  const [restrictionMessage, setRestrictionMessage] = useState(message || 'The site is currently under maintenance. Please check back later.');
 
-  const load = useCallback(async () => {
-    const res = await adminRequest(adminSecret, 'get_site_settings');
-    if (res) {
-      setSettings(res);
-      setSiteRestricted(res.is_restricted || false);
-      setRestrictionMessage(res.restriction_message || 'The site is currently under maintenance. Please check back later.');
-    }
-  }, [adminRequest, adminSecret]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const handleToggleRestriction = async () => {
-    setLoading(true);
-    const res = await adminRequest(adminSecret, 'toggle_site_restriction', {
-      is_restricted: !siteRestricted,
-      restriction_message: restrictionMessage,
-    });
-    if (res?.success) {
-      setSiteRestricted(!siteRestricted);
-      toast.success(`Site ${!siteRestricted ? 'restricted' : 'unrestricted'}`);
-    } else {
-      toast.error('Failed to update settings');
-    }
-    setLoading(false);
+  const handleToggleRestriction = () => {
+    const newState = toggle(restrictionMessage);
+    toast.success(`Site ${newState ? 'restricted' : 'unrestricted'}`);
   };
 
   return (
@@ -488,20 +465,19 @@ function SettingsTab({ adminSecret }: { adminSecret: string }) {
           <div className="flex items-center gap-2 p-3 rounded-md bg-muted/50">
             <div className="flex-1">
               <p className="text-sm font-medium">
-                {siteRestricted ? 'Site is Restricted' : 'Site is Open'}
+                {isRestricted ? 'Site is Restricted' : 'Site is Open'}
               </p>
               <p className="text-xs text-muted-foreground">
-                {siteRestricted ? 'Users will see maintenance page' : 'Users can access normally'}
+                {isRestricted ? 'Users will see maintenance page' : 'Users can access normally'}
               </p>
             </div>
             <Button
-              variant={siteRestricted ? 'destructive' : 'outline'}
+              variant={isRestricted ? 'destructive' : 'outline'}
               size="sm"
               onClick={handleToggleRestriction}
-              disabled={loading}
               className="shrink-0"
             >
-              {loading ? <RefreshCw className="h-3 w-3 animate-spin" /> : (siteRestricted ? 'Unrestrict' : 'Restrict')}
+              {isRestricted ? 'Unrestrict' : 'Restrict'}
             </Button>
           </div>
 
