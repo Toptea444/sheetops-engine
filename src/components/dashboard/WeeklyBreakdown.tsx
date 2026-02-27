@@ -127,9 +127,13 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
                 <span className="text-muted-foreground font-medium">{week.label}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-muted-foreground">{week.days}d</span>
-                  <span className={`font-semibold tabular-nums transition-all duration-200 ${isHidden ? 'blur-sm select-none' : ''}`}>
-                    ₦{week.total.toLocaleString()}
-                  </span>
+                  {isHidden ? (
+                    <div className="h-4 w-16 rounded-md bg-muted animate-pulse" />
+                  ) : (
+                    <span className="font-semibold tabular-nums">
+                      ₦{week.total.toLocaleString()}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="h-2 w-full rounded-full bg-muted/40 overflow-hidden">
@@ -143,9 +147,13 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
         })}
       </div>
       <div className="flex justify-end pt-1 border-t border-border/50">
-        <span className={`text-xs font-semibold tabular-nums transition-all duration-200 ${isHidden ? 'blur-sm select-none' : ''}`}>
-          Total: ₦{grandTotal.toLocaleString()}
-        </span>
+        {isHidden ? (
+          <div className="h-4 w-24 rounded-md bg-muted animate-pulse" />
+        ) : (
+          <span className="text-xs font-semibold tabular-nums">
+            Total: ₦{grandTotal.toLocaleString()}
+          </span>
+        )}
       </div>
     </div>
   );
