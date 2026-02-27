@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { CyclePeriod } from '@/lib/cycleUtils';
@@ -10,6 +13,9 @@ interface CycleSummaryCardProps {
   daysActive: number;
   isLoading?: boolean;
   displayMode?: EarningsDisplayMode;
+  onDisplayModeChange?: (mode: EarningsDisplayMode) => void;
+  tooltipDismissed?: boolean;
+  onDismissTooltip?: () => void;
 }
 
 export function CycleSummaryCard({
@@ -17,8 +23,12 @@ export function CycleSummaryCard({
   totalEarnings,
   daysActive,
   isLoading,
-  displayMode = 'amount',
+  displayMode = 'dots',
+  onDisplayModeChange,
+  tooltipDismissed = false,
+  onDismissTooltip,
 }: CycleSummaryCardProps) {
+  const [showTooltip, setShowTooltip] = useState(!tooltipDismissed);
   const daysElapsed = getDaysElapsedInCycle(cycle);
   const daysRemaining = getDaysRemainingInCycle(cycle);
   const totalDays = getTotalDaysInCycle(cycle);
@@ -35,30 +45,76 @@ export function CycleSummaryCard({
     );
   }
 
-  // Calculate dot scale: represent earnings in proportional dots (max 10 dots for visual balance)
+  // Calculate dot count: represent earnings with dots proportional to the amount
   const getDotsCount = (amount: number) => {
     if (amount === 0) return 0;
-    // Scale earnings to 1-10 dots range, adjust scaling if needed for your use case
-    const dotsCount = Math.min(Math.ceil((amount / 100000) * 10), 12);
-    return Math.max(1, dotsCount);
+    // Each dot represents roughly 100 units - adjust divisor to control dot density
+    return Math.ceil(amount / 100);
   };
 
   const dotsCount = getDotsCount(totalEarnings);
-  const dotSize = 'w-3 h-3'; // Balanced size that aligns with the design
+  const dotSize = 'w-2.5 h-2.5'; // Small dots for flexibility with large counts
+
+  const handleToggle = () => {
+    const newMode = displayMode === 'amount' ? 'dots' : 'amount';
+    onDisplayModeChange?.(newMode);
+  };
+
+  const handleDismissTooltip = () => {
+    setShowTooltip(false);
+    onDismissTooltip?.();
+  };
 
   return (
     <div className="space-y-4">
-      {/* Main earnings */}
+      {/* Header with toggle */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">Total Earnings</p>
+        <div className="relative">
+          {showTooltip && (
+            <div className="absolute bottom-full right-0 mb-2 bg-muted border border-border rounded-lg p-3 w-48 shadow-lg z-10">
+              <p className="text-xs text-foreground mb-2">
+                {displayMode === 'dots' 
+                  ? 'Click to show amount' 
+                  : 'Click to show as dots'}
+              </p>
+              <button
+                onClick={handleDismissTooltip}
+                className="text-xs text-primary hover:underline font-medium"
+              >
+                I know
+              </button>
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToggle}
+            className="h-8 w-8"
+            title={displayMode === 'dots' ? 'Show amount' : 'Show dots'}
+          >
+            {displayMode === 'dots' ? (
+              <Eye className="h-4 w-4" />
+            ) : (
+              <EyeOff className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Main earnings display */}
       <div>
-        <p className="text-sm text-muted-foreground mb-3">Total Earnings</p>
         {displayMode === 'dots' ? (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {Array.from({ length: dotsCount }).map((_, index) => (
+          <div className="flex items-center gap-1 flex-wrap">
+            {Array.from({ length: Math.min(dotsCount, 500) }).map((_, index) => (
               <div
                 key={index}
                 className={`${dotSize} rounded-full bg-primary transition-all duration-200`}
               />
             ))}
+            {dotsCount > 500 && (
+              <span className="text-xs text-muted-foreground ml-1">+{dotsCount - 500}</span>
+            )}
           </div>
         ) : (
           <p className="text-3xl font-bold tracking-tight">

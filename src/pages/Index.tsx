@@ -80,7 +80,7 @@ const Index = () => {
   const { theme, accentColor, setTheme, setAccentColor } = useTheme();
 
   // Display Mode
-  const { earningsDisplay, setEarningsDisplay } = useDisplayMode();
+  const { earningsDisplay, setEarningsDisplay, tooltipDismissed, dismissTooltip } = useDisplayMode();
 
   // Notifications
   const {
@@ -632,8 +632,6 @@ const Index = () => {
           accentColor={accentColor}
           onThemeChange={setTheme}
           onAccentChange={setAccentColor}
-          earningsDisplay={earningsDisplay}
-          onEarningsDisplayChange={setEarningsDisplay}
           notificationsSupported={notificationsSupported}
           notificationsEnabled={notificationsEnabled}
           notificationPermission={notificationPermission}
@@ -682,6 +680,9 @@ const Index = () => {
                   daysActive={cycleStats.daysActive}
                   isLoading={isLoading}
                   displayMode={earningsDisplay}
+                  onDisplayModeChange={setEarningsDisplay}
+                  tooltipDismissed={tooltipDismissed}
+                  onDismissTooltip={dismissTooltip}
                 />
               </div>
             </div>

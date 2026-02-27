@@ -4,7 +4,6 @@ import { UserBadge } from './UserBadge';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { NotificationToggle } from './NotificationToggle';
 import type { Theme, AccentColor } from '@/hooks/useTheme';
-import type { EarningsDisplayMode } from '@/hooks/useDisplayMode';
 
 interface HeaderProps {
   onRefresh: () => void;
@@ -17,9 +16,6 @@ interface HeaderProps {
   accentColor?: AccentColor;
   onThemeChange?: (theme: Theme) => void;
   onAccentChange?: (accent: AccentColor) => void;
-  // Display Mode
-  earningsDisplay?: EarningsDisplayMode;
-  onEarningsDisplayChange?: (mode: EarningsDisplayMode) => void;
   // Notifications
   notificationsSupported?: boolean;
   notificationsEnabled?: boolean;
@@ -38,8 +34,6 @@ export function Header({
   accentColor,
   onThemeChange,
   onAccentChange,
-  earningsDisplay,
-  onEarningsDisplayChange,
   notificationsSupported,
   notificationsEnabled,
   notificationPermission,
@@ -96,8 +90,6 @@ export function Header({
               accentColor={accentColor}
               onThemeChange={onThemeChange}
               onAccentChange={onAccentChange}
-              earningsDisplay={earningsDisplay}
-              onEarningsDisplayChange={onEarningsDisplayChange}
             />
           )}
 
