@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* Corporate/Enterprise Design System - Blue/Navy Professional Theme
-   All colors MUST be HSL.
+   All colors MUST be HSLL.
 */
 
 @layer base {
