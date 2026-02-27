@@ -2,12 +2,14 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { getDaysElapsedInCycle, getDaysRemainingInCycle, getTotalDaysInCycle } from '@/lib/cycleUtils';
+import type { EarningsDisplayMode } from '@/hooks/useDisplayMode';
 
 interface CycleSummaryCardProps {
   cycle: CyclePeriod;
   totalEarnings: number;
   daysActive: number;
   isLoading?: boolean;
+  displayMode?: EarningsDisplayMode;
 }
 
 export function CycleSummaryCard({
@@ -15,6 +17,7 @@ export function CycleSummaryCard({
   totalEarnings,
   daysActive,
   isLoading,
+  displayMode = 'amount',
 }: CycleSummaryCardProps) {
   const daysElapsed = getDaysElapsedInCycle(cycle);
   const daysRemaining = getDaysRemainingInCycle(cycle);
@@ -32,14 +35,36 @@ export function CycleSummaryCard({
     );
   }
 
+  // Calculate dot scale: represent earnings in proportional dots (max 10 dots for visual balance)
+  const getDotsCount = (amount: number) => {
+    if (amount === 0) return 0;
+    // Scale earnings to 1-10 dots range, adjust scaling if needed for your use case
+    const dotsCount = Math.min(Math.ceil((amount / 100000) * 10), 12);
+    return Math.max(1, dotsCount);
+  };
+
+  const dotsCount = getDotsCount(totalEarnings);
+  const dotSize = 'w-3 h-3'; // Balanced size that aligns with the design
+
   return (
     <div className="space-y-4">
       {/* Main earnings */}
       <div>
-        <p className="text-sm text-muted-foreground mb-1">Total Earnings</p>
-        <p className="text-3xl font-bold tracking-tight">
-          ₦{totalEarnings.toLocaleString()}
-        </p>
+        <p className="text-sm text-muted-foreground mb-3">Total Earnings</p>
+        {displayMode === 'dots' ? (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {Array.from({ length: dotsCount }).map((_, index) => (
+              <div
+                key={index}
+                className={`${dotSize} rounded-full bg-primary transition-all duration-200`}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-3xl font-bold tracking-tight">
+            ₦{totalEarnings.toLocaleString()}
+          </p>
+        )}
       </div>
 
       {/* Progress bar */}
