@@ -105,19 +105,7 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
   const maxTotal = Math.max(...weekData.map((w) => w.total), 1);
   const grandTotal = weekData.reduce((sum, w) => sum + w.total, 0);
 
-  const renderAmount = (amount: number) => {
-    const formatted = `₦${amount.toLocaleString()}`;
-    if (displayMode === 'dots') {
-      return (
-        <span className="inline-flex items-center gap-0.5">
-          {Array.from({ length: formatted.length }).map((_, i) => (
-            <span key={i} className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
-          ))}
-        </span>
-      );
-    }
-    return formatted;
-  };
+  const isHidden = displayMode === 'dots';
 
   if (grandTotal === 0) {
     return (
@@ -139,8 +127,8 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
                 <span className="text-muted-foreground font-medium">{week.label}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-muted-foreground">{week.days}d</span>
-                  <span className="font-semibold tabular-nums">
-                    {renderAmount(week.total)}
+                  <span className={`font-semibold tabular-nums transition-all duration-200 ${isHidden ? 'blur-sm select-none' : ''}`}>
+                    ₦{week.total.toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -155,8 +143,8 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
         })}
       </div>
       <div className="flex justify-end pt-1 border-t border-border/50">
-        <span className="text-xs font-semibold tabular-nums">
-          Total: {renderAmount(grandTotal)}
+        <span className={`text-xs font-semibold tabular-nums transition-all duration-200 ${isHidden ? 'blur-sm select-none' : ''}`}>
+          Total: ₦{grandTotal.toLocaleString()}
         </span>
       </div>
     </div>
