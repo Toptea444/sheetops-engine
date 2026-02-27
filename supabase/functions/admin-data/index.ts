@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const ADMIN_SECRET = Deno.env.get('ADMIN_PIN_RESET_SECRET') || 'default-admin-secret-change-me';
+const ADMIN_SECRET = (Deno.env.get('ADMIN_PIN_RESET_SECRET') || 'default-admin-secret-change-me').trim();
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -13,12 +13,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { admin_secret, action, params } = await req.json();
+    const { admin_secret: rawSecret, action, params } = await req.json();
+    const admin_secret = typeof rawSecret === 'string' ? rawSecret.trim() : rawSecret;
 
     if (!admin_secret || admin_secret !== ADMIN_SECRET) {
       return new Response(
         JSON.stringify({ success: false, error: 'Invalid admin secret' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
