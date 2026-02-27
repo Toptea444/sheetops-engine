@@ -120,11 +120,11 @@
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
+  html {
+    position: relative;
   }
 
-  body::before {
+  html::before {
     content: '';
     position: fixed;
     top: -20%;
@@ -135,10 +135,10 @@
     border-radius: 50%;
     filter: blur(100px);
     pointer-events: none;
-    z-index: 0;
+    z-index: -1;
   }
 
-  body::after {
+  html::after {
     content: '';
     position: fixed;
     bottom: -30%;
@@ -149,7 +149,12 @@
     border-radius: 50%;
     filter: blur(120px);
     pointer-events: none;
-    z-index: 0;
+    z-index: -1;
+  }
+
+  body {
+    @apply text-foreground font-sans antialiased overflow-x-hidden;
+    background-color: hsl(var(--background));
   }
 
   h1, h2, h3, h4, h5, h6 {
