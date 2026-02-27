@@ -237,7 +237,9 @@
 
 @layer components {
   #root {
-    @apply relative z-10;
+    @apply relative;
+    position: relative;
+    z-index: 0;
   }
 }
 
