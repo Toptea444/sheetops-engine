@@ -24,6 +24,7 @@ import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
 import { useTheme } from '@/hooks/useTheme';
+import { useDisplayMode } from '@/hooks/useDisplayMode';
 import { useNotifications, generateDataHash } from '@/hooks/useNotifications';
 import { useSessionLock } from '@/hooks/useSessionLock';
 import { useCycleCache } from '@/hooks/useCycleCache';
@@ -77,6 +78,9 @@ const Index = () => {
 
   // Theme
   const { theme, accentColor, setTheme, setAccentColor } = useTheme();
+
+  // Display Mode
+  const { earningsDisplay, setEarningsDisplay } = useDisplayMode();
 
   // Notifications
   const {
@@ -628,6 +632,8 @@ const Index = () => {
           accentColor={accentColor}
           onThemeChange={setTheme}
           onAccentChange={setAccentColor}
+          earningsDisplay={earningsDisplay}
+          onEarningsDisplayChange={setEarningsDisplay}
           notificationsSupported={notificationsSupported}
           notificationsEnabled={notificationsEnabled}
           notificationPermission={notificationPermission}
@@ -675,6 +681,7 @@ const Index = () => {
                   totalEarnings={cycleStats.totalEarnings}
                   daysActive={cycleStats.daysActive}
                   isLoading={isLoading}
+                  displayMode={earningsDisplay}
                 />
               </div>
             </div>

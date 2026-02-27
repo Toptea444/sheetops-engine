@@ -9,12 +9,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { Theme, AccentColor } from '@/hooks/useTheme';
+import type { EarningsDisplayMode } from '@/hooks/useDisplayMode';
 
 interface ThemeSwitcherProps {
   theme: Theme;
   accentColor: AccentColor;
   onThemeChange: (theme: Theme) => void;
   onAccentChange: (accent: AccentColor) => void;
+  earningsDisplay?: EarningsDisplayMode;
+  onEarningsDisplayChange?: (mode: EarningsDisplayMode) => void;
 }
 
 const accentOptions: { value: AccentColor; label: string; color: string }[] = [
@@ -30,6 +33,8 @@ export function ThemeSwitcher({
   accentColor,
   onThemeChange,
   onAccentChange,
+  earningsDisplay = 'amount',
+  onEarningsDisplayChange,
 }: ThemeSwitcherProps) {
   return (
     <DropdownMenu>
@@ -81,6 +86,37 @@ export function ThemeSwitcher({
             )}
           </DropdownMenuItem>
         ))}
+
+        {onEarningsDisplayChange && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs">Earnings Display</DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => onEarningsDisplayChange('amount')}
+              className="gap-2"
+            >
+              <div className="h-4 w-4 text-primary text-sm flex items-center justify-center">₦</div>
+              Amount
+              {earningsDisplay === 'amount' && (
+                <span className="ml-auto text-primary">✓</span>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onEarningsDisplayChange('dots')}
+              className="gap-2"
+            >
+              <div className="flex gap-1">
+                <div className="h-2 w-2 rounded-full bg-primary" />
+                <div className="h-2 w-2 rounded-full bg-primary" />
+                <div className="h-2 w-2 rounded-full bg-primary" />
+              </div>
+              Dots
+              {earningsDisplay === 'dots' && (
+                <span className="ml-auto text-primary">✓</span>
+              )}
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
