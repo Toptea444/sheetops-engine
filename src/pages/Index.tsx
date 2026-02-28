@@ -19,6 +19,7 @@ import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
 import { AlertsDisplay } from '@/components/AlertsDisplay';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
@@ -503,6 +504,31 @@ const Index = () => {
     return { totalEarnings, daysActive: activeDays.size };
   }, [results, selectedCycle, selectedSheets]);
 
+  // Compute yesterday's earnings for the reveal animation
+  const previousDayEarnings = useMemo(() => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yKey = `${yesterday.getFullYear()}-${yesterday.getMonth()}-${yesterday.getDate()}`;
+    let total = 0;
+
+    results.forEach((result) => {
+      if (result.valueType === 'percent') return;
+      if (result.sheetName && !selectedSheets.includes(result.sheetName)) return;
+      if (result.sheetName && (isWeeklyBonusGhSheet(result.sheetName) || isRankingBonusGhSheet(result.sheetName))) return;
+
+      result.dailyBreakdown?.forEach((day) => {
+        if (day.fullDate === undefined) return;
+        const d = new Date(day.fullDate);
+        const dKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        if (dKey === yKey) {
+          total += day.value;
+        }
+      });
+    });
+
+    return total;
+  }, [results, selectedSheets]);
+
   // Get current user's stage from results
   const userStage = useMemo(() => {
     for (const result of results) {
@@ -585,6 +611,15 @@ const Index = () => {
         userName={userName}
         onConfirm={handleIdentityConfirm}
         onDeny={handleIdentityDeny}
+      />
+
+      {/* Daily Earnings Reveal Animation */}
+      <EarningsReveal
+        totalEarnings={cycleStats.totalEarnings}
+        daysActive={cycleStats.daysActive}
+        userName={userName}
+        previousDayEarnings={previousDayEarnings}
+        isDataReady={!isLoading && identityConfirmed && results.length > 0}
       />
 
       <div
