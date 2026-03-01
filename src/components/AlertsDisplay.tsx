@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface AdminAlert {
   id: string;
@@ -55,35 +56,39 @@ export function AlertsDisplay() {
     success: CheckCircle2,
   };
 
-  const styleMap: Record<string, { bg: string; border: string; text: string; iconColor: string }> = {
+  const styleMap: Record<string, { bg: string; border: string; text: string; iconColor: string; accent: string }> = {
     info: {
-      bg: 'bg-[hsl(210,60%,95%)] dark:bg-[hsl(210,40%,15%)]',
-      border: 'border-[hsl(210,60%,80%)] dark:border-[hsl(210,40%,30%)]',
-      text: 'text-[hsl(215,70%,30%)] dark:text-[hsl(210,60%,80%)]',
-      iconColor: 'text-[hsl(215,70%,45%)] dark:text-[hsl(210,80%,65%)]',
+      bg: 'bg-primary/5 dark:bg-primary/10',
+      border: 'border-primary/20 dark:border-primary/30',
+      text: 'text-primary dark:text-primary',
+      iconColor: 'text-primary',
+      accent: 'bg-primary',
     },
     warning: {
-      bg: 'bg-[hsl(35,90%,95%)] dark:bg-[hsl(35,40%,12%)]',
-      border: 'border-[hsl(35,80%,70%)] dark:border-[hsl(35,50%,30%)]',
-      text: 'text-[hsl(25,80%,30%)] dark:text-[hsl(35,70%,75%)]',
-      iconColor: 'text-[hsl(35,90%,50%)] dark:text-[hsl(35,90%,60%)]',
+      bg: 'bg-destructive/5 dark:bg-destructive/10',
+      border: 'border-destructive/20 dark:border-destructive/30',
+      text: 'text-destructive dark:text-destructive',
+      iconColor: 'text-destructive',
+      accent: 'bg-destructive',
     },
     error: {
-      bg: 'bg-[hsl(0,70%,96%)] dark:bg-[hsl(0,40%,12%)]',
-      border: 'border-[hsl(0,60%,80%)] dark:border-[hsl(0,40%,30%)]',
-      text: 'text-[hsl(0,60%,30%)] dark:text-[hsl(0,50%,75%)]',
-      iconColor: 'text-[hsl(0,70%,50%)] dark:text-[hsl(0,60%,60%)]',
+      bg: 'bg-destructive/5 dark:bg-destructive/10',
+      border: 'border-destructive/20 dark:border-destructive/30',
+      text: 'text-destructive dark:text-destructive',
+      iconColor: 'text-destructive',
+      accent: 'bg-destructive',
     },
     success: {
-      bg: 'bg-[hsl(145,50%,95%)] dark:bg-[hsl(145,30%,12%)]',
-      border: 'border-[hsl(145,50%,75%)] dark:border-[hsl(145,30%,30%)]',
-      text: 'text-[hsl(145,50%,25%)] dark:text-[hsl(145,40%,75%)]',
-      iconColor: 'text-[hsl(145,60%,40%)] dark:text-[hsl(145,50%,55%)]',
+      bg: 'bg-accent/10 dark:bg-accent/15',
+      border: 'border-accent/30 dark:border-accent/40',
+      text: 'text-accent-foreground dark:text-accent-foreground',
+      iconColor: 'text-accent-foreground',
+      accent: 'bg-accent',
     },
   };
 
   return (
-    <div className="space-y-2 px-4 pt-3">
+    <div className="sticky top-0 z-40 w-full space-y-0">
       {visibleAlerts.map((alert) => {
         const Icon = iconMap[alert.alert_type] || Info;
         const style = styleMap[alert.alert_type] || styleMap.info;
@@ -91,20 +96,38 @@ export function AlertsDisplay() {
         return (
           <div
             key={alert.id}
-            className={`flex items-center gap-3 p-3 rounded-lg border text-center ${style.bg} ${style.border}`}
+            className={cn(
+              'relative w-full border-b px-4 py-2.5 animate-in slide-in-from-top-2 duration-300',
+              style.bg,
+              style.border,
+            )}
           >
-            <Icon className={`h-5 w-5 shrink-0 ${style.iconColor}`} />
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm font-semibold ${style.text}`}>{alert.title}</p>
-              <p className={`text-xs mt-0.5 ${style.text} opacity-80`}>{alert.message}</p>
+            {/* Accent line at top */}
+            <div className={cn('absolute inset-x-0 top-0 h-0.5', style.accent)} />
+            
+            <div className="flex items-center justify-center gap-3 max-w-3xl mx-auto">
+              <Icon className={cn('h-4 w-4 shrink-0', style.iconColor)} />
+              <div className="flex items-center gap-2 text-center min-w-0">
+                <span className={cn('text-sm font-semibold', style.text)}>
+                  {alert.title}
+                </span>
+                {alert.message && (
+                  <>
+                    <span className="text-muted-foreground/40">·</span>
+                    <span className={cn('text-xs opacity-80', style.text)}>
+                      {alert.message}
+                    </span>
+                  </>
+                )}
+              </div>
+              <button
+                onClick={() => handleDismiss(alert.id)}
+                className="text-muted-foreground hover:text-foreground shrink-0 transition-colors p-1 rounded-md hover:bg-muted/50"
+                aria-label="Dismiss alert"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
-            <button
-              onClick={() => handleDismiss(alert.id)}
-              className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
-              aria-label="Dismiss alert"
-            >
-              <X className="h-4 w-4" />
-            </button>
           </div>
         );
       })}
