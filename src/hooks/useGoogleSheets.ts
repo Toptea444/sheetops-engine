@@ -384,12 +384,15 @@ function parseDailyPerformanceSheet(
           const rankingBonusValue =
             rankingBonusCol >= 0 ? parseNumberLike(dataRow[rankingBonusCol]) : undefined;
 
+          // Calculate total as bonus + ranking bonus instead of using sheet total
+          const calculatedValue = (bonusValue ?? 0) + (rankingBonusValue ?? 0);
+
           dailyData.push({
             date: starts[sIdx].parsed.formatted,
             dayNumber: starts[sIdx].parsed.day,
             fullDate: starts[sIdx].parsed.timestamp,
-            value: totalValue,
-            total: totalValue,
+            value: calculatedValue,
+            total: calculatedValue,
             bonus: bonusValue,
             rankingBonus: rankingBonusValue,
           });
@@ -474,12 +477,15 @@ function parseDailyPerformanceSheet(
         const bonusValue = bonusCol >= 0 ? parseNumberLike(row[bonusCol]) : undefined;
         const rankingBonusValue = rankingBonusCol >= 0 ? parseNumberLike(row[rankingBonusCol]) : undefined;
 
+        // Calculate total as bonus + ranking bonus instead of using sheet total
+        const calculatedValue = (bonusValue ?? 0) + (rankingBonusValue ?? 0);
+
         fallbackDailyData.push({
           date: block.parsedDate?.formatted || block.date,
           dayNumber: block.parsedDate?.day,
           fullDate: block.parsedDate?.timestamp,
-          value: totalValue,
-          total: totalValue,
+          value: calculatedValue,
+          total: calculatedValue,
           bonus: bonusValue,
           rankingBonus: rankingBonusValue,
         });
