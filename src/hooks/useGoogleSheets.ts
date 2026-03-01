@@ -311,6 +311,28 @@ function parseDailyPerformanceSheet(
   // --------------------------------------------------------------------------
   // PASS 1 (preferred): Find date blocks in ROWS (date row + header row)
   // --------------------------------------------------------------------------
+  // Helper function to find a date for a block, with fallback to scanning upward
+  const getBlockDate = (blockCol: number, primaryRowIdx: number, matrix: string[][]): { day: number; formatted: string; timestamp: number } | null => {
+    // First try to get the date from the primary location (same row where we found other dates)
+    const primaryCell = String(matrix[primaryRowIdx]?.[blockCol] ?? '').trim();
+    if (primaryCell && !primaryCell.toUpperCase().includes('COLLECTOR BONUS')) {
+      const parsed = parseDateFromHeader(primaryCell, data.sheetName);
+      if (parsed) return parsed;
+    }
+
+    // Fallback: scan upward in the same column to find the date at the top (usually row 0 or higher)
+    for (let scanRow = primaryRowIdx - 1; scanRow >= 0; scanRow--) {
+      const cell = String(matrix[scanRow]?.[blockCol] ?? '').trim();
+      if (!cell) continue;
+      if (cell.toUpperCase().includes('COLLECTOR BONUS')) continue;
+
+      const parsed = parseDateFromHeader(cell, data.sheetName);
+      if (parsed) return parsed;
+    }
+
+    return null;
+  };
+
   for (let rowIdx = 0; rowIdx < matrix.length - 2; rowIdx++) {
     const row = matrix[rowIdx] || [];
 
@@ -336,6 +358,10 @@ function parseDailyPerformanceSheet(
     for (let sIdx = 0; sIdx < starts.length; sIdx++) {
       const blockStart = starts[sIdx].col;
       const blockEnd = starts[sIdx + 1]?.col ?? Math.max(row.length, headerRow.length);
+
+      // Get the date for this block using primary location + fallback to scanning upward
+      const blockDate = getBlockDate(blockStart, rowIdx, matrix);
+      if (!blockDate) continue; // Skip if we can't find a date for this block
 
       // The *next* row after the date must contain the required headers
       const stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage']);
@@ -388,9 +414,9 @@ function parseDailyPerformanceSheet(
           const calculatedValue = (bonusValue ?? 0) + (rankingBonusValue ?? 0);
 
           dailyData.push({
-            date: starts[sIdx].parsed.formatted,
-            dayNumber: starts[sIdx].parsed.day,
-            fullDate: starts[sIdx].parsed.timestamp,
+            date: blockDate.formatted,
+            dayNumber: blockDate.day,
+            fullDate: blockDate.timestamp,
             value: calculatedValue,
             total: calculatedValue,
             bonus: bonusValue,
