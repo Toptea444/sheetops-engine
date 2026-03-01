@@ -277,10 +277,12 @@ Deno.serve(async (req) => {
       }
 
       case 'get_alerts': {
+        // Admin sees ALL alerts (active and inactive)
         const { data: alerts } = await supabase
           .from('admin_alerts')
           .select('*')
-          .eq('is_active', true)
+          .order('is_active', { ascending: false })
+          .order('priority', { ascending: false })
           .order('created_at', { ascending: false });
 
         result = { alerts: alerts || [] };
@@ -300,7 +302,7 @@ Deno.serve(async (req) => {
           .insert({
             title,
             message,
-            type: type || 'info',
+            alert_type: type || 'info',
             is_active: true,
             created_at: new Date().toISOString(),
           })
@@ -330,6 +332,28 @@ Deno.serve(async (req) => {
 
         if (error) {
           result = { success: false, error: error.message };
+        } else {
+          result = { success: true };
+        }
+        break;
+      }
+
+      case 'toggle_alert': {
+        const toggleAlertId = params?.alert_id;
+        const newActive = params?.is_active ?? false;
+
+        if (!toggleAlertId) {
+          result = { success: false, error: 'Alert ID is required' };
+          break;
+        }
+
+        const { error: toggleErr } = await supabase
+          .from('admin_alerts')
+          .update({ is_active: newActive, updated_at: new Date().toISOString() })
+          .eq('id', toggleAlertId);
+
+        if (toggleErr) {
+          result = { success: false, error: toggleErr.message };
         } else {
           result = { success: true };
         }

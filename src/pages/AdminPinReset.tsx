@@ -445,11 +445,20 @@ function ActivityTab({ adminSecret }: { adminSecret: string }) {
 
 // ─── Settings Tab ────────────────────────────────────────────
 function SettingsTab({ adminSecret }: { adminSecret: string }) {
-  const { isRestricted, message, toggle } = useSiteRestrictionAdmin();
-  const [restrictionMessage, setRestrictionMessage] = useState(message || 'The site is currently under maintenance. Please check back later.');
+  const { isRestricted, message, toggle, isLoading: settingsLoading } = useSiteRestrictionAdmin(adminSecret);
+  const [restrictionMessage, setRestrictionMessage] = useState('');
+  const [initialized, setInitialized] = useState(false);
 
-  const handleToggleRestriction = () => {
-    const newState = toggle(restrictionMessage);
+  // Sync message from DB once loaded
+  useEffect(() => {
+    if (!settingsLoading && !initialized) {
+      setRestrictionMessage(message || 'The site is currently under maintenance. Please check back later.');
+      setInitialized(true);
+    }
+  }, [settingsLoading, message, initialized]);
+
+  const handleToggleRestriction = async () => {
+    const newState = await toggle(restrictionMessage);
     toast.success(`Site ${newState ? 'restricted' : 'unrestricted'}`);
   };
 
@@ -553,11 +562,21 @@ function AlertsTab({ adminSecret }: { adminSecret: string }) {
     }
   };
 
+  const handleToggle = async (alertId: string, currentActive: boolean) => {
+    const res = await adminRequest(adminSecret, 'toggle_alert', { alert_id: alertId, is_active: !currentActive });
+    if (res?.success) {
+      toast.success(`Alert ${!currentActive ? 'activated' : 'deactivated'}`);
+      load();
+    } else {
+      toast.error('Failed to toggle alert');
+    }
+  };
+
   const typeColors: Record<string, { bg: string; border: string; icon: React.ElementType }> = {
-    info: { bg: 'bg-blue-50 dark:bg-blue-950/20', border: 'border-blue-200 dark:border-blue-800', icon: AlertCircle },
-    warning: { bg: 'bg-yellow-50 dark:bg-yellow-950/20', border: 'border-yellow-200 dark:border-yellow-800', icon: AlertTriangle },
-    error: { bg: 'bg-red-50 dark:bg-red-950/20', border: 'border-red-200 dark:border-red-800', icon: AlertTriangle },
-    success: { bg: 'bg-green-50 dark:bg-green-950/20', border: 'border-green-200 dark:border-green-800', icon: CheckCircle2 },
+    info: { bg: 'bg-[hsl(210,60%,95%)] dark:bg-[hsl(210,40%,15%)]', border: 'border-[hsl(210,60%,80%)] dark:border-[hsl(210,40%,30%)]', icon: AlertCircle },
+    warning: { bg: 'bg-[hsl(35,90%,95%)] dark:bg-[hsl(35,40%,12%)]', border: 'border-[hsl(35,80%,70%)] dark:border-[hsl(35,50%,30%)]', icon: AlertTriangle },
+    error: { bg: 'bg-[hsl(0,70%,96%)] dark:bg-[hsl(0,40%,12%)]', border: 'border-[hsl(0,60%,80%)] dark:border-[hsl(0,40%,30%)]', icon: AlertTriangle },
+    success: { bg: 'bg-[hsl(145,50%,95%)] dark:bg-[hsl(145,30%,12%)]', border: 'border-[hsl(145,50%,75%)] dark:border-[hsl(145,30%,30%)]', icon: CheckCircle2 },
   };
 
   return (
@@ -606,10 +625,10 @@ function AlertsTab({ adminSecret }: { adminSecret: string }) {
                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                 className="w-full px-2 py-1.5 text-sm border rounded-md bg-background"
               >
-                <option value="info">Info</option>
-                <option value="warning">Warning</option>
-                <option value="error">Error</option>
-                <option value="success">Success</option>
+                <option value="info">ℹ️ Info</option>
+                <option value="warning">⚠️ Warning</option>
+                <option value="error">🚨 Error</option>
+                <option value="success">✅ Success</option>
               </select>
             </div>
             <Button onClick={handleCreate} disabled={loading} className="w-full">
@@ -629,30 +648,47 @@ function AlertsTab({ adminSecret }: { adminSecret: string }) {
           <ScrollArea className="h-[350px]">
             <div className="space-y-2">
               {alerts.map((alert) => {
-                const colors = typeColors[alert.type] || typeColors.info;
+                const colors = typeColors[alert.alert_type] || typeColors.info;
                 const Icon = colors.icon;
+                const isActive = alert.is_active;
                 return (
-                  <Card key={alert.id} className={`${colors.bg} ${colors.border} border`}>
+                  <Card key={alert.id} className={`${isActive ? colors.bg : 'bg-muted/30 opacity-60'} ${isActive ? colors.border : 'border-border'} border`}>
                     <CardContent className="pt-3 px-4 pb-3">
                       <div className="flex gap-3">
                         <Icon className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{alert.title}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">{alert.title}</p>
+                            {!isActive && <Badge variant="outline" className="text-[10px] h-4">Inactive</Badge>}
+                          </div>
                           <p className="text-xs text-muted-foreground mt-0.5">{alert.message}</p>
-                          {alert.created_at && (
-                            <p className="text-[10px] text-muted-foreground mt-1">
-                              Created {new Date(alert.created_at).toLocaleDateString()}
-                            </p>
-                          )}
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <Badge variant="secondary" className="text-[10px] h-4 capitalize">{alert.alert_type}</Badge>
+                            {alert.created_at && (
+                              <span className="text-[10px] text-muted-foreground">
+                                {new Date(alert.created_at).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(alert.id)}
-                          className="h-7 text-destructive hover:text-destructive shrink-0"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggle(alert.id, isActive)}
+                            className={`h-7 text-xs shrink-0 ${isActive ? 'text-amber-600 hover:text-amber-700' : 'text-green-600 hover:text-green-700'}`}
+                          >
+                            {isActive ? <Eye className="h-3 w-3" /> : <CheckIcon className="h-3 w-3" />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(alert.id)}
+                            className="h-7 text-destructive hover:text-destructive shrink-0"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -662,6 +698,11 @@ function AlertsTab({ adminSecret }: { adminSecret: string }) {
           </ScrollArea>
         )}
       </div>
+
+      <Button variant="outline" size="sm" onClick={load} disabled={isLoading}>
+        <RefreshCw className={`h-3 w-3 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
+        Refresh
+      </Button>
     </div>
   );
 }
