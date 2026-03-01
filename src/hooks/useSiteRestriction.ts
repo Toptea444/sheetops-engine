@@ -1,11 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-
-const STORAGE_KEY = 'site_restriction';
-
-interface RestrictionState {
-  enabled: boolean;
-  message: string;
-}
+import { supabase } from '@/integrations/supabase/client';
 
 interface SiteRestriction {
   isRestricted: boolean;
@@ -13,66 +7,70 @@ interface SiteRestriction {
   isLoading: boolean;
 }
 
-function readRestriction(): RestrictionState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    // ignore parse errors
-  }
-  return { enabled: false, message: 'The site is currently under maintenance. Please check back later.' };
-}
-
 export function useSiteRestriction(): SiteRestriction {
-  const [state, setState] = useState<RestrictionState>({ enabled: false, message: '' });
+  const [isRestricted, setIsRestricted] = useState(false);
+  const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setState(readRestriction());
-    setIsLoading(false);
+    const fetch = async () => {
+      const { data } = await supabase
+        .from('admin_settings')
+        .select('setting_value')
+        .eq('setting_key', 'site_restricted')
+        .maybeSingle();
 
-    // Listen for changes from the admin panel (same tab or other tabs)
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) {
-        setState(readRestriction());
+      if (data?.setting_value) {
+        const val = data.setting_value as { enabled?: boolean; message?: string };
+        setIsRestricted(val.enabled ?? false);
+        setMessage(val.message ?? 'The site is currently under maintenance.');
       }
+      setIsLoading(false);
     };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+
+    fetch();
+    // Poll every 30s for restriction changes
+    const interval = setInterval(fetch, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  return { isRestricted: state.enabled, message: state.message, isLoading };
+  return { isRestricted, message, isLoading };
 }
 
-/** Utility used by the admin settings tab to toggle restriction */
-export function setRestriction(enabled: boolean, message: string) {
-  const val: RestrictionState = { enabled, message };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(val));
-  // Dispatch a custom event so the hook re-reads in the same tab
-  window.dispatchEvent(new Event('site-restriction-changed'));
-}
+/** Hook for admin panel to toggle restriction via edge function */
+export function useSiteRestrictionAdmin(adminSecret: string) {
+  const [isRestricted, setIsRestricted] = useState(false);
+  const [message, setMessage] = useState('The site is currently under maintenance. Please check back later.');
+  const [isLoading, setIsLoading] = useState(true);
 
-/** Hook variant for the admin panel that also supports toggling */
-export function useSiteRestrictionAdmin() {
-  const [state, setState] = useState<RestrictionState>(readRestriction);
+  const load = useCallback(async () => {
+    const { data } = await supabase.functions.invoke('admin-data', {
+      body: { admin_secret: adminSecret, action: 'get_site_settings' },
+    });
+    if (data?.success && data.data) {
+      setIsRestricted(data.data.is_restricted);
+      setMessage(data.data.restriction_message);
+    }
+    setIsLoading(false);
+  }, [adminSecret]);
 
-  const refresh = useCallback(() => setState(readRestriction()), []);
+  useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    window.addEventListener('site-restriction-changed', refresh);
-    window.addEventListener('storage', refresh);
-    return () => {
-      window.removeEventListener('site-restriction-changed', refresh);
-      window.removeEventListener('storage', refresh);
-    };
-  }, [refresh]);
+  const toggle = useCallback(async (msg: string) => {
+    const newState = !isRestricted;
+    const { data } = await supabase.functions.invoke('admin-data', {
+      body: {
+        admin_secret: adminSecret,
+        action: 'toggle_site_restriction',
+        params: { is_restricted: newState, restriction_message: msg },
+      },
+    });
+    if (data?.success) {
+      setIsRestricted(newState);
+      setMessage(msg);
+    }
+    return newState;
+  }, [adminSecret, isRestricted]);
 
-  const toggle = (message: string) => {
-    const newEnabled = !state.enabled;
-    setRestriction(newEnabled, message);
-    setState({ enabled: newEnabled, message });
-    return newEnabled;
-  };
-
-  return { isRestricted: state.enabled, message: state.message, toggle };
+  return { isRestricted, message, toggle, isLoading };
 }
