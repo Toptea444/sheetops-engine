@@ -784,7 +784,7 @@ const Index = () => {
         </main>
 
         <footer className="border-t py-3 text-center text-xs text-muted-foreground mt-auto">
-          Built.By.Adelaja
+          Built By Adelaja
         </footer>
 
         {/* Leaderboard welcome notification (one-time) */}
