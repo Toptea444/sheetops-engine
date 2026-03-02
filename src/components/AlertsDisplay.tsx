@@ -59,34 +59,42 @@ export function AlertsDisplay() {
   };
 
   const iconColorMap: Record<string, string> = {
-    info: 'text-primary',
-    warning: 'text-destructive',
-    error: 'text-destructive',
-    success: 'text-accent-foreground',
+    info: 'text-blue-600 dark:text-blue-400',
+    warning: 'text-amber-600 dark:text-amber-400',
+    error: 'text-red-600 dark:text-red-400',
+    success: 'text-emerald-600 dark:text-emerald-400',
+  };
+
+  const bgColorMap: Record<string, string> = {
+    info: 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800',
+    warning: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800',
+    error: 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800',
+    success: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800',
   };
 
   return (
-    <div className="w-full flex flex-col items-center gap-2 pt-3 px-4">
+    <div className="w-full flex flex-col items-center gap-2 pt-3 pb-2 px-4">
       {visibleAlerts.map((alert) => {
         const Icon = iconMap[alert.alert_type] || Info;
         const iconColor = iconColorMap[alert.alert_type] || iconColorMap.info;
+        const bgColor = bgColorMap[alert.alert_type] || bgColorMap.info;
 
         return (
           <div
             key={alert.id}
-            className="relative w-full max-w-sm bg-card border border-border rounded-xl shadow-lg px-4 py-3"
+            className={cn('relative w-full max-w-sm border rounded-xl px-4 py-3', bgColor)}
           >
             <button
               onClick={() => handleDismiss(alert.id)}
-              className="absolute top-2 right-2 p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              className="absolute top-2 right-2 p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
               aria-label="Dismiss"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
 
             <div className="flex flex-col items-center text-center gap-1.5 pr-4">
-              <div className="flex items-center gap-2">
-                <Icon className={cn('h-4.5 w-4.5', iconColor)} />
+              <div className="flex items-center gap-1.5">
+                <Icon className={cn('h-3.5 w-3.5', iconColor)} />
                 <p className="font-semibold text-sm text-foreground">
                   {alert.title}
                 </p>
