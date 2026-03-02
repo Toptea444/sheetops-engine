@@ -25,7 +25,7 @@ import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
 import { useTheme } from '@/hooks/useTheme';
 import { useDisplayMode } from '@/hooks/useDisplayMode';
-import { useNotifications, generateDataHash } from '@/hooks/useNotifications';
+import { useNotifications, generateDataHash, NOTIFICATION_POLL_INTERVAL_MS } from '@/hooks/useNotifications';
 import { useSessionLock } from '@/hooks/useSessionLock';
 import { useCycleCache } from '@/hooks/useCycleCache';
 import { getCycleOptions, isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
@@ -278,6 +278,17 @@ const Index = () => {
       fetchUserData();
     }
   }, [userId, selectedSheets, isInitializing, identityConfirmed]);
+
+  // Background polling: re-fetch data every 5 minutes when notifications are enabled
+  useEffect(() => {
+    if (!notificationsEnabled || !userId || !identityConfirmed || selectedSheets.length === 0) return;
+
+    const interval = setInterval(() => {
+      fetchUserData(true); // force refetch to bypass cache
+    }, NOTIFICATION_POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [notificationsEnabled, userId, identityConfirmed, selectedSheets, fetchUserData]);
 
   // When switching cycles, try to load cached data for past cycles
   useEffect(() => {
