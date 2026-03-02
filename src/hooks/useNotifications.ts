@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 const NOTIFICATION_KEY = 'performanceTracker_notifications';
 const LAST_DATA_HASH_KEY = 'performanceTracker_lastDataHash';
 
+export const NOTIFICATION_POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
 interface UseNotificationsResult {
   isSupported: boolean;
   isEnabled: boolean;
