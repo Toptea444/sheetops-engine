@@ -17,6 +17,7 @@ import { LeaderboardPanel } from '@/components/dashboard/LeaderboardPanel';
 import { LeaderboardWelcome } from '@/components/dashboard/LeaderboardWelcome';
 import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
 import { AlertsDisplay } from '@/components/AlertsDisplay';
+import { FeedbackModal } from '@/components/FeedbackModal';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
@@ -601,6 +602,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Feedback Modal */}
+      <FeedbackModal userId={userId} identityConfirmed={identityConfirmed} />
+
       {/* Admin Alerts Display */}
       <AlertsDisplay />
       

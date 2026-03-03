@@ -5,7 +5,7 @@ import {
   Users, BarChart3, Database, Activity, Lock, Unlock, RefreshCw,
   Trash2, Search, UserCheck, Wifi, WifiOff, Clock, TrendingUp,
   Eye, Settings, Bell, AlertCircle, CheckIcon, Copy, X, ChevronDown,
-  History, User, Calendar,
+  History, User, Calendar, MessageSquare, ThumbsUp, ThumbsDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1133,6 +1133,107 @@ function AlertsTab({ adminSecret }: { adminSecret: string }) {
   );
 }
 
+// ─── Feedback Tab ───────────────────────────────────────────
+function FeedbackTab({ adminSecret }: { adminSecret: string }) {
+  const { adminRequest, isLoading } = useAdminData();
+  const [data, setData] = useState<any>(null);
+
+  const load = useCallback(async () => {
+    const res = await adminRequest(adminSecret, 'get_feedback');
+    if (res) setData(res);
+  }, [adminRequest, adminSecret]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (!data) return <div className="flex items-center justify-center py-12"><RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+
+  const yesPercent = data.total > 0 ? ((data.yes_count / data.total) * 100).toFixed(1) : '0';
+  const noPercent = data.total > 0 ? ((data.no_count / data.total) * 100).toFixed(1) : '0';
+
+  return (
+    <div className="space-y-4">
+      {/* Summary Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <StatCard label="Total Responses" value={data.total} icon={MessageSquare} />
+        <StatCard label="Yes" value={data.yes_count} icon={ThumbsUp} />
+        <StatCard label="No" value={data.no_count} icon={ThumbsDown} />
+      </div>
+
+      {/* Ratio Bar */}
+      {data.total > 0 && (
+        <Card>
+          <CardContent className="pt-4 px-4 pb-4 space-y-2">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Yes ({yesPercent}%)</span>
+              <span>No ({noPercent}%)</span>
+            </div>
+            <div className="h-3 rounded-full bg-muted overflow-hidden flex">
+              <div
+                className="h-full bg-emerald-500 transition-all"
+                style={{ width: `${yesPercent}%` }}
+              />
+              <div
+                className="h-full bg-red-400 transition-all"
+                style={{ width: `${noPercent}%` }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Responses List */}
+      <Card>
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-sm flex items-center gap-1.5">
+            <MessageSquare className="h-4 w-4" />All Responses
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          {data.responses?.length > 0 ? (
+            <ScrollArea className="h-[350px]">
+              <div className="space-y-1">
+                {[...data.responses].reverse().map((r: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/50 border-b border-border/30 last:border-0">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${r.answer === 'yes' ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                        {r.answer === 'yes'
+                          ? <ThumbsUp className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                          : <ThumbsDown className="h-3 w-3 text-red-500 dark:text-red-400" />
+                        }
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium font-mono">{r.worker_id}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="secondary"
+                        className={`text-[10px] h-5 ${r.answer === 'yes' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}
+                      >
+                        {r.answer === 'yes' ? 'Yes' : 'No'}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                        {r.timestamp ? new Date(r.timestamp).toLocaleDateString() : ''}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-8">No feedback responses yet</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Button variant="outline" size="sm" onClick={load} disabled={isLoading}>
+        <RefreshCw className={`h-3 w-3 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
+        Refresh
+      </Button>
+    </div>
+  );
+}
+
 // ─── Main Admin Page ─────────────────────────────────────────
 export default function AdminPinReset() {
   const [adminSecret, setAdminSecret] = useState<string | null>(null);
@@ -1181,28 +1282,32 @@ export default function AdminPinReset() {
 
       <main className="container mx-auto px-4 py-4 max-w-2xl">
         <Tabs defaultValue="workers" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-6 h-9 gap-1">
-            <TabsTrigger value="workers" className="text-xs gap-0.5 px-1">
+          <TabsList className="grid w-full grid-cols-7 h-9 gap-0.5">
+            <TabsTrigger value="workers" className="text-xs gap-0.5 px-0.5">
               <Users className="h-3 w-3" />
               <span className="hidden sm:inline">Workers</span>
             </TabsTrigger>
-            <TabsTrigger value="earnings" className="text-xs gap-0.5 px-1">
+            <TabsTrigger value="earnings" className="text-xs gap-0.5 px-0.5">
               <TrendingUp className="h-3 w-3" />
               <span className="hidden sm:inline">Earnings</span>
             </TabsTrigger>
-            <TabsTrigger value="cache" className="text-xs gap-0.5 px-1">
+            <TabsTrigger value="cache" className="text-xs gap-0.5 px-0.5">
               <Database className="h-3 w-3" />
               <span className="hidden sm:inline">Cache</span>
             </TabsTrigger>
-            <TabsTrigger value="activity" className="text-xs gap-0.5 px-1">
+            <TabsTrigger value="activity" className="text-xs gap-0.5 px-0.5">
               <Activity className="h-3 w-3" />
               <span className="hidden sm:inline">Activity</span>
             </TabsTrigger>
-            <TabsTrigger value="alerts" className="text-xs gap-0.5 px-1">
+            <TabsTrigger value="feedback" className="text-xs gap-0.5 px-0.5">
+              <MessageSquare className="h-3 w-3" />
+              <span className="hidden sm:inline">Feedback</span>
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="text-xs gap-0.5 px-0.5">
               <Bell className="h-3 w-3" />
               <span className="hidden sm:inline">Alerts</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="text-xs gap-0.5 px-1">
+            <TabsTrigger value="settings" className="text-xs gap-0.5 px-0.5">
               <Settings className="h-3 w-3" />
               <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>
@@ -1219,6 +1324,9 @@ export default function AdminPinReset() {
           </TabsContent>
           <TabsContent value="activity">
             <ActivityTab adminSecret={adminSecret} />
+          </TabsContent>
+          <TabsContent value="feedback">
+            <FeedbackTab adminSecret={adminSecret} />
           </TabsContent>
           <TabsContent value="alerts">
             <AlertsTab adminSecret={adminSecret} />
