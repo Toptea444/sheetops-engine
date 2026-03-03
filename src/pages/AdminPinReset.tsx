@@ -24,8 +24,6 @@ import { useSiteRestrictionAdmin } from '@/hooks/useSiteRestriction';
 import { toast } from 'sonner';
 import { formatNaira } from '@/utils/currencyUtils';
 import { getCycleOptions, getCycleKey } from '@/lib/cycleUtils';
-import type { CyclePeriod } from '@/lib/cycleUtils';
-import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 
 // ─── Admin Auth Gate ─────────────────────────────────────────
 function AdminLogin({ onAuth }: { onAuth: (secret: string) => void }) {
@@ -478,49 +476,57 @@ function WorkersTab({ adminSecret }: { adminSecret: string }) {
 function EarningsTab({ adminSecret }: { adminSecret: string }) {
   const { adminRequest, isLoading } = useAdminData();
   const [data, setData] = useState<any>(null);
+  const [loadError, setLoadError] = useState(false);
   const [expandedSheet, setExpandedSheet] = useState<string | null>(null);
   const [selectedWorkerFromEarnings, setSelectedWorkerFromEarnings] = useState<string | null>(null);
 
-  // Use proper 16th-to-15th cycle options
+  // Use proper 16th-to-15th cycle options (memoized once)
   const cycleOptions = useMemo(() => getCycleOptions(8), []);
-  const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
+  // Store selected index to avoid object-reference instability
+  const [selectedCycleIdx, setSelectedCycleIdx] = useState(0);
+  const selectedCycle = cycleOptions[selectedCycleIdx];
+  const selectedCycleKey = getCycleKey(selectedCycle);
   const [showCycleDropdown, setShowCycleDropdown] = useState(false);
 
-  // Available sheets from the Google Sheets integration
-  const { sheets: availableSheets, fetchSheets } = useGoogleSheets();
+  // Sheet filter uses sheets returned from the API response (no separate hook needed)
   const [selectedSheetFilter, setSelectedSheetFilter] = useState<string | null>(null);
   const [showSheetDropdown, setShowSheetDropdown] = useState(false);
 
-  // Fetch available sheets on mount
-  useEffect(() => { fetchSheets(); }, [fetchSheets]);
-
-  const load = useCallback(async (cycle: CyclePeriod) => {
-    const cycleKey = getCycleKey(cycle);
+  const load = useCallback(async (cycleKey: string) => {
+    setLoadError(false);
     const res = await adminRequest(adminSecret, 'get_earnings_overview', { cycle_key: cycleKey });
-    if (res) setData(res);
+    if (res) {
+      setData(res);
+    } else {
+      setLoadError(true);
+    }
   }, [adminRequest, adminSecret]);
 
-  useEffect(() => { load(selectedCycle); }, [load, selectedCycle]);
+  // Load data when cycle changes (use string key as dep for stability)
+  useEffect(() => { load(selectedCycleKey); }, [load, selectedCycleKey]);
 
-  const handleCycleChange = (cycle: CyclePeriod) => {
-    setSelectedCycle(cycle);
+  const handleCycleChange = (idx: number) => {
+    setSelectedCycleIdx(idx);
     setShowCycleDropdown(false);
     setExpandedSheet(null);
+    setSelectedSheetFilter(null);
   };
 
-  const formatCycleLabel = (cycle: CyclePeriod) => cycle.label;
-
-  if (!data) return <div className="flex items-center justify-center py-12"><RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  // Sheet names from the API response data
+  const sheetNames = useMemo(() => {
+    if (!data?.by_sheet) return [];
+    return data.by_sheet.map((s: any) => s.sheet as string);
+  }, [data]);
 
   // Filter top earners and by_sheet by selected sheet
   const filteredBySheet = selectedSheetFilter
-    ? data.by_sheet?.filter((s: any) => s.sheet === selectedSheetFilter) || []
-    : data.by_sheet || [];
+    ? data?.by_sheet?.filter((s: any) => s.sheet === selectedSheetFilter) || []
+    : data?.by_sheet || [];
 
   // Recalculate top earners based on filtered sheets
   const filteredTopEarners = useMemo(() => {
+    if (!data) return [];
     if (!selectedSheetFilter) return data.top_earners || [];
-    // Rebuild from by_sheet data for the selected sheet
     const sheetData = data.by_sheet?.find((s: any) => s.sheet === selectedSheetFilter);
     if (!sheetData?.workers) return [];
     return sheetData.workers
@@ -530,6 +536,9 @@ function EarningsTab({ adminSecret }: { adminSecret: string }) {
   }, [data, selectedSheetFilter]);
 
   const grandTotal = filteredTopEarners?.reduce((sum: number, e: any) => sum + e.total, 0) || 0;
+
+  // Loading state (no data yet and no error)
+  if (!data && !loadError) return <div className="flex items-center justify-center py-12"><RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="space-y-4">
@@ -543,7 +552,7 @@ function EarningsTab({ adminSecret }: { adminSecret: string }) {
         >
           <div className="flex items-center gap-1.5">
             <Calendar className="h-3 w-3 text-muted-foreground" />
-            <span>{formatCycleLabel(selectedCycle)}</span>
+            <span>{selectedCycle.label}</span>
           </div>
           <ChevronDown className={`h-3 w-3 ml-1 opacity-50 transition-transform ${showCycleDropdown ? 'rotate-180' : ''}`} />
         </Button>
@@ -552,14 +561,14 @@ function EarningsTab({ adminSecret }: { adminSecret: string }) {
             <div className="py-1 max-h-[250px] overflow-y-auto">
               {cycleOptions.map((cycle, idx) => {
                 const key = getCycleKey(cycle);
-                const isSelected = getCycleKey(selectedCycle) === key;
+                const isSelected = selectedCycleKey === key;
                 return (
                   <button
                     key={key}
-                    onClick={() => handleCycleChange(cycle)}
+                    onClick={() => handleCycleChange(idx)}
                     className={`w-full text-left px-3 py-2.5 text-xs hover:bg-muted/50 flex items-center justify-between ${isSelected ? 'bg-accent font-medium' : ''}`}
                   >
-                    <span>{formatCycleLabel(cycle)}</span>
+                    <span>{cycle.label}</span>
                     {idx === 0 && <Badge variant="secondary" className="text-[9px] h-4">Current</Badge>}
                   </button>
                 );
@@ -569,8 +578,8 @@ function EarningsTab({ adminSecret }: { adminSecret: string }) {
         )}
       </div>
 
-      {/* Sheet filter */}
-      {availableSheets.length > 0 && (
+      {/* Sheet filter - uses sheets from the API response */}
+      {sheetNames.length > 0 && (
         <div className="relative">
           <Button
             variant="outline"
@@ -593,13 +602,13 @@ function EarningsTab({ adminSecret }: { adminSecret: string }) {
                 >
                   All Sheets
                 </button>
-                {availableSheets.filter(s => !s.disabled).map(s => (
+                {sheetNames.map((name: string) => (
                   <button
-                    key={s.name}
-                    onClick={() => { setSelectedSheetFilter(s.name); setShowSheetDropdown(false); }}
-                    className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/50 truncate ${selectedSheetFilter === s.name ? 'bg-accent font-medium' : ''}`}
+                    key={name}
+                    onClick={() => { setSelectedSheetFilter(name); setShowSheetDropdown(false); }}
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/50 truncate ${selectedSheetFilter === name ? 'bg-accent font-medium' : ''}`}
                   >
-                    {s.name}
+                    {name}
                   </button>
                 ))}
               </div>
@@ -608,95 +617,111 @@ function EarningsTab({ adminSecret }: { adminSecret: string }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Cached Records" value={data.total_records} icon={Database} />
-        <StatCard label="Cycle Total" value={formatNaira(grandTotal)} icon={TrendingUp} />
-      </div>
+      {/* Error state */}
+      {loadError && !data && (
+        <div className="text-center py-8 space-y-3">
+          <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto" />
+          <p className="text-sm text-muted-foreground">Failed to load earnings data for this cycle</p>
+          <Button variant="outline" size="sm" onClick={() => load(selectedCycleKey)}>
+            <RefreshCw className="h-3 w-3 mr-1.5" />
+            Retry
+          </Button>
+        </div>
+      )}
 
-      {/* Top Earners */}
-      <Card>
-        <CardHeader className="py-3 px-4">
-          <CardTitle className="text-sm flex items-center gap-1.5">
-            <TrendingUp className="h-4 w-4" />Top 20 Earners
-            <Badge variant="outline" className="text-[10px] ml-1">{selectedCycle.shortLabel}</Badge>
-            {selectedSheetFilter && <Badge variant="secondary" className="text-[10px]">{selectedSheetFilter}</Badge>}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-3">
-          <ScrollArea className="h-[200px]">
-            <div className="space-y-1">
-              {filteredTopEarners?.map((e: any, i: number) => (
-                <button
-                  key={e.worker_id}
-                  onClick={() => setSelectedWorkerFromEarnings(e.worker_id)}
-                  className="w-full flex items-center justify-between text-sm p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className={`text-xs w-5 font-bold ${i < 3 ? 'text-primary' : 'text-muted-foreground'}`}>{i + 1}.</span>
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold">
-                      {e.worker_id.substring(0, 2)}
-                    </div>
-                    <span className="font-medium text-sm">{e.worker_id}</span>
-                  </div>
-                  <span className="font-mono text-xs font-semibold">{formatNaira(e.total)}</span>
-                </button>
-              ))}
-              {(!filteredTopEarners || filteredTopEarners.length === 0) && (
-                <p className="text-sm text-muted-foreground text-center py-4">No earnings data for this cycle{selectedSheetFilter ? ' and sheet' : ''}</p>
-              )}
-            </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+      {data && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard label="Cached Records" value={data.total_records} icon={Database} />
+            <StatCard label="Cycle Total" value={formatNaira(grandTotal)} icon={TrendingUp} />
+          </div>
 
-      {/* Earnings by Sheet */}
-      <Card>
-        <CardHeader className="py-3 px-4">
-          <CardTitle className="text-sm flex items-center gap-1.5"><Eye className="h-4 w-4" />Earnings Per Sheet</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-3">
-          <ScrollArea className="h-[250px]">
-            <div className="space-y-2">
-              {filteredBySheet?.map((s: any) => (
-                <div key={s.sheet} className="border rounded-md p-2">
-                  <button
-                    onClick={() => setExpandedSheet(expandedSheet === s.sheet ? null : s.sheet)}
-                    className="w-full flex items-center justify-between text-sm hover:bg-muted/50 p-1 rounded transition-colors"
-                  >
-                    <div className="flex items-center gap-2 flex-1 text-left min-w-0">
-                      <span className="truncate max-w-[150px] font-medium">{s.sheet}</span>
-                      <Badge variant="outline" className="text-[10px] shrink-0">{s.worker_count || 0} workers</Badge>
-                    </div>
-                    <span className="font-mono text-xs font-semibold whitespace-nowrap">{formatNaira(s.total)}</span>
-                  </button>
-                  {expandedSheet === s.sheet && s.workers && (
-                    <div className="mt-2 pt-2 border-t space-y-1 text-xs">
-                      {s.workers.map((w: any, i: number) => (
-                        <button
-                          key={i}
-                          onClick={() => setSelectedWorkerFromEarnings(w.worker_id)}
-                          className="w-full flex justify-between text-[11px] text-muted-foreground pl-2 py-1 hover:bg-muted/30 rounded transition-colors"
-                        >
-                          <span>{w.worker_id}</span>
-                          <span>{formatNaira(w.amount)}</span>
-                        </button>
-                      ))}
-                    </div>
+          {/* Top Earners */}
+          <Card>
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm flex items-center gap-1.5">
+                <TrendingUp className="h-4 w-4" />Top 20 Earners
+                <Badge variant="outline" className="text-[10px] ml-1">{selectedCycle.shortLabel}</Badge>
+                {selectedSheetFilter && <Badge variant="secondary" className="text-[10px]">{selectedSheetFilter}</Badge>}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <ScrollArea className="h-[200px]">
+                <div className="space-y-1">
+                  {filteredTopEarners?.map((e: any, i: number) => (
+                    <button
+                      key={e.worker_id}
+                      onClick={() => setSelectedWorkerFromEarnings(e.worker_id)}
+                      className="w-full flex items-center justify-between text-sm p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className={`text-xs w-5 font-bold ${i < 3 ? 'text-primary' : 'text-muted-foreground'}`}>{i + 1}.</span>
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+                          {e.worker_id.substring(0, 2)}
+                        </div>
+                        <span className="font-medium text-sm">{e.worker_id}</span>
+                      </div>
+                      <span className="font-mono text-xs font-semibold">{formatNaira(e.total)}</span>
+                    </button>
+                  ))}
+                  {(!filteredTopEarners || filteredTopEarners.length === 0) && (
+                    <p className="text-sm text-muted-foreground text-center py-4">No earnings data for this cycle{selectedSheetFilter ? ' and sheet' : ''}</p>
                   )}
                 </div>
-              ))}
-              {filteredBySheet?.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No sheet data for this cycle</p>
-              )}
-            </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+              </ScrollArea>
+            </CardContent>
+          </Card>
 
-      <Button variant="outline" size="sm" onClick={() => load(selectedCycle)} disabled={isLoading}>
-        <RefreshCw className={`h-3 w-3 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
-        Refresh
-      </Button>
+          {/* Earnings by Sheet */}
+          <Card>
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm flex items-center gap-1.5"><Eye className="h-4 w-4" />Earnings Per Sheet</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <ScrollArea className="h-[250px]">
+                <div className="space-y-2">
+                  {filteredBySheet?.map((s: any) => (
+                    <div key={s.sheet} className="border rounded-md p-2">
+                      <button
+                        onClick={() => setExpandedSheet(expandedSheet === s.sheet ? null : s.sheet)}
+                        className="w-full flex items-center justify-between text-sm hover:bg-muted/50 p-1 rounded transition-colors"
+                      >
+                        <div className="flex items-center gap-2 flex-1 text-left min-w-0">
+                          <span className="truncate max-w-[150px] font-medium">{s.sheet}</span>
+                          <Badge variant="outline" className="text-[10px] shrink-0">{s.worker_count || 0} workers</Badge>
+                        </div>
+                        <span className="font-mono text-xs font-semibold whitespace-nowrap">{formatNaira(s.total)}</span>
+                      </button>
+                      {expandedSheet === s.sheet && s.workers && (
+                        <div className="mt-2 pt-2 border-t space-y-1 text-xs">
+                          {s.workers.map((w: any, i: number) => (
+                            <button
+                              key={i}
+                              onClick={() => setSelectedWorkerFromEarnings(w.worker_id)}
+                              className="w-full flex justify-between text-[11px] text-muted-foreground pl-2 py-1 hover:bg-muted/30 rounded transition-colors"
+                            >
+                              <span>{w.worker_id}</span>
+                              <span>{formatNaira(w.amount)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {filteredBySheet?.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">No sheet data for this cycle</p>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          <Button variant="outline" size="sm" onClick={() => load(selectedCycleKey)} disabled={isLoading}>
+            <RefreshCw className={`h-3 w-3 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </>
+      )}
 
       {/* Worker detail modal from earnings tab */}
       <WorkerDetailModal
