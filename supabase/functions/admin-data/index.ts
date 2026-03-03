@@ -446,6 +446,27 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'get_feedback': {
+        const { data: feedbackRow } = await supabase
+          .from('admin_settings')
+          .select('setting_value')
+          .eq('setting_key', 'user_feedback')
+          .maybeSingle();
+
+        const responses = (feedbackRow?.setting_value as any[]) || [];
+
+        const yesCount = responses.filter((r: any) => r.answer === 'yes').length;
+        const noCount = responses.filter((r: any) => r.answer === 'no').length;
+
+        result = {
+          responses,
+          total: responses.length,
+          yes_count: yesCount,
+          no_count: noCount,
+        };
+        break;
+      }
+
       default:
         result = { error: 'Unknown action' };
     }
