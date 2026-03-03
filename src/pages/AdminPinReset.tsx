@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Shield, KeyRound, AlertTriangle, CheckCircle2, ArrowLeft,
   Users, BarChart3, Database, Activity, Lock, Unlock, RefreshCw,
   Trash2, Search, UserCheck, Wifi, WifiOff, Clock, TrendingUp,
   Eye, Settings, Bell, AlertCircle, CheckIcon, Copy, X, ChevronDown,
-  History, User,
+  History, User, Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,9 @@ import { useAdminData } from '@/hooks/useAdminData';
 import { useSiteRestrictionAdmin } from '@/hooks/useSiteRestriction';
 import { toast } from 'sonner';
 import { formatNaira } from '@/utils/currencyUtils';
+import { getCycleOptions, getCycleKey } from '@/lib/cycleUtils';
+import type { CyclePeriod } from '@/lib/cycleUtils';
+import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 
 // ─── Admin Auth Gate ─────────────────────────────────────────
 function AdminLogin({ onAuth }: { onAuth: (secret: string) => void }) {
@@ -109,9 +112,10 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
   const { adminRequest } = useAdminData();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [expandedCycle, setExpandedCycle] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open || !workerId) { setData(null); return; }
+    if (!open || !workerId) { setData(null); setExpandedCycle(null); return; }
     setLoading(true);
     adminRequest(adminSecret, 'get_worker_detail', { worker_id: workerId })
       .then(res => { if (res) setData(res); })
@@ -128,63 +132,140 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
     return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const formatCycleLabel = (key: string) => {
+    const [year, month] = key.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const m = parseInt(month, 10);
+    const nextMonth = m === 12 ? 1 : m + 1;
+    const nextYear = m === 12 ? parseInt(year) + 1 : parseInt(year);
+    return `${months[m - 1]} 16 - ${months[nextMonth - 1]} 15, ${m === 12 ? nextYear : year}`;
+  };
+
+  // Compute stats
+  const totalCycles = data?.earnings_by_cycle?.length || 0;
+  const totalSheets = data?.earnings_by_cycle?.reduce((sum: number, c: any) => sum + (c.sheets?.length || 0), 0) || 0;
+  const avgPerCycle = totalCycles > 0 ? (data?.grand_total || 0) / totalCycles : 0;
+  const bestCycle = data?.earnings_by_cycle?.reduce((best: any, c: any) => (!best || c.total > best.total) ? c : best, null);
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            {workerId}
+            <div className="h-8 w-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-sm font-bold shrink-0">
+              {workerId?.substring(0, 2)}
+            </div>
+            <div className="min-w-0">
+              <span className="font-mono">{workerId}</span>
+            </div>
           </DialogTitle>
-          <DialogDescription>Worker details, earnings & login history</DialogDescription>
+          <DialogDescription>Comprehensive worker overview</DialogDescription>
         </DialogHeader>
 
         {loading ? (
           <div className="flex items-center justify-center py-12"><RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : data ? (
           <ScrollArea className="flex-1 -mx-6 px-6">
-            <div className="space-y-4 pb-2">
-              {/* Status badges */}
-              <div className="flex flex-wrap gap-1.5">
-                {data.has_pin ? (
-                  <Badge variant="secondary" className="text-[10px] gap-0.5"><Lock className="h-2.5 w-2.5" />PIN Set {data.pin_created ? `· ${new Date(data.pin_created).toLocaleDateString()}` : ''}</Badge>
-                ) : (
-                  <Badge variant="outline" className="text-[10px] gap-0.5"><Unlock className="h-2.5 w-2.5" />No PIN</Badge>
-                )}
-                {data.identity_confirmed && (
-                  <Badge variant="secondary" className="text-[10px] gap-0.5 bg-green-500/10 text-green-700 dark:text-green-400"><UserCheck className="h-2.5 w-2.5" />Confirmed</Badge>
-                )}
+            <div className="space-y-4 pb-4">
+              {/* Grand Total - Big display */}
+              <div className="rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 p-4 text-center">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Balance</p>
+                <p className="text-3xl font-bold text-foreground">{formatNaira(data.grand_total)}</p>
+                <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
+                  <span>{totalCycles} cycle{totalCycles !== 1 ? 's' : ''}</span>
+                  <span className="h-3 w-px bg-border" />
+                  <span>{totalSheets} sheet record{totalSheets !== 1 ? 's' : ''}</span>
+                </div>
               </div>
 
-              {/* Earnings Summary */}
+              {/* Quick Stats Row */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-lg border bg-card p-2.5 text-center">
+                  <p className="text-[10px] text-muted-foreground">Avg/Cycle</p>
+                  <p className="text-sm font-semibold font-mono">{formatNaira(avgPerCycle)}</p>
+                </div>
+                <div className="rounded-lg border bg-card p-2.5 text-center">
+                  <p className="text-[10px] text-muted-foreground">Best Cycle</p>
+                  <p className="text-sm font-semibold font-mono">{bestCycle ? formatNaira(bestCycle.total) : '-'}</p>
+                </div>
+                <div className="rounded-lg border bg-card p-2.5 text-center">
+                  <p className="text-[10px] text-muted-foreground">Sessions</p>
+                  <p className="text-sm font-semibold">{data.total_sessions}</p>
+                </div>
+              </div>
+
+              {/* Account Status */}
               <Card>
                 <CardHeader className="py-2.5 px-3">
-                  <CardTitle className="text-xs flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" />Total Earnings</CardTitle>
+                  <CardTitle className="text-xs flex items-center gap-1.5"><Shield className="h-3.5 w-3.5" />Account Status</CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3 space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {data.has_pin ? (
+                      <Badge variant="secondary" className="text-[10px] gap-0.5"><Lock className="h-2.5 w-2.5" />PIN Set {data.pin_created ? `- ${new Date(data.pin_created).toLocaleDateString()}` : ''}</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] gap-0.5"><Unlock className="h-2.5 w-2.5" />No PIN</Badge>
+                    )}
+                    {data.identity_confirmed ? (
+                      <Badge variant="secondary" className="text-[10px] gap-0.5 bg-green-500/10 text-green-700 dark:text-green-400"><UserCheck className="h-2.5 w-2.5" />Confirmed {data.identity_confirmed_at ? `- ${new Date(data.identity_confirmed_at).toLocaleDateString()}` : ''}</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] gap-0.5 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"><AlertTriangle className="h-2.5 w-2.5" />Not Confirmed</Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Earnings Breakdown by Cycle */}
+              <Card>
+                <CardHeader className="py-2.5 px-3">
+                  <CardTitle className="text-xs flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" />Earnings Breakdown ({totalCycles} cycles)</CardTitle>
                 </CardHeader>
                 <CardContent className="px-3 pb-3">
-                  <p className="text-xl font-bold">{formatNaira(data.grand_total)}</p>
-                  {data.earnings_by_cycle?.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {data.earnings_by_cycle.map((c: any) => (
-                        <div key={c.cycle_key} className="border rounded-md p-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-medium">{c.cycle_key}</span>
-                            <span className="text-xs font-semibold font-mono">{formatNaira(c.total)}</span>
-                          </div>
-                          <div className="mt-1.5 space-y-0.5">
-                            {c.sheets.map((s: any, i: number) => (
-                              <div key={i} className="flex justify-between text-[11px] text-muted-foreground pl-2">
-                                <span className="truncate max-w-[180px]">{s.sheet}</span>
-                                <span className="font-mono">{formatNaira(s.amount)}</span>
+                  {data.earnings_by_cycle?.length > 0 ? (
+                    <div className="space-y-2">
+                      {data.earnings_by_cycle.map((c: any) => {
+                        const isExpanded = expandedCycle === c.cycle_key;
+                        const cyclePercent = data.grand_total > 0 ? ((c.total / data.grand_total) * 100).toFixed(1) : '0';
+                        return (
+                          <div key={c.cycle_key} className="border rounded-lg overflow-hidden">
+                            <button
+                              onClick={() => setExpandedCycle(isExpanded ? null : c.cycle_key)}
+                              className="w-full flex items-center justify-between p-2.5 hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex flex-col items-start gap-0.5">
+                                <span className="text-xs font-medium">{formatCycleLabel(c.cycle_key)}</span>
+                                <span className="text-[10px] text-muted-foreground">{c.sheets.length} sheet{c.sheets.length !== 1 ? 's' : ''} - {cyclePercent}% of total</span>
                               </div>
-                            ))}
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold font-mono">{formatNaira(c.total)}</span>
+                                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                              </div>
+                            </button>
+                            {isExpanded && (
+                              <div className="border-t bg-muted/20 px-3 py-2 space-y-1.5">
+                                {c.sheets.map((s: any, i: number) => (
+                                  <div key={i}>
+                                    <div className="flex justify-between items-center text-xs py-1">
+                                      <span className="truncate max-w-[200px] font-medium">{s.sheet}</span>
+                                      <span className="font-mono font-semibold">{formatNaira(s.amount)}</span>
+                                    </div>
+                                    {/* Progress bar for sheet contribution */}
+                                    <div className="h-1 rounded-full bg-muted overflow-hidden">
+                                      <div
+                                        className="h-full rounded-full bg-primary/60"
+                                        style={{ width: `${c.total > 0 ? Math.max(2, (s.amount / c.total) * 100) : 0}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
-                  )}
-                  {(!data.earnings_by_cycle || data.earnings_by_cycle.length === 0) && (
-                    <p className="text-xs text-muted-foreground mt-2">No cached earnings data</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center py-4">No cached earnings data</p>
                   )}
                 </CardContent>
               </Card>
@@ -196,22 +277,39 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
                 </CardHeader>
                 <CardContent className="px-3 pb-3">
                   {data.sessions?.length > 0 ? (
-                    <div className="space-y-1">
-                      {data.sessions.map((s: any, i: number) => {
+                    <div className="space-y-0.5">
+                      {data.sessions.slice(0, 15).map((s: any, i: number) => {
                         const isActive = (Date.now() - new Date(s.last_heartbeat).getTime()) < 15 * 60 * 1000;
+                        const sessionDuration = new Date(s.last_heartbeat).getTime() - new Date(s.created_at).getTime();
+                        const durationStr = sessionDuration > 3600000
+                          ? `${Math.floor(sessionDuration / 3600000)}h ${Math.floor((sessionDuration % 3600000) / 60000)}m`
+                          : sessionDuration > 60000
+                          ? `${Math.floor(sessionDuration / 60000)}m`
+                          : '<1m';
                         return (
-                          <div key={i} className="flex items-center justify-between text-[11px] py-1.5 px-2 rounded hover:bg-muted/50">
-                            <div className="flex items-center gap-1.5">
+                          <div key={i} className="flex items-center justify-between text-[11px] py-2 px-2 rounded hover:bg-muted/50 border-b border-border/30 last:border-0">
+                            <div className="flex items-center gap-2">
                               {isActive ? <Wifi className="h-2.5 w-2.5 text-emerald-500" /> : <WifiOff className="h-2.5 w-2.5 text-muted-foreground" />}
-                              <span className="text-muted-foreground">{s.device_fingerprint?.substring(0, 8)}...</span>
+                              <div className="flex flex-col">
+                                <span className="font-mono text-muted-foreground">{s.device_fingerprint?.substring(0, 12)}...</span>
+                                <span className="text-[10px] text-muted-foreground/70">Duration: {durationStr}</span>
+                              </div>
                             </div>
-                            <span className="text-muted-foreground">{formatTime(s.created_at)}</span>
+                            <div className="flex flex-col items-end">
+                              <span className="text-muted-foreground">{formatTime(s.created_at)}</span>
+                              {isActive && <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">ONLINE</span>}
+                            </div>
                           </div>
                         );
                       })}
+                      {data.sessions.length > 15 && (
+                        <p className="text-[10px] text-muted-foreground text-center pt-2">
+                          +{data.sessions.length - 15} more sessions
+                        </p>
+                      )}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">No session history</p>
+                    <p className="text-xs text-muted-foreground text-center py-4">No session history</p>
                   )}
                 </CardContent>
               </Card>
@@ -307,19 +405,20 @@ function WorkersTab({ adminSecret }: { adminSecret: string }) {
           {filtered.map((w: any) => {
             const isOnline = isWorkerOnline(w);
             return (
-              <Card key={w.worker_id} className="p-3">
+              <Card
+                key={w.worker_id}
+                className="p-3 cursor-pointer hover:ring-1 hover:ring-primary/30 hover:bg-muted/30 transition-all active:scale-[0.99]"
+                onClick={() => setSelectedWorker(w.worker_id)}
+              >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold">
                       {w.worker_id.substring(0, 2)}
                     </div>
                     <div className="min-w-0">
-                      <button
-                        onClick={() => setSelectedWorker(w.worker_id)}
-                        className="text-sm font-medium truncate text-primary hover:underline cursor-pointer"
-                      >
+                      <span className="text-sm font-medium truncate text-primary block">
                         {w.worker_id}
-                      </button>
+                      </span>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {w.has_pin ? (
                           <Badge variant="secondary" className="text-[10px] gap-0.5 h-4"><Lock className="h-2.5 w-2.5" />PIN</Badge>
@@ -342,7 +441,7 @@ function WorkersTab({ adminSecret }: { adminSecret: string }) {
                       variant="ghost"
                       size="sm"
                       className="h-7 text-xs text-destructive hover:text-destructive shrink-0"
-                      onClick={() => handleResetPin(w.worker_id)}
+                      onClick={(e) => { e.stopPropagation(); handleResetPin(w.worker_id); }}
                       disabled={resetLoading === w.worker_id}
                     >
                       {resetLoading === w.worker_id ? <RefreshCw className="h-3 w-3 animate-spin" /> : 'Reset PIN'}
@@ -380,57 +479,127 @@ function EarningsTab({ adminSecret }: { adminSecret: string }) {
   const { adminRequest, isLoading } = useAdminData();
   const [data, setData] = useState<any>(null);
   const [expandedSheet, setExpandedSheet] = useState<string | null>(null);
-  const [selectedCycle, setSelectedCycle] = useState<string | null>(null);
+  const [selectedWorkerFromEarnings, setSelectedWorkerFromEarnings] = useState<string | null>(null);
+
+  // Use proper 16th-to-15th cycle options
+  const cycleOptions = useMemo(() => getCycleOptions(8), []);
+  const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
   const [showCycleDropdown, setShowCycleDropdown] = useState(false);
 
-  const load = useCallback(async (cycleKey?: string | null) => {
-    const params = cycleKey ? { cycle_key: cycleKey } : undefined;
-    const res = await adminRequest(adminSecret, 'get_earnings_overview', params);
+  // Available sheets from the Google Sheets integration
+  const { sheets: availableSheets, fetchSheets } = useGoogleSheets();
+  const [selectedSheetFilter, setSelectedSheetFilter] = useState<string | null>(null);
+  const [showSheetDropdown, setShowSheetDropdown] = useState(false);
+
+  // Fetch available sheets on mount
+  useEffect(() => { fetchSheets(); }, [fetchSheets]);
+
+  const load = useCallback(async (cycle: CyclePeriod) => {
+    const cycleKey = getCycleKey(cycle);
+    const res = await adminRequest(adminSecret, 'get_earnings_overview', { cycle_key: cycleKey });
     if (res) setData(res);
   }, [adminRequest, adminSecret]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(selectedCycle); }, [load, selectedCycle]);
 
-  const handleCycleChange = (cycleKey: string | null) => {
-    setSelectedCycle(cycleKey);
+  const handleCycleChange = (cycle: CyclePeriod) => {
+    setSelectedCycle(cycle);
     setShowCycleDropdown(false);
-    load(cycleKey);
+    setExpandedSheet(null);
   };
+
+  const formatCycleLabel = (cycle: CyclePeriod) => cycle.label;
 
   if (!data) return <div className="flex items-center justify-center py-12"><RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
-  const grandTotal = data.top_earners?.reduce((sum: number, e: any) => sum + e.total, 0) || 0;
+  // Filter top earners and by_sheet by selected sheet
+  const filteredBySheet = selectedSheetFilter
+    ? data.by_sheet?.filter((s: any) => s.sheet === selectedSheetFilter) || []
+    : data.by_sheet || [];
+
+  // Recalculate top earners based on filtered sheets
+  const filteredTopEarners = useMemo(() => {
+    if (!selectedSheetFilter) return data.top_earners || [];
+    // Rebuild from by_sheet data for the selected sheet
+    const sheetData = data.by_sheet?.find((s: any) => s.sheet === selectedSheetFilter);
+    if (!sheetData?.workers) return [];
+    return sheetData.workers
+      .map((w: any) => ({ worker_id: w.worker_id, total: w.amount }))
+      .sort((a: any, b: any) => b.total - a.total)
+      .slice(0, 20);
+  }, [data, selectedSheetFilter]);
+
+  const grandTotal = filteredTopEarners?.reduce((sum: number, e: any) => sum + e.total, 0) || 0;
 
   return (
     <div className="space-y-4">
-      {/* Cycle filter */}
-      {data.available_cycles?.length > 0 && (
+      {/* Cycle filter - Proper 16th-to-15th */}
+      <div className="relative">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-between text-xs"
+          onClick={() => { setShowCycleDropdown(!showCycleDropdown); setShowSheetDropdown(false); }}
+        >
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-3 w-3 text-muted-foreground" />
+            <span>{formatCycleLabel(selectedCycle)}</span>
+          </div>
+          <ChevronDown className={`h-3 w-3 ml-1 opacity-50 transition-transform ${showCycleDropdown ? 'rotate-180' : ''}`} />
+        </Button>
+        {showCycleDropdown && (
+          <Card className="absolute top-full left-0 right-0 mt-1 z-50 shadow-lg">
+            <div className="py-1 max-h-[250px] overflow-y-auto">
+              {cycleOptions.map((cycle, idx) => {
+                const key = getCycleKey(cycle);
+                const isSelected = getCycleKey(selectedCycle) === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleCycleChange(cycle)}
+                    className={`w-full text-left px-3 py-2.5 text-xs hover:bg-muted/50 flex items-center justify-between ${isSelected ? 'bg-accent font-medium' : ''}`}
+                  >
+                    <span>{formatCycleLabel(cycle)}</span>
+                    {idx === 0 && <Badge variant="secondary" className="text-[9px] h-4">Current</Badge>}
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {/* Sheet filter */}
+      {availableSheets.length > 0 && (
         <div className="relative">
           <Button
             variant="outline"
             size="sm"
             className="w-full justify-between text-xs"
-            onClick={() => setShowCycleDropdown(!showCycleDropdown)}
+            onClick={() => { setShowSheetDropdown(!showSheetDropdown); setShowCycleDropdown(false); }}
           >
-            <span>{selectedCycle || 'All Cycles (Combined)'}</span>
-            <ChevronDown className="h-3 w-3 ml-1 opacity-50" />
+            <div className="flex items-center gap-1.5">
+              <Eye className="h-3 w-3 text-muted-foreground" />
+              <span className="truncate">{selectedSheetFilter || 'All Sheets'}</span>
+            </div>
+            <ChevronDown className={`h-3 w-3 ml-1 opacity-50 transition-transform ${showSheetDropdown ? 'rotate-180' : ''}`} />
           </Button>
-          {showCycleDropdown && (
+          {showSheetDropdown && (
             <Card className="absolute top-full left-0 right-0 mt-1 z-50 shadow-lg">
-              <div className="py-1">
+              <div className="py-1 max-h-[200px] overflow-y-auto">
                 <button
-                  onClick={() => handleCycleChange(null)}
-                  className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/50 ${!selectedCycle ? 'bg-accent font-medium' : ''}`}
+                  onClick={() => { setSelectedSheetFilter(null); setShowSheetDropdown(false); }}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/50 ${!selectedSheetFilter ? 'bg-accent font-medium' : ''}`}
                 >
-                  All Cycles (Combined)
+                  All Sheets
                 </button>
-                {data.available_cycles.map((c: string) => (
+                {availableSheets.filter(s => !s.disabled).map(s => (
                   <button
-                    key={c}
-                    onClick={() => handleCycleChange(c)}
-                    className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/50 ${selectedCycle === c ? 'bg-accent font-medium' : ''}`}
+                    key={s.name}
+                    onClick={() => { setSelectedSheetFilter(s.name); setShowSheetDropdown(false); }}
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/50 truncate ${selectedSheetFilter === s.name ? 'bg-accent font-medium' : ''}`}
                   >
-                    {c}
+                    {s.name}
                   </button>
                 ))}
               </div>
@@ -441,7 +610,7 @@ function EarningsTab({ adminSecret }: { adminSecret: string }) {
 
       <div className="grid grid-cols-2 gap-3">
         <StatCard label="Cached Records" value={data.total_records} icon={Database} />
-        <StatCard label={selectedCycle ? 'Cycle Total' : 'Grand Total'} value={formatNaira(grandTotal)} icon={TrendingUp} />
+        <StatCard label="Cycle Total" value={formatNaira(grandTotal)} icon={TrendingUp} />
       </div>
 
       {/* Top Earners */}
@@ -449,23 +618,31 @@ function EarningsTab({ adminSecret }: { adminSecret: string }) {
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm flex items-center gap-1.5">
             <TrendingUp className="h-4 w-4" />Top 20 Earners
-            {selectedCycle && <Badge variant="outline" className="text-[10px] ml-1">{selectedCycle}</Badge>}
+            <Badge variant="outline" className="text-[10px] ml-1">{selectedCycle.shortLabel}</Badge>
+            {selectedSheetFilter && <Badge variant="secondary" className="text-[10px]">{selectedSheetFilter}</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-3">
           <ScrollArea className="h-[200px]">
-            <div className="space-y-2">
-              {data.top_earners?.map((e: any, i: number) => (
-                <div key={e.worker_id} className="flex items-center justify-between text-sm p-2 rounded hover:bg-muted/50">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-5 font-bold">{i + 1}.</span>
-                    <span className="font-medium">{e.worker_id}</span>
+            <div className="space-y-1">
+              {filteredTopEarners?.map((e: any, i: number) => (
+                <button
+                  key={e.worker_id}
+                  onClick={() => setSelectedWorkerFromEarnings(e.worker_id)}
+                  className="w-full flex items-center justify-between text-sm p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className={`text-xs w-5 font-bold ${i < 3 ? 'text-primary' : 'text-muted-foreground'}`}>{i + 1}.</span>
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+                      {e.worker_id.substring(0, 2)}
+                    </div>
+                    <span className="font-medium text-sm">{e.worker_id}</span>
                   </div>
                   <span className="font-mono text-xs font-semibold">{formatNaira(e.total)}</span>
-                </div>
+                </button>
               ))}
-              {(!data.top_earners || data.top_earners.length === 0) && (
-                <p className="text-sm text-muted-foreground text-center py-4">No earnings data cached yet</p>
+              {(!filteredTopEarners || filteredTopEarners.length === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-4">No earnings data for this cycle{selectedSheetFilter ? ' and sheet' : ''}</p>
               )}
             </div>
           </ScrollArea>
@@ -480,7 +657,7 @@ function EarningsTab({ adminSecret }: { adminSecret: string }) {
         <CardContent className="px-4 pb-3">
           <ScrollArea className="h-[250px]">
             <div className="space-y-2">
-              {data.by_sheet?.map((s: any) => (
+              {filteredBySheet?.map((s: any) => (
                 <div key={s.sheet} className="border rounded-md p-2">
                   <button
                     onClick={() => setExpandedSheet(expandedSheet === s.sheet ? null : s.sheet)}
@@ -495,15 +672,22 @@ function EarningsTab({ adminSecret }: { adminSecret: string }) {
                   {expandedSheet === s.sheet && s.workers && (
                     <div className="mt-2 pt-2 border-t space-y-1 text-xs">
                       {s.workers.map((w: any, i: number) => (
-                        <div key={i} className="flex justify-between text-[11px] text-muted-foreground pl-2">
+                        <button
+                          key={i}
+                          onClick={() => setSelectedWorkerFromEarnings(w.worker_id)}
+                          className="w-full flex justify-between text-[11px] text-muted-foreground pl-2 py-1 hover:bg-muted/30 rounded transition-colors"
+                        >
                           <span>{w.worker_id}</span>
                           <span>{formatNaira(w.amount)}</span>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
                 </div>
               ))}
+              {filteredBySheet?.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">No sheet data for this cycle</p>
+              )}
             </div>
           </ScrollArea>
         </CardContent>
@@ -513,6 +697,14 @@ function EarningsTab({ adminSecret }: { adminSecret: string }) {
         <RefreshCw className={`h-3 w-3 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
         Refresh
       </Button>
+
+      {/* Worker detail modal from earnings tab */}
+      <WorkerDetailModal
+        workerId={selectedWorkerFromEarnings}
+        adminSecret={adminSecret}
+        open={!!selectedWorkerFromEarnings}
+        onClose={() => setSelectedWorkerFromEarnings(null)}
+      />
     </div>
   );
 }
