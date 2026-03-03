@@ -129,22 +129,38 @@ Deno.serve(async (req) => {
       }
 
       case 'get_earnings_overview': {
-        // Get all worker cache data for earnings analytics
-        const { data: workerCache } = await supabase
+        // Filter by cycle_key if provided
+        const filterCycle = params?.cycle_key;
+        let query = supabase
           .from('cycle_worker_cache')
           .select('worker_id, sheet_name, cycle_key, result_data, updated_at');
+        
+        if (filterCycle) {
+          query = query.eq('cycle_key', filterCycle);
+        }
+
+        const { data: workerCache } = await query;
+
+        // Also get available cycles for the dropdown
+        const { data: allCycles } = await supabase
+          .from('cycle_worker_cache')
+          .select('cycle_key');
+        
+        const uniqueCycles = [...new Set(allCycles?.map(c => c.cycle_key) || [])].sort().reverse();
 
         const earningsByWorker = new Map<string, number>();
-        const earningsBySheet = new Map<string, number>();
-        const earningsByCycle = new Map<string, number>();
+        const earningsBySheet = new Map<string, { total: number; workers: { worker_id: string; amount: number }[] }>();
 
         workerCache?.forEach(w => {
           const data = w.result_data as any;
           const total = data?.totalBonus || data?.total || 0;
 
           earningsByWorker.set(w.worker_id, (earningsByWorker.get(w.worker_id) || 0) + total);
-          earningsBySheet.set(w.sheet_name, (earningsBySheet.get(w.sheet_name) || 0) + total);
-          earningsByCycle.set(w.cycle_key, (earningsByCycle.get(w.cycle_key) || 0) + total);
+          
+          const sheetEntry = earningsBySheet.get(w.sheet_name) || { total: 0, workers: [] };
+          sheetEntry.total += total;
+          sheetEntry.workers.push({ worker_id: w.worker_id, amount: total });
+          earningsBySheet.set(w.sheet_name, sheetEntry);
         });
 
         const topEarners = Array.from(earningsByWorker.entries())
@@ -154,9 +170,79 @@ Deno.serve(async (req) => {
 
         result = {
           top_earners: topEarners,
-          by_sheet: Array.from(earningsBySheet.entries()).map(([name, total]) => ({ sheet: name, total })),
-          by_cycle: Array.from(earningsByCycle.entries()).map(([key, total]) => ({ cycle: key, total })),
+          by_sheet: Array.from(earningsBySheet.entries()).map(([name, val]) => ({ 
+            sheet: name, total: val.total, worker_count: val.workers.length, workers: val.workers.sort((a, b) => b.amount - a.amount) 
+          })),
+          available_cycles: uniqueCycles,
+          selected_cycle: filterCycle || null,
           total_records: workerCache?.length || 0,
+        };
+        break;
+      }
+
+      case 'get_worker_detail': {
+        const workerId = params?.worker_id;
+        if (!workerId) {
+          result = { success: false, error: 'No worker_id provided' };
+          break;
+        }
+
+        // Get all cached earnings for this worker
+        const { data: workerEarnings } = await supabase
+          .from('cycle_worker_cache')
+          .select('sheet_name, cycle_key, result_data, updated_at')
+          .eq('worker_id', workerId);
+
+        // Get sessions (login history)
+        const { data: sessions } = await supabase
+          .from('worker_sessions')
+          .select('created_at, last_heartbeat, device_fingerprint')
+          .eq('worker_id', workerId)
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        // Get PIN info
+        const { data: pinData } = await supabase
+          .from('worker_pins')
+          .select('created_at')
+          .eq('worker_id', workerId)
+          .maybeSingle();
+
+        // Get identity confirmation
+        const { data: identity } = await supabase
+          .from('confirmed_identities')
+          .select('confirmed_at, device_fingerprint')
+          .eq('worker_id', workerId)
+          .maybeSingle();
+
+        // Group earnings by cycle
+        const earningsByCycle = new Map<string, { total: number; sheets: { sheet: string; amount: number }[] }>();
+        
+        workerEarnings?.forEach(e => {
+          const data = e.result_data as any;
+          const amount = data?.totalBonus || data?.total || 0;
+          const entry = earningsByCycle.get(e.cycle_key) || { total: 0, sheets: [] };
+          entry.total += amount;
+          entry.sheets.push({ sheet: e.sheet_name, amount });
+          earningsByCycle.set(e.cycle_key, entry);
+        });
+
+        const grandTotal = Array.from(earningsByCycle.values()).reduce((sum, c) => sum + c.total, 0);
+
+        result = {
+          worker_id: workerId,
+          has_pin: !!pinData,
+          pin_created: pinData?.created_at || null,
+          identity_confirmed: !!identity,
+          identity_confirmed_at: identity?.confirmed_at || null,
+          grand_total: grandTotal,
+          earnings_by_cycle: Array.from(earningsByCycle.entries()).map(([key, val]) => ({
+            cycle_key: key,
+            total: val.total,
+            sheets: val.sheets.sort((a, b) => b.amount - a.amount),
+          })).sort((a, b) => b.cycle_key.localeCompare(a.cycle_key)),
+          sessions: sessions || [],
+          total_sessions: sessions?.length || 0,
         };
         break;
       }
