@@ -57,16 +57,16 @@ export function FeedbackModal({ userId, identityConfirmed }: FeedbackModalProps)
         await supabase
           .from('admin_settings')
           .update({
-            setting_value: responses as unknown as Record<string, unknown>,
+          setting_value: responses as unknown as import('@/integrations/supabase/types').Json,
             updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
       } else {
-        await supabase.from('admin_settings').insert({
+        await supabase.from('admin_settings').insert([{
           setting_key: 'user_feedback',
-          setting_value: responses as unknown as Record<string, unknown>,
+          setting_value: responses as unknown as import('@/integrations/supabase/types').Json,
           description: 'User feedback responses',
-        });
+        }]);
       }
     } catch {
       // Silent fail - don't block the user
