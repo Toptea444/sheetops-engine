@@ -57,7 +57,7 @@ export function FeedbackModal({ userId, identityConfirmed }: FeedbackModalProps)
         await supabase
           .from('admin_settings')
           .update({
-            setting_value: responses as unknown as Record<string, unknown>,
+          setting_value: responses as unknown as import('@/integrations/supabase/types').Json,
             updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
