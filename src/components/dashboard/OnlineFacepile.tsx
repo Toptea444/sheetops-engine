@@ -51,7 +51,7 @@ export function OnlineFacepile({ onlineUsers, currentUserId }: OnlineFacepilePro
           </div>
           {/* Text */}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-            <Circle className="h-1.5 w-1.5 fill-green-500 text-green-500" />
+            <Circle className="h-1.5 w-1.5 fill-success text-success" />
             <span>{count} online now</span>
           </div>
         </button>
