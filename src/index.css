@@ -159,3 +159,23 @@
   }
 }
 
+/* Mesh blob animations for DOM-based background blobs */
+@keyframes blob-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate(-25px, -35px) scale(1.06) rotate(2deg); }
+  66% { transform: translate(15px, -20px) scale(0.98) rotate(-1deg); }
+}
+@keyframes blob-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate(35px, 40px) scale(1.04) rotate(-2deg); }
+  66% { transform: translate(-20px, 25px) scale(0.97) rotate(1deg); }
+}
+@keyframes blob-drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  50% { transform: translate(30px, 25px) scale(1.05) rotate(3deg); }
+}
+@keyframes blob-drift-4 {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  50% { transform: translate(-30px, -40px) scale(1.03) rotate(-2deg); }
+}
+
