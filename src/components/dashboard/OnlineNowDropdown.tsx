@@ -28,7 +28,7 @@ export function OnlineNowDropdown({ onlineUsers, currentUserId, isLoading }: Onl
           className="gap-1.5 h-8 px-2 text-xs font-medium"
           disabled={isLoading}
         >
-          <Circle className="h-2 w-2 fill-green-500 text-green-500" />
+          <Circle className="h-2 w-2 fill-success text-success" />
           <span className="hidden sm:inline">{count} Online</span>
           <span className="sm:hidden">{count}</span>
           <ChevronDown className="h-3 w-3 opacity-50" />
