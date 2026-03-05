@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { UserBadge } from './UserBadge';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { NotificationToggle } from './NotificationToggle';
+import { OnlineNowDropdown } from './OnlineNowDropdown';
 import type { Theme, AccentColor } from '@/hooks/useTheme';
+import type { OnlineUser } from '@/hooks/useOnlineUsers';
 
 interface HeaderProps {
   onRefresh: () => void;
