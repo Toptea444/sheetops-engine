@@ -719,6 +719,13 @@ const Index = () => {
               </div>
             </div>
 
+            {/* Social Proof - Online Facepile */}
+            {onlineUsers.length > 0 && (
+              <div className="mb-6">
+                <OnlineFacepile onlineUsers={onlineUsers} currentUserId={userId} />
+              </div>
+            )}
+
             {/* Hero Summary Section - Main Focus */}
             <div className="mb-8">
               <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6 sm:p-8">
