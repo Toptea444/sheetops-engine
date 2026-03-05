@@ -601,7 +601,29 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      {/* Extra decorative mesh blobs scoped to homepage */}
+      <div className="pointer-events-none fixed inset-0 z-[-1] overflow-hidden" aria-hidden>
+        {/* Mid-page accent orb */}
+        <div
+          className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[900px] h-[500px] rounded-full opacity-[0.12]"
+          style={{
+            background: 'radial-gradient(ellipse at center, hsl(var(--primary) / 0.35) 0%, transparent 70%)',
+            filter: 'blur(100px)',
+            animation: 'drift-three 30s ease-in-out infinite',
+          }}
+        />
+        {/* Small accent dot - top center */}
+        <div
+          className="absolute top-[12%] left-[60%] w-[300px] h-[300px] rounded-full opacity-[0.08]"
+          style={{
+            background: 'radial-gradient(circle, hsl(195 80% 70%) 0%, transparent 65%)',
+            filter: 'blur(50px)',
+            animation: 'drift-one 20s ease-in-out infinite reverse',
+          }}
+        />
+      </div>
+
       {/* Feedback Modal */}
       <FeedbackModal userId={userId} identityConfirmed={identityConfirmed} />
 
