@@ -602,24 +602,55 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
-      {/* Extra decorative mesh blobs scoped to homepage */}
-      <div className="pointer-events-none fixed inset-0 z-[-1] overflow-hidden" aria-hidden>
-        {/* Mid-page accent orb */}
+      {/* Organic mesh gradient blobs — DOM-based so they render above bg-background */}
+      <div className="pointer-events-none fixed inset-0 z-[-1] overflow-hidden" aria-hidden="true">
+        {/* Top-right large blob */}
+        <div
+          className="absolute -top-[10%] -right-[3%] w-[750px] h-[750px]"
+          style={{
+            background: 'radial-gradient(ellipse 650px 500px at 35% 45%, hsla(210,70%,65%,0.35) 0%, hsla(220,65%,72%,0.18) 35%, transparent 70%), radial-gradient(circle 300px at 60% 30%, hsla(195,80%,70%,0.15) 0%, transparent 65%)',
+            borderRadius: '45% 55% 60% 40% / 55% 45% 55% 45%',
+            filter: 'blur(70px)',
+            animation: 'blob-drift-1 18s ease-in-out infinite',
+          }}
+        />
+        {/* Bottom-left large blob */}
+        <div
+          className="absolute -bottom-[15%] -left-[8%] w-[850px] h-[850px]"
+          style={{
+            background: 'radial-gradient(ellipse 700px 550px at 40% 50%, hsla(215,65%,70%,0.30) 0%, hsla(225,55%,78%,0.12) 40%, transparent 75%), radial-gradient(circle 250px at 65% 65%, hsla(230,50%,80%,0.12) 0%, transparent 60%)',
+            borderRadius: '65% 35% 42% 58% / 48% 62% 38% 52%',
+            filter: 'blur(85px)',
+            animation: 'blob-drift-2 22s ease-in-out infinite reverse',
+          }}
+        />
+        {/* Top-left accent blob */}
+        <div
+          className="absolute top-[8%] -left-[5%] w-[550px] h-[550px]"
+          style={{
+            background: 'radial-gradient(circle 400px, hsla(200,75%,80%,0.22) 0%, transparent 65%), radial-gradient(circle 200px at 70% 60%, hsla(180,60%,85%,0.12) 0%, transparent 55%)',
+            borderRadius: '38% 62% 58% 42% / 58% 38% 62% 42%',
+            filter: 'blur(65px)',
+            animation: 'blob-drift-3 25s ease-in-out infinite',
+          }}
+        />
+        {/* Bottom-right subtle glow */}
+        <div
+          className="absolute bottom-[5%] -right-[8%] w-[650px] h-[650px]"
+          style={{
+            background: 'radial-gradient(circle 450px, hsla(205,60%,75%,0.18) 0%, transparent 70%), radial-gradient(circle 200px at 30% 40%, hsla(240,50%,85%,0.10) 0%, transparent 55%)',
+            borderRadius: '72% 28% 35% 65% / 42% 58% 42% 58%',
+            filter: 'blur(90px)',
+            animation: 'blob-drift-4 28s ease-in-out infinite reverse',
+          }}
+        />
+        {/* Mid-page primary accent orb */}
         <div
           className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[900px] h-[500px] rounded-full opacity-[0.12]"
           style={{
             background: 'radial-gradient(ellipse at center, hsl(var(--primary) / 0.35) 0%, transparent 70%)',
             filter: 'blur(100px)',
-            animation: 'drift-three 30s ease-in-out infinite',
-          }}
-        />
-        {/* Small accent dot - top center */}
-        <div
-          className="absolute top-[12%] left-[60%] w-[300px] h-[300px] rounded-full opacity-[0.08]"
-          style={{
-            background: 'radial-gradient(circle, hsl(195 80% 70%) 0%, transparent 65%)',
-            filter: 'blur(50px)',
-            animation: 'drift-one 20s ease-in-out infinite reverse',
+            animation: 'blob-drift-3 30s ease-in-out infinite',
           }}
         />
       </div>
