@@ -44,6 +44,8 @@ export function Header({
   notificationPermission,
   onEnableNotifications,
   onDisableNotifications,
+  onlineUsers,
+  onlineUsersLoading,
 }: HeaderProps) {
   // Show user ID badge only if onSwitchUser is available (dropdown mode)
   // Otherwise show static display of user ID
