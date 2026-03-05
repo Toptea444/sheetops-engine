@@ -1,12 +1,12 @@
 import { Download } from 'lucide-react';
-
-const APP_DOWNLOADED_KEY = 'performanceTracker_appDownloaded';
+import { APP_BANNER_CLICKED_AT_KEY } from '@/components/DownloadAppModal';
 
 interface DownloadAppBannerProps {
   visible: boolean;
+  onHide: () => void;
 }
 
-export function DownloadAppBanner({ visible }: DownloadAppBannerProps) {
+export function DownloadAppBanner({ visible, onHide }: DownloadAppBannerProps) {
   if (!visible) return null;
 
   const handleDownload = () => {
@@ -17,20 +17,18 @@ export function DownloadAppBanner({ visible }: DownloadAppBannerProps) {
     link.click();
     document.body.removeChild(link);
 
-    localStorage.setItem(APP_DOWNLOADED_KEY, 'true');
+    // Record when the banner was clicked so it hides for 1 week (dismissed users only)
+    localStorage.setItem(APP_BANNER_CLICKED_AT_KEY, String(Date.now()));
+    onHide();
   };
 
   return (
-    <div className="w-full bg-primary/8 border-b border-primary/15">
-      <div className="container mx-auto px-4 h-9 flex items-center justify-end">
-        <button
-          onClick={handleDownload}
-          className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 active:scale-[0.97] transition-all"
-        >
-          <Download className="h-3.5 w-3.5" />
-          <span>Download App</span>
-        </button>
-      </div>
-    </div>
+    <button
+      onClick={handleDownload}
+      className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 active:scale-[0.97] transition-all shrink-0 py-1 px-2 rounded-lg hover:bg-primary/8"
+    >
+      <Download className="h-3.5 w-3.5" />
+      <span>Download App</span>
+    </button>
   );
 }
