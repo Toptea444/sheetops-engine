@@ -18,6 +18,8 @@ import { LeaderboardWelcome } from '@/components/dashboard/LeaderboardWelcome';
 import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
 import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { FeedbackModal } from '@/components/FeedbackModal';
+import { DownloadAppModal, APP_DOWNLOADED_KEY, APP_DOWNLOAD_DISMISSED_KEY } from '@/components/DownloadAppModal';
+import { DownloadAppBanner } from '@/components/DownloadAppBanner';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
@@ -70,6 +72,13 @@ const Index = () => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
+
+  // Download app banner: show if modal was dismissed without downloading
+  const [showDownloadBanner, setShowDownloadBanner] = useState(() => {
+    const dismissed = localStorage.getItem(APP_DOWNLOAD_DISMISSED_KEY);
+    const downloaded = localStorage.getItem(APP_DOWNLOADED_KEY);
+    return dismissed === 'true' && !downloaded;
+  });
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
@@ -569,6 +578,13 @@ const Index = () => {
       {/* Feedback Modal */}
       <FeedbackModal userId={userId} identityConfirmed={identityConfirmed} />
 
+      {/* Download App Modal */}
+      <DownloadAppModal
+        userId={userId}
+        identityConfirmed={identityConfirmed}
+        onDismissed={() => setShowDownloadBanner(true)}
+      />
+
       {/* Admin Alerts Display */}
       <AlertsDisplay />
       
@@ -604,6 +620,9 @@ const Index = () => {
         className={`flex flex-1 flex-col ${isIdentityLocked ? 'pointer-events-none select-none blur-sm' : ''}`}
         aria-hidden={isIdentityLocked}
       >
+        {/* Download App Banner - shown after modal dismissal */}
+        <DownloadAppBanner visible={showDownloadBanner && identityConfirmed} />
+
         <Header 
           onRefresh={handleRefresh} 
           isLoading={isLoading}
