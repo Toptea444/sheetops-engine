@@ -79,6 +79,15 @@ export function Header({
             />
           )}
           
+          {/* Online Now */}
+          {onlineUsers && (
+            <OnlineNowDropdown
+              onlineUsers={onlineUsers}
+              currentUserId={userId}
+              isLoading={onlineUsersLoading}
+            />
+          )}
+
           {/* Notifications */}
           {notificationsSupported !== undefined && onEnableNotifications && onDisableNotifications && (
             <NotificationToggle
