@@ -1,13 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Download } from 'lucide-react';
 
-const APP_DOWNLOAD_DISMISSED_KEY = 'performanceTracker_appDownloadDismissed';
-const APP_DOWNLOADED_KEY = 'performanceTracker_appDownloaded';
+// Keys for localStorage
+const APP_MODAL_SHOWN_KEY = 'performanceTracker_appModalShown';
+const APP_MODAL_DOWNLOADED_KEY = 'performanceTracker_appModalDownloaded'; // user clicked download in modal
+const APP_MODAL_DISMISSED_KEY = 'performanceTracker_appModalDismissed'; // user clicked "later" in modal
+const APP_BANNER_CLICKED_AT_KEY = 'performanceTracker_appBannerClickedAt'; // timestamp when banner was clicked
+
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface DownloadAppModalProps {
   userId: string | null;
   identityConfirmed: boolean;
-  onDismissed: () => void;
+  onShowBanner: (source: 'downloaded' | 'dismissed') => void;
 }
 
 function ApkIcon({ className }: { className?: string }) {
@@ -73,7 +78,7 @@ function ApkIcon({ className }: { className?: string }) {
 export function DownloadAppModal({
   userId,
   identityConfirmed,
-  onDismissed,
+  onShowBanner,
 }: DownloadAppModalProps) {
   const [visible, setVisible] = useState(false);
   const [fadeIn, setFadeIn] = useState(false);
@@ -81,11 +86,10 @@ export function DownloadAppModal({
   useEffect(() => {
     if (!userId || !identityConfirmed) return;
 
-    const alreadyDownloaded = localStorage.getItem(APP_DOWNLOADED_KEY);
-    const alreadyDismissed = localStorage.getItem(APP_DOWNLOAD_DISMISSED_KEY);
-    if (alreadyDownloaded || alreadyDismissed) return;
+    // Don't show modal again if it was already shown (either downloaded or dismissed)
+    const alreadyShown = localStorage.getItem(APP_MODAL_SHOWN_KEY);
+    if (alreadyShown) return;
 
-    // Show after a short delay (after feedback modal would have shown or been dismissed)
     const timer = setTimeout(() => {
       setVisible(true);
       requestAnimationFrame(() => {
@@ -100,13 +104,13 @@ export function DownloadAppModal({
     setFadeIn(false);
     setTimeout(() => {
       setVisible(false);
-      localStorage.setItem(APP_DOWNLOAD_DISMISSED_KEY, 'true');
-      onDismissed();
+      localStorage.setItem(APP_MODAL_SHOWN_KEY, 'true');
+      localStorage.setItem(APP_MODAL_DISMISSED_KEY, 'true');
+      onShowBanner('dismissed');
     }, 350);
-  }, [onDismissed]);
+  }, [onShowBanner]);
 
   const handleDownload = useCallback(() => {
-    // Trigger APK download
     const link = document.createElement('a');
     link.href = '/bonus-calculator.apk';
     link.download = 'bonus-calculator.apk';
@@ -114,13 +118,15 @@ export function DownloadAppModal({
     link.click();
     document.body.removeChild(link);
 
-    localStorage.setItem(APP_DOWNLOADED_KEY, 'true');
+    localStorage.setItem(APP_MODAL_SHOWN_KEY, 'true');
+    localStorage.setItem(APP_MODAL_DOWNLOADED_KEY, 'true');
 
     setFadeIn(false);
     setTimeout(() => {
       setVisible(false);
+      onShowBanner('downloaded');
     }, 350);
-  }, []);
+  }, [onShowBanner]);
 
   if (!visible) return null;
 
@@ -194,4 +200,31 @@ export function DownloadAppModal({
   );
 }
 
-export { APP_DOWNLOADED_KEY, APP_DOWNLOAD_DISMISSED_KEY };
+/** Determine if the download banner should be visible based on localStorage state */
+export function shouldShowDownloadBanner(): boolean {
+  const modalShown = localStorage.getItem(APP_MODAL_SHOWN_KEY);
+  if (!modalShown) return false; // modal hasn't been shown yet
+
+  const downloadedFromModal = localStorage.getItem(APP_MODAL_DOWNLOADED_KEY);
+  const dismissedFromModal = localStorage.getItem(APP_MODAL_DISMISSED_KEY);
+
+  // Case 1: User downloaded from modal -> always show banner
+  if (downloadedFromModal) return true;
+
+  // Case 2: User dismissed modal -> show banner, but hide for 1 week after clicking banner
+  if (dismissedFromModal) {
+    const bannerClickedAt = localStorage.getItem(APP_BANNER_CLICKED_AT_KEY);
+    if (bannerClickedAt) {
+      const elapsed = Date.now() - Number(bannerClickedAt);
+      if (elapsed < ONE_WEEK_MS) return false; // hidden for 1 week
+      // After 1 week, show again
+      localStorage.removeItem(APP_BANNER_CLICKED_AT_KEY);
+      return true;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+export { APP_BANNER_CLICKED_AT_KEY };
