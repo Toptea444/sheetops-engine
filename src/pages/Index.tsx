@@ -20,6 +20,7 @@ import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { FeedbackModal } from '@/components/FeedbackModal';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import { OnlineFacepile } from '@/components/dashboard/OnlineFacepile';
 import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
@@ -28,6 +29,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useDisplayMode } from '@/hooks/useDisplayMode';
 import { useNotifications, generateDataHash, NOTIFICATION_POLL_INTERVAL_MS } from '@/hooks/useNotifications';
 import { useSessionLock } from '@/hooks/useSessionLock';
+import { useOnlineUsers } from '@/hooks/useOnlineUsers';
 import { useCycleCache } from '@/hooks/useCycleCache';
 import { getCycleOptions, isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
@@ -114,6 +116,9 @@ const Index = () => {
     results,
     selectedCycle
   );
+
+  // Online users
+  const { onlineUsers, isLoading: onlineLoading } = useOnlineUsers();
 
   const isIdentityLocked = !!userId && !identityConfirmed;
 
@@ -677,7 +682,9 @@ const Index = () => {
           notificationsEnabled={notificationsEnabled}
           notificationPermission={notificationPermission}
           onEnableNotifications={enableNotifications}
-          onDisableNotifications={disableNotifications}
+           onDisableNotifications={disableNotifications}
+           onlineUsers={onlineUsers}
+           onlineUsersLoading={onlineLoading}
         />
 
         <main className="flex-1 w-full overflow-x-hidden px-4 sm:px-6 py-6">
@@ -711,6 +718,13 @@ const Index = () => {
                 />
               </div>
             </div>
+
+            {/* Social Proof - Online Facepile */}
+            {onlineUsers.length > 0 && (
+              <div className="mb-6">
+                <OnlineFacepile onlineUsers={onlineUsers} currentUserId={userId} />
+              </div>
+            )}
 
             {/* Hero Summary Section - Main Focus */}
             <div className="mb-8">

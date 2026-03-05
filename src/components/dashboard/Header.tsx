@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { UserBadge } from './UserBadge';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { NotificationToggle } from './NotificationToggle';
+import { OnlineNowDropdown } from './OnlineNowDropdown';
 import type { Theme, AccentColor } from '@/hooks/useTheme';
+import type { OnlineUser } from '@/hooks/useOnlineUsers';
 
 interface HeaderProps {
   onRefresh: () => void;
@@ -22,6 +24,9 @@ interface HeaderProps {
   notificationPermission?: NotificationPermission;
   onEnableNotifications?: () => void;
   onDisableNotifications?: () => void;
+  // Online users
+  onlineUsers?: OnlineUser[];
+  onlineUsersLoading?: boolean;
 }
 
 export function Header({
@@ -39,6 +44,8 @@ export function Header({
   notificationPermission,
   onEnableNotifications,
   onDisableNotifications,
+  onlineUsers,
+  onlineUsersLoading,
 }: HeaderProps) {
   // Show user ID badge only if onSwitchUser is available (dropdown mode)
   // Otherwise show static display of user ID
@@ -72,6 +79,15 @@ export function Header({
             />
           )}
           
+          {/* Online Now */}
+          {onlineUsers && (
+            <OnlineNowDropdown
+              onlineUsers={onlineUsers}
+              currentUserId={userId}
+              isLoading={onlineUsersLoading}
+            />
+          )}
+
           {/* Notifications */}
           {notificationsSupported !== undefined && onEnableNotifications && onDisableNotifications && (
             <NotificationToggle
