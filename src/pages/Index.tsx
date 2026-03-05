@@ -20,6 +20,7 @@ import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { FeedbackModal } from '@/components/FeedbackModal';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import { OnlineFacepile } from '@/components/dashboard/OnlineFacepile';
 import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
