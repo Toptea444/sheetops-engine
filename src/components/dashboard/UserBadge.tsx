@@ -30,7 +30,7 @@ export function UserBadge({ userId, userName, onSwitchUser }: UserBadgeProps) {
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold">
               {initials}
             </div>
-            <span className="absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-[hsl(142_71%_45%)] ring-2 ring-card" />
+            <span className="absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-success ring-2 ring-card" />
           </div>
           <span className="hidden sm:inline max-w-[120px] truncate text-foreground">{displayName}</span>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />

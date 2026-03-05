@@ -71,7 +71,7 @@ export function OnlineFacepile({ onlineUsers, currentUserId }: OnlineFacepilePro
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-bold">
                   {initials}
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-popover" />
+                <span className="absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-success ring-2 ring-popover" />
               </div>
               <span className="flex-1 truncate text-sm font-medium">
                 {user.worker_id}
