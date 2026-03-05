@@ -117,6 +117,9 @@ const Index = () => {
     selectedCycle
   );
 
+  // Online users
+  const { onlineUsers, isLoading: onlineLoading } = useOnlineUsers();
+
   const isIdentityLocked = !!userId && !identityConfirmed;
 
   // Helper to check if a sheet should be unchecked by default
