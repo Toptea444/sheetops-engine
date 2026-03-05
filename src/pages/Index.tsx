@@ -682,7 +682,9 @@ const Index = () => {
           notificationsEnabled={notificationsEnabled}
           notificationPermission={notificationPermission}
           onEnableNotifications={enableNotifications}
-          onDisableNotifications={disableNotifications}
+           onDisableNotifications={disableNotifications}
+           onlineUsers={onlineUsers}
+           onlineUsersLoading={onlineLoading}
         />
 
         <main className="flex-1 w-full overflow-x-hidden px-4 sm:px-6 py-6">
