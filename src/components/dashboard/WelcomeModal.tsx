@@ -21,7 +21,6 @@ interface WelcomeModalProps {
   onComplete: (userId: string, pinVerified: boolean) => void;
   isValidating?: boolean;
   validationError?: string | null;
-  sessionLockError?: string | null;
   onIdValidated?: (userId: string) => Promise<boolean>;
 }
 
@@ -30,7 +29,6 @@ export function WelcomeModal({
   onComplete, 
   isValidating = false,
   validationError = null,
-  sessionLockError = null,
   onIdValidated,
 }: WelcomeModalProps) {
   const [userId, setUserId] = useState('');
@@ -49,8 +47,7 @@ export function WelcomeModal({
     }
   }, [open]);
   
-  // Show session lock error when it changes
-  const displayError = error || validationError || sessionLockError;
+  const displayError = error || validationError;
 
   const validateAndSubmit = async () => {
     const trimmedId = userId.trim().toUpperCase();

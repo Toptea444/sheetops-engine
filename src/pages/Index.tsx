@@ -27,7 +27,6 @@ import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
 import { useTheme } from '@/hooks/useTheme';
 import { useDisplayMode } from '@/hooks/useDisplayMode';
 import { useNotifications, generateDataHash, NOTIFICATION_POLL_INTERVAL_MS } from '@/hooks/useNotifications';
-import { useSessionLock } from '@/hooks/useSessionLock';
 import { useCycleCache } from '@/hooks/useCycleCache';
 import { getCycleOptions, isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
@@ -90,16 +89,6 @@ const Index = () => {
     disableNotifications,
     checkForUpdates,
   } = useNotifications();
-
-  // Session lock for cross-device protection
-  const {
-    lockError: sessionLockError,
-    claimSession,
-    releaseSession,
-    startHeartbeat,
-    stopHeartbeat,
-    bindDeviceToWorker,
-  } = useSessionLock();
 
   // Cycle cache for persisting data across sheet disabling
   const {
@@ -181,21 +170,6 @@ const Index = () => {
     }
   }, [identityLoading, hasIdentity, isInitializing, identityConfirmed]);
 
-  // Start heartbeat for already confirmed users on mount
-  useEffect(() => {
-    if (userId && identityConfirmed) {
-      // Reclaim session (handles stale sessions) and start heartbeat
-      claimSession(userId).then((claimed) => {
-        if (claimed) {
-          startHeartbeat(userId);
-        }
-      });
-    }
-    
-    return () => {
-      stopHeartbeat();
-    };
-  }, [userId, identityConfirmed, claimSession, startHeartbeat, stopHeartbeat]);
 
   // Safety: never keep sensitive data on screen before identity is confirmed
   useEffect(() => {
@@ -333,14 +307,6 @@ const Index = () => {
     setIsValidating(true);
     setValidationError(null);
 
-    // First check session lock
-    const canClaim = await claimSession(newUserId);
-    if (!canClaim) {
-      setIsValidating(false);
-      // sessionLockError will be shown via the modal
-      return false;
-    }
-
     let foundUser = false;
     let foundUserName = '';
 
@@ -359,8 +325,6 @@ const Index = () => {
     setIsValidating(false);
 
     if (!foundUser) {
-      // Release the session since user wasn't found
-      await releaseSession(newUserId);
       setValidationError(`ID "${newUserId}" not found. Please check and try again.`);
       return false;
     }
@@ -391,43 +355,21 @@ const Index = () => {
 
   // Handle identity confirmation - bind device permanently and start heartbeat
   const handleIdentityConfirm = useCallback(async () => {
-    if (userId) {
-      // Bind this device permanently to this worker ID
-      const bound = await bindDeviceToWorker(userId);
-      if (!bound) {
-        toast.error('Failed to secure your identity. Please try again.');
-        return;
-      }
-
-      // Claim session and start heartbeat
-      const claimed = await claimSession(userId);
-      if (claimed) {
-        startHeartbeat(userId);
-      }
-    }
     confirmIdentity(userId || undefined);
     setShowIdentityConfirmation(false);
     toast.success('Identity confirmed! Your account is now secured.');
-  }, [confirmIdentity, userId, claimSession, startHeartbeat, bindDeviceToWorker]);
+  }, [confirmIdentity, userId]);
 
   const handleIdentityDeny = useCallback(async () => {
-    if (userId) {
-      await releaseSession(userId);
-      stopHeartbeat();
-    }
     clearIdentity();
     setResults([]);
     setDataError(null);
     setShowIdentityConfirmation(false);
     setShowWelcome(true);
     toast.info('Logged out. Please log in with your own ID.');
-  }, [clearIdentity, userId, releaseSession, stopHeartbeat]);
+  }, [clearIdentity]);
 
   const handleSwitchUser = async () => {
-    if (userId) {
-      await releaseSession(userId);
-      stopHeartbeat();
-    }
     clearIdentity();
     setResults([]);
     setDataError(null);
@@ -638,7 +580,6 @@ const Index = () => {
         onComplete={handleWelcomeComplete}
         isValidating={isValidating}
         validationError={validationError}
-        sessionLockError={sessionLockError}
         onIdValidated={handleIdValidation}
       />
 
