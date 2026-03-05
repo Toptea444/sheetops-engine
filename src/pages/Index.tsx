@@ -29,6 +29,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useDisplayMode } from '@/hooks/useDisplayMode';
 import { useNotifications, generateDataHash, NOTIFICATION_POLL_INTERVAL_MS } from '@/hooks/useNotifications';
 import { useSessionLock } from '@/hooks/useSessionLock';
+import { useOnlineUsers } from '@/hooks/useOnlineUsers';
 import { useCycleCache } from '@/hooks/useCycleCache';
 import { getCycleOptions, isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
