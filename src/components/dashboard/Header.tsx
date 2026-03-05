@@ -24,6 +24,9 @@ interface HeaderProps {
   notificationPermission?: NotificationPermission;
   onEnableNotifications?: () => void;
   onDisableNotifications?: () => void;
+  // Online users
+  onlineUsers?: OnlineUser[];
+  onlineUsersLoading?: boolean;
 }
 
 export function Header({
