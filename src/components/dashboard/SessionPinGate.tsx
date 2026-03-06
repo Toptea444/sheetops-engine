@@ -22,6 +22,8 @@ interface SessionPinGateProps {
 export function SessionPinGate({ open, workerId, onVerified, onSwitchUser }: SessionPinGateProps) {
   const { isLoading, checkPinExists, setPin, verifyPin, error } = useWorkerPin();
   const [step, setStep] = useState<'loading' | 'pin-entry' | 'pin-setup'>('loading');
+  // Track if this is a PIN reset scenario (returning user without a PIN)
+  const [pinWasReset, setPinWasReset] = useState(false);
 
   useEffect(() => {
     if (!open || !workerId) return;
@@ -29,6 +31,11 @@ export function SessionPinGate({ open, workerId, onVerified, onSwitchUser }: Ses
     const check = async () => {
       setStep('loading');
       const exists = await checkPinExists(workerId);
+      // If user is returning (has identity in localStorage) but no PIN exists,
+      // it means their PIN was reset by admin
+      if (!exists) {
+        setPinWasReset(true);
+      }
       setStep(exists ? 'pin-entry' : 'pin-setup');
     };
     check();
@@ -75,6 +82,7 @@ export function SessionPinGate({ open, workerId, onVerified, onSwitchUser }: Ses
             onSubmit={handlePinSetup}
             isLoading={isLoading}
             error={error}
+            pinWasReset={pinWasReset}
           />
         )}
       </DialogContent>
