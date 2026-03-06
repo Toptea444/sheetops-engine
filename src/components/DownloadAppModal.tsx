@@ -119,6 +119,8 @@ export function DownloadAppModal({
     link.click();
     document.body.removeChild(link);
 
+    toast('Download starting now', { duration: 3000 });
+
     localStorage.setItem(APP_MODAL_SHOWN_KEY, 'true');
     localStorage.setItem(APP_MODAL_DOWNLOADED_KEY, 'true');
 
