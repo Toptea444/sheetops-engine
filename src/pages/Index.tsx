@@ -75,10 +75,10 @@ const Index = () => {
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
 
-  // Session-level PIN verification (resets on tab close / refresh)
-  const PIN_VERIFIED_SESSION_KEY = 'performanceTracker_pinVerifiedSession';
+  // Persistent PIN verification (survives browser close)
+  const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
   const [pinVerifiedThisSession, setPinVerifiedThisSession] = useState(() => {
-    return sessionStorage.getItem(PIN_VERIFIED_SESSION_KEY) === 'true';
+    return localStorage.getItem(PIN_VERIFIED_KEY) === 'true';
   });
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
@@ -352,8 +352,8 @@ const Index = () => {
 
   const handleWelcomeComplete = async (newUserId: string, pinVerified: boolean) => {
     if (pinVerified) {
-      // Mark PIN as verified for this session
-      sessionStorage.setItem(PIN_VERIFIED_SESSION_KEY, 'true');
+      // Mark PIN as verified persistently (survives browser close)
+      localStorage.setItem(PIN_VERIFIED_KEY, 'true');
       setPinVerifiedThisSession(true);
       setShowWelcome(false);
       // Always require explicit identity confirmation before unlocking the app.
@@ -363,7 +363,7 @@ const Index = () => {
   };
 
   const handlePinGateVerified = useCallback(() => {
-    sessionStorage.setItem(PIN_VERIFIED_SESSION_KEY, 'true');
+    localStorage.setItem(PIN_VERIFIED_KEY, 'true');
     setPinVerifiedThisSession(true);
     setShowPinGate(false);
     if (!identityConfirmed) {
@@ -372,7 +372,7 @@ const Index = () => {
   }, [identityConfirmed]);
 
   const handlePinGateSwitchUser = useCallback(() => {
-    sessionStorage.removeItem(PIN_VERIFIED_SESSION_KEY);
+    localStorage.removeItem(PIN_VERIFIED_KEY);
     setPinVerifiedThisSession(false);
     clearIdentity();
     setResults([]);
@@ -399,7 +399,7 @@ const Index = () => {
   }, [confirmIdentity, userId]);
 
   const handleIdentityDeny = useCallback(async () => {
-    sessionStorage.removeItem(PIN_VERIFIED_SESSION_KEY);
+    localStorage.removeItem(PIN_VERIFIED_KEY);
     setPinVerifiedThisSession(false);
     clearIdentity();
     setResults([]);
