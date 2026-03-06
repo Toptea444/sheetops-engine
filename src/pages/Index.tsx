@@ -168,9 +168,7 @@ const Index = () => {
     init();
   }, [fetchSheets]);
 
-  // Show welcome modal for new users, PIN gate for returning users
-  // NOTE: Identity confirmation is triggered explicitly by handleWelcomeComplete/handlePinGateVerified
-  // to avoid duplicate modal triggers from useEffect re-runs
+  // Show welcome modal for new users, PIN gate for returning users, or identity confirmation
   useEffect(() => {
     if (!identityLoading && !isInitializing) {
       if (!hasIdentity) {
@@ -178,11 +176,12 @@ const Index = () => {
       } else if (!pinVerifiedThisSession) {
         // Returning user needs PIN verification every session
         setShowPinGate(true);
+      } else if (!identityConfirmed) {
+        // PIN verified but identity not yet confirmed
+        setShowIdentityConfirmation(true);
       }
-      // Identity confirmation is NOT triggered here to avoid loops - 
-      // it's triggered explicitly after PIN verification completes
     }
-  }, [identityLoading, hasIdentity, isInitializing, pinVerifiedThisSession]);
+  }, [identityLoading, hasIdentity, isInitializing, identityConfirmed, pinVerifiedThisSession]);
 
   // Download app banner
   const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());

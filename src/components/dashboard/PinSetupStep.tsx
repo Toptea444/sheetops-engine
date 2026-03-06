@@ -14,11 +14,9 @@ interface PinSetupStepProps {
   onSubmit: (pin: string) => void;
   isLoading?: boolean;
   error?: string | null;
-  /** If true, shows a message indicating the PIN was reset by admin */
-  pinWasReset?: boolean;
 }
 
-export function PinSetupStep({ workerId, onSubmit, isLoading = false, error = null, pinWasReset = false }: PinSetupStepProps) {
+export function PinSetupStep({ workerId, onSubmit, isLoading = false, error = null }: PinSetupStepProps) {
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
@@ -57,32 +55,11 @@ export function PinSetupStep({ workerId, onSubmit, isLoading = false, error = nu
         <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
           <Shield className="h-7 w-7 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold">
-          {pinWasReset ? 'Set a New PIN' : 'Secure Your Account'}
-        </h2>
+        <h2 className="text-xl font-semibold">Secure Your Account</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          {pinWasReset ? (
-            <>Your PIN was reset. Please set a new PIN for <span className="font-medium text-foreground">{workerId}</span></>
-          ) : (
-            <>Setting up PIN for <span className="font-medium text-foreground">{workerId}</span></>
-          )}
+          Setting up PIN for <span className="font-medium text-foreground">{workerId}</span>
         </p>
       </div>
-
-      {/* PIN Reset Notice */}
-      {pinWasReset && (
-        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
-          <div className="flex gap-2">
-            <AlertTriangle className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <p className="font-medium text-blue-800 dark:text-blue-200">PIN Reset by Admin</p>
-              <p className="text-blue-700 dark:text-blue-300 mt-0.5">
-                Your previous PIN has been cleared. You'll need to create a new one to continue using the app.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Warning */}
       <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
