@@ -62,8 +62,8 @@ export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchU
   const handlePinVerify = async (pin: string) => {
     const result = await verifyPin(workerId, pin);
     if (result.valid) {
-      // PIN verified, but identity still needs confirmation via IdentityConfirmationModal
-      onVerified(false);
+      // PIN verified = identity is confirmed (PIN is proof of identity)
+      onVerified(true);
     }
   };
 
