@@ -142,8 +142,8 @@ export function WelcomeModal({
     if (result.valid) {
       // Reset step before completing to ensure clean state
       setStep('id-entry');
-      // PIN was verified but identity still needs to be confirmed via IdentityConfirmationModal
-      onComplete(validatedUserId, true, false);
+      // PIN verified = identity is confirmed (PIN is proof of identity)
+      onComplete(validatedUserId, true, true);
     }
   };
 

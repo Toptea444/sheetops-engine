@@ -168,7 +168,9 @@ const Index = () => {
     init();
   }, [fetchSheets]);
 
-  // Show welcome modal for new users, PIN gate for returning users, or identity confirmation
+  // Show welcome modal for new users, PIN gate for returning users
+  // Note: Identity confirmation is now handled within WelcomeModal/SessionPinGate for users WITHOUT a PIN.
+  // Users WITH a PIN go straight to dashboard after PIN verification (PIN is proof of identity).
   useEffect(() => {
     if (!identityLoading && !isInitializing) {
       if (!hasIdentity) {
@@ -176,12 +178,10 @@ const Index = () => {
       } else if (!pinVerifiedThisSession) {
         // Returning user needs PIN verification every session
         setShowPinGate(true);
-      } else if (!identityConfirmed) {
-        // PIN verified but identity not yet confirmed
-        setShowIdentityConfirmation(true);
       }
+      // Removed: else if (!identityConfirmed) - PIN verification IS identity confirmation
     }
-  }, [identityLoading, hasIdentity, isInitializing, identityConfirmed, pinVerifiedThisSession]);
+  }, [identityLoading, hasIdentity, isInitializing, pinVerifiedThisSession]);
 
   // Download app banner
   const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());
@@ -357,15 +357,9 @@ const Index = () => {
       setPinVerifiedThisSession(true);
       setShowWelcome(false);
       
-      if (identityAlreadyConfirmed) {
-        // Identity was already confirmed during PIN setup (for new users / PIN-reset users)
-        confirmIdentity(newUserId);
-        toast.success(`Welcome, ${userName || newUserId}! Your account is secured.`);
-      } else {
-        // PIN was verified but identity still needs confirmation (returning users)
-        setShowIdentityConfirmation(true);
-        toast.success(`Welcome, ${userName || newUserId}!`);
-      }
+      // Always confirm identity when PIN is verified (PIN is proof of identity)
+      confirmIdentity(newUserId);
+      toast.success(`Welcome, ${userName || newUserId}! Your account is secured.`);
     }
   };
 
@@ -374,14 +368,9 @@ const Index = () => {
     setPinVerifiedThisSession(true);
     setShowPinGate(false);
     
-    if (identityAlreadyConfirmed) {
-      // Identity was already confirmed during PIN setup (for PIN-reset users)
-      confirmIdentity(userId || undefined);
-    } else if (!identityConfirmed) {
-      // PIN was verified but identity still needs confirmation (returning users)
-      setShowIdentityConfirmation(true);
-    }
-  }, [identityConfirmed, confirmIdentity, userId]);
+    // Always confirm identity when PIN is verified (PIN is proof of identity)
+    confirmIdentity(userId || undefined);
+  }, [confirmIdentity, userId]);
 
   const handlePinGateSwitchUser = useCallback(() => {
     localStorage.removeItem(PIN_VERIFIED_KEY);
