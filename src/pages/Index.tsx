@@ -168,17 +168,20 @@ const Index = () => {
     init();
   }, [fetchSheets]);
 
-  // Show welcome modal for new users OR identity confirmation for returning users who haven't confirmed
+  // Show welcome modal for new users, PIN gate for returning users, or identity confirmation
   useEffect(() => {
     if (!identityLoading && !isInitializing) {
       if (!hasIdentity) {
         setShowWelcome(true);
+      } else if (!pinVerifiedThisSession) {
+        // Returning user needs PIN verification every session
+        setShowPinGate(true);
       } else if (!identityConfirmed) {
-        // Existing user but hasn't confirmed identity yet
+        // PIN verified but identity not yet confirmed
         setShowIdentityConfirmation(true);
       }
     }
-  }, [identityLoading, hasIdentity, isInitializing, identityConfirmed]);
+  }, [identityLoading, hasIdentity, isInitializing, identityConfirmed, pinVerifiedThisSession]);
 
   // Download app banner
   const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());
