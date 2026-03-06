@@ -65,6 +65,7 @@ const Index = () => {
 
   const [showWelcome, setShowWelcome] = useState(false);
   const [showIdentityConfirmation, setShowIdentityConfirmation] = useState(false);
+  const [showPinGate, setShowPinGate] = useState(false);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
   const [results, setResults] = useState<BonusResult[]>([]);
   const [dataError, setDataError] = useState<string | null>(null);
@@ -74,8 +75,11 @@ const Index = () => {
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
 
-  // Download app banner: computed from localStorage state
-  const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());
+  // Session-level PIN verification (resets on tab close / refresh)
+  const PIN_VERIFIED_SESSION_KEY = 'performanceTracker_pinVerifiedSession';
+  const [pinVerifiedThisSession, setPinVerifiedThisSession] = useState(() => {
+    return sessionStorage.getItem(PIN_VERIFIED_SESSION_KEY) === 'true';
+  });
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
