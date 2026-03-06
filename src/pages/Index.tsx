@@ -183,6 +183,8 @@ const Index = () => {
   // Download app banner: computed from localStorage state
   const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());
 
+  // Download app banner
+  const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());
 
   // Safety: never keep sensitive data on screen before identity is confirmed
   useEffect(() => {
