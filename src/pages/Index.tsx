@@ -352,12 +352,34 @@ const Index = () => {
 
   const handleWelcomeComplete = async (newUserId: string, pinVerified: boolean) => {
     if (pinVerified) {
+      // Mark PIN as verified for this session
+      sessionStorage.setItem(PIN_VERIFIED_SESSION_KEY, 'true');
+      setPinVerifiedThisSession(true);
       setShowWelcome(false);
       // Always require explicit identity confirmation before unlocking the app.
       setShowIdentityConfirmation(true);
       toast.success(`Welcome, ${userName || newUserId}!`);
     }
   };
+
+  const handlePinGateVerified = useCallback(() => {
+    sessionStorage.setItem(PIN_VERIFIED_SESSION_KEY, 'true');
+    setPinVerifiedThisSession(true);
+    setShowPinGate(false);
+    if (!identityConfirmed) {
+      setShowIdentityConfirmation(true);
+    }
+  }, [identityConfirmed]);
+
+  const handlePinGateSwitchUser = useCallback(() => {
+    sessionStorage.removeItem(PIN_VERIFIED_SESSION_KEY);
+    setPinVerifiedThisSession(false);
+    clearIdentity();
+    setResults([]);
+    setDataError(null);
+    setShowPinGate(false);
+    setShowWelcome(true);
+  }, [clearIdentity]);
 
   const handleRefresh = useCallback(async () => {
     setDataError(null);
