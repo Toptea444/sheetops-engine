@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
 import { IdentityConfirmationModal } from '@/components/dashboard/IdentityConfirmationModal';
+import { SessionPinGate } from '@/components/dashboard/SessionPinGate';
 import { CycleSelector } from '@/components/dashboard/CycleSelector';
 import { CycleSummaryCard } from '@/components/dashboard/CycleSummaryCard';
 import { SheetBreakdownCards } from '@/components/dashboard/SheetBreakdownCards';
@@ -64,6 +65,7 @@ const Index = () => {
 
   const [showWelcome, setShowWelcome] = useState(false);
   const [showIdentityConfirmation, setShowIdentityConfirmation] = useState(false);
+  const [showPinGate, setShowPinGate] = useState(false);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
   const [results, setResults] = useState<BonusResult[]>([]);
   const [dataError, setDataError] = useState<string | null>(null);
@@ -73,8 +75,11 @@ const Index = () => {
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
 
-  // Download app banner: computed from localStorage state
-  const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());
+  // Session-level PIN verification (resets on tab close / refresh)
+  const PIN_VERIFIED_SESSION_KEY = 'performanceTracker_pinVerifiedSession';
+  const [pinVerifiedThisSession, setPinVerifiedThisSession] = useState(() => {
+    return sessionStorage.getItem(PIN_VERIFIED_SESSION_KEY) === 'true';
+  });
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
@@ -163,17 +168,23 @@ const Index = () => {
     init();
   }, [fetchSheets]);
 
-  // Show welcome modal for new users OR identity confirmation for returning users who haven't confirmed
+  // Show welcome modal for new users, PIN gate for returning users, or identity confirmation
   useEffect(() => {
     if (!identityLoading && !isInitializing) {
       if (!hasIdentity) {
         setShowWelcome(true);
+      } else if (!pinVerifiedThisSession) {
+        // Returning user needs PIN verification every session
+        setShowPinGate(true);
       } else if (!identityConfirmed) {
-        // Existing user but hasn't confirmed identity yet
+        // PIN verified but identity not yet confirmed
         setShowIdentityConfirmation(true);
       }
     }
-  }, [identityLoading, hasIdentity, isInitializing, identityConfirmed]);
+  }, [identityLoading, hasIdentity, isInitializing, identityConfirmed, pinVerifiedThisSession]);
+
+  // Download app banner
+  const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());
 
 
   // Safety: never keep sensitive data on screen before identity is confirmed
@@ -341,12 +352,34 @@ const Index = () => {
 
   const handleWelcomeComplete = async (newUserId: string, pinVerified: boolean) => {
     if (pinVerified) {
+      // Mark PIN as verified for this session
+      sessionStorage.setItem(PIN_VERIFIED_SESSION_KEY, 'true');
+      setPinVerifiedThisSession(true);
       setShowWelcome(false);
       // Always require explicit identity confirmation before unlocking the app.
       setShowIdentityConfirmation(true);
       toast.success(`Welcome, ${userName || newUserId}!`);
     }
   };
+
+  const handlePinGateVerified = useCallback(() => {
+    sessionStorage.setItem(PIN_VERIFIED_SESSION_KEY, 'true');
+    setPinVerifiedThisSession(true);
+    setShowPinGate(false);
+    if (!identityConfirmed) {
+      setShowIdentityConfirmation(true);
+    }
+  }, [identityConfirmed]);
+
+  const handlePinGateSwitchUser = useCallback(() => {
+    sessionStorage.removeItem(PIN_VERIFIED_SESSION_KEY);
+    setPinVerifiedThisSession(false);
+    clearIdentity();
+    setResults([]);
+    setDataError(null);
+    setShowPinGate(false);
+    setShowWelcome(true);
+  }, [clearIdentity]);
 
   const handleRefresh = useCallback(async () => {
     setDataError(null);
@@ -366,6 +399,8 @@ const Index = () => {
   }, [confirmIdentity, userId]);
 
   const handleIdentityDeny = useCallback(async () => {
+    sessionStorage.removeItem(PIN_VERIFIED_SESSION_KEY);
+    setPinVerifiedThisSession(false);
     clearIdentity();
     setResults([]);
     setDataError(null);
@@ -572,6 +607,13 @@ const Index = () => {
         isValidating={isValidating}
         validationError={validationError}
         onIdValidated={handleIdValidation}
+      />
+
+      <SessionPinGate
+        open={showPinGate}
+        workerId={userId || ''}
+        onVerified={handlePinGateVerified}
+        onSwitchUser={handlePinGateSwitchUser}
       />
 
       <IdentityConfirmationModal
