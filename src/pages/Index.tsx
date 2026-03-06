@@ -626,30 +626,27 @@ const Index = () => {
 
             {/* Top Controls Section */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-8">
-              <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
                 <CycleSelector
                   cycles={cycleOptions}
                   selectedCycle={selectedCycle}
                   onCycleChange={setSelectedCycle}
                   isLoading={isLoading}
                 />
-              </div>
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <div className="flex-1 min-w-0">
-                  <SheetSelector
-                    sheets={sheets}
-                    selectedSheets={selectedSheets}
-                    onSelectionChange={handleSheetSelectionChange}
-                    isLoading={isLoading}
-                  />
-                </div>
-                {/* Download App Banner - inline, right side */}
                 {identityConfirmed && showDownloadBanner && (
                   <DownloadAppBanner
                     visible={true}
                     onHide={() => setShowDownloadBanner(false)}
                   />
                 )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <SheetSelector
+                  sheets={sheets}
+                  selectedSheets={selectedSheets}
+                  onSelectionChange={handleSheetSelectionChange}
+                  isLoading={isLoading}
+                />
               </div>
             </div>
 
