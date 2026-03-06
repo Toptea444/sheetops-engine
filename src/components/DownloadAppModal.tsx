@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Download } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Keys for localStorage
 const APP_MODAL_SHOWN_KEY = 'performanceTracker_appModalShown';
@@ -117,6 +118,8 @@ export function DownloadAppModal({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    toast('Download starting now', { duration: 3000 });
 
     localStorage.setItem(APP_MODAL_SHOWN_KEY, 'true');
     localStorage.setItem(APP_MODAL_DOWNLOADED_KEY, 'true');

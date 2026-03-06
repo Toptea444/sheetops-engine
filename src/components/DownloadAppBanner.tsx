@@ -1,5 +1,6 @@
 import { Download } from 'lucide-react';
 import { APP_BANNER_CLICKED_AT_KEY } from '@/components/DownloadAppModal';
+import { toast } from 'sonner';
 
 interface DownloadAppBannerProps {
   visible: boolean;
@@ -17,6 +18,7 @@ export function DownloadAppBanner({ visible, onHide }: DownloadAppBannerProps) {
     link.click();
     document.body.removeChild(link);
 
+    toast('Download starting now', { duration: 3000 });
     // Record when the banner was clicked so it hides for 1 week (dismissed users only)
     localStorage.setItem(APP_BANNER_CLICKED_AT_KEY, String(Date.now()));
     onHide();
