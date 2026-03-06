@@ -128,21 +128,27 @@ export function WelcomeModal({
   };
 
   const handlePinSetup = async (pin: string) => {
+    console.log('[v0] WelcomeModal handlePinSetup called');
     const result = await setPin(validatedUserId, pin);
+    console.log('[v0] WelcomeModal setPin result:', result);
     if (result.success) {
       // Reset step before completing to ensure clean state
       setStep('id-entry');
       // Identity was already confirmed in the 'identity-confirm' step, so pass true
+      console.log('[v0] WelcomeModal calling onComplete(identityAlreadyConfirmed: true)');
       onComplete(validatedUserId, true, true);
     }
   };
 
   const handlePinVerify = async (pin: string) => {
+    console.log('[v0] WelcomeModal handlePinVerify called');
     const result = await verifyPin(validatedUserId, pin);
+    console.log('[v0] WelcomeModal verifyPin result:', result);
     if (result.valid) {
       // Reset step before completing to ensure clean state
       setStep('id-entry');
       // PIN was verified but identity still needs to be confirmed via IdentityConfirmationModal
+      console.log('[v0] WelcomeModal calling onComplete(identityAlreadyConfirmed: false)');
       onComplete(validatedUserId, true, false);
     }
   };

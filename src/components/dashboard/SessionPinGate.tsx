@@ -60,17 +60,23 @@ export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchU
   }, [open, workerId, checkPinExists]);
 
   const handlePinVerify = async (pin: string) => {
+    console.log('[v0] SessionPinGate handlePinVerify called');
     const result = await verifyPin(workerId, pin);
+    console.log('[v0] SessionPinGate verifyPin result:', result);
     if (result.valid) {
       // PIN verified, but identity still needs confirmation via IdentityConfirmationModal
+      console.log('[v0] SessionPinGate calling onVerified(identityAlreadyConfirmed: false)');
       onVerified(false);
     }
   };
 
   const handlePinSetup = async (pin: string) => {
+    console.log('[v0] SessionPinGate handlePinSetup called');
     const result = await setPin(workerId, pin);
+    console.log('[v0] SessionPinGate setPin result:', result);
     if (result.success) {
       // Identity was already confirmed in identity-confirm step
+      console.log('[v0] SessionPinGate calling onVerified(identityAlreadyConfirmed: true)');
       onVerified(true);
     }
   };

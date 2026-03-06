@@ -168,20 +168,31 @@ const Index = () => {
     init();
   }, [fetchSheets]);
 
-  // Show welcome modal for new users, PIN gate for returning users, or identity confirmation
+  // Show welcome modal for new users, PIN gate for returning users
+  // CRITICAL: Only ONE of these modals should ever be open at a time
+  // The logic must ensure WelcomeModal completes fully before SessionPinGate can ever open
   useEffect(() => {
+    console.log('[v0] Modal control useEffect:', { identityLoading, isInitializing, hasIdentity, pinVerifiedThisSession, showWelcome, showPinGate, identityConfirmed });
     if (!identityLoading && !isInitializing) {
       if (!hasIdentity) {
+        // New user or cleared identity - show welcome modal only
+        console.log('[v0] Setting showWelcome=true (no identity)');
         setShowWelcome(true);
+        setShowPinGate(false);
       } else if (!pinVerifiedThisSession) {
-        // Returning user needs PIN verification every session
-        setShowPinGate(true);
-      } else if (!identityConfirmed) {
-        // PIN verified but identity not yet confirmed
-        setShowIdentityConfirmation(true);
+        // Returning user needs PIN verification
+        // ONLY show PIN gate if welcome modal is NOT open
+        // This prevents the race condition where setUserId() during WelcomeModal
+        // triggers hasIdentity=true, which then tries to open SessionPinGate
+        if (!showWelcome) {
+          console.log('[v0] Setting showPinGate=true (has identity, no PIN verified, welcome not open)');
+          setShowPinGate(true);
+        } else {
+          console.log('[v0] Skipping showPinGate because showWelcome is still open');
+        }
       }
     }
-  }, [identityLoading, hasIdentity, isInitializing, identityConfirmed, pinVerifiedThisSession]);
+  }, [identityLoading, hasIdentity, isInitializing, pinVerifiedThisSession, showWelcome, identityConfirmed]);
 
   // Download app banner
   const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());
@@ -351,34 +362,48 @@ const Index = () => {
   };
 
   const handleWelcomeComplete = async (newUserId: string, pinVerified: boolean, identityAlreadyConfirmed: boolean) => {
+    console.log('[v0] handleWelcomeComplete called:', { newUserId, pinVerified, identityAlreadyConfirmed });
     if (pinVerified) {
       // Mark PIN as verified persistently (survives browser close)
       localStorage.setItem(PIN_VERIFIED_KEY, 'true');
       setPinVerifiedThisSession(true);
       setShowWelcome(false);
+      setShowPinGate(false); // Also ensure PIN gate stays closed
       
       if (identityAlreadyConfirmed) {
         // Identity was already confirmed during PIN setup (for new users / PIN-reset users)
+        // Call confirmIdentity synchronously and prevent IdentityConfirmationModal from showing
+        console.log('[v0] Identity already confirmed, calling confirmIdentity');
         confirmIdentity(newUserId);
+        // Explicitly prevent the useEffect from showing the modal
+        setShowIdentityConfirmation(false);
         toast.success(`Welcome, ${userName || newUserId}! Your account is secured.`);
       } else {
-        // PIN was verified but identity still needs confirmation (returning users)
+        // PIN was verified but identity still needs confirmation (returning users on new device)
+        console.log('[v0] Identity NOT confirmed yet, showing IdentityConfirmationModal');
         setShowIdentityConfirmation(true);
-        toast.success(`Welcome, ${userName || newUserId}!`);
+        toast.success(`Welcome back, ${userName || newUserId}!`);
       }
     }
   };
 
   const handlePinGateVerified = useCallback((identityAlreadyConfirmed: boolean) => {
+    console.log('[v0] handlePinGateVerified called:', { identityAlreadyConfirmed, identityConfirmed, userId });
     localStorage.setItem(PIN_VERIFIED_KEY, 'true');
     setPinVerifiedThisSession(true);
     setShowPinGate(false);
+    setShowWelcome(false); // Also ensure welcome stays closed
     
     if (identityAlreadyConfirmed) {
       // Identity was already confirmed during PIN setup (for PIN-reset users)
+      console.log('[v0] PIN gate: Identity already confirmed, calling confirmIdentity');
       confirmIdentity(userId || undefined);
+      // Explicitly prevent the useEffect from showing the modal
+      setShowIdentityConfirmation(false);
+      toast.success('Your account is secured.');
     } else if (!identityConfirmed) {
       // PIN was verified but identity still needs confirmation (returning users)
+      console.log('[v0] PIN gate: Identity NOT confirmed, showing IdentityConfirmationModal');
       setShowIdentityConfirmation(true);
     }
   }, [identityConfirmed, confirmIdentity, userId]);
