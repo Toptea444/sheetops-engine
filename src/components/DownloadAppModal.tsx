@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Download } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Keys for localStorage
 const APP_MODAL_SHOWN_KEY = 'performanceTracker_appModalShown';
