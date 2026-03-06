@@ -350,26 +350,38 @@ const Index = () => {
     return true;
   };
 
-  const handleWelcomeComplete = async (newUserId: string, pinVerified: boolean) => {
+  const handleWelcomeComplete = async (newUserId: string, pinVerified: boolean, identityAlreadyConfirmed: boolean) => {
     if (pinVerified) {
       // Mark PIN as verified persistently (survives browser close)
       localStorage.setItem(PIN_VERIFIED_KEY, 'true');
       setPinVerifiedThisSession(true);
       setShowWelcome(false);
-      // Always require explicit identity confirmation before unlocking the app.
-      setShowIdentityConfirmation(true);
-      toast.success(`Welcome, ${userName || newUserId}!`);
+      
+      if (identityAlreadyConfirmed) {
+        // Identity was already confirmed during PIN setup (for new users / PIN-reset users)
+        confirmIdentity(newUserId);
+        toast.success(`Welcome, ${userName || newUserId}! Your account is secured.`);
+      } else {
+        // PIN was verified but identity still needs confirmation (returning users)
+        setShowIdentityConfirmation(true);
+        toast.success(`Welcome, ${userName || newUserId}!`);
+      }
     }
   };
 
-  const handlePinGateVerified = useCallback(() => {
+  const handlePinGateVerified = useCallback((identityAlreadyConfirmed: boolean) => {
     localStorage.setItem(PIN_VERIFIED_KEY, 'true');
     setPinVerifiedThisSession(true);
     setShowPinGate(false);
-    if (!identityConfirmed) {
+    
+    if (identityAlreadyConfirmed) {
+      // Identity was already confirmed during PIN setup (for PIN-reset users)
+      confirmIdentity(userId || undefined);
+    } else if (!identityConfirmed) {
+      // PIN was verified but identity still needs confirmation (returning users)
       setShowIdentityConfirmation(true);
     }
-  }, [identityConfirmed]);
+  }, [identityConfirmed, confirmIdentity, userId]);
 
   const handlePinGateSwitchUser = useCallback(() => {
     localStorage.removeItem(PIN_VERIFIED_KEY);
@@ -609,12 +621,13 @@ const Index = () => {
         onIdValidated={handleIdValidation}
       />
 
-      <SessionPinGate
-        open={showPinGate}
-        workerId={userId || ''}
-        onVerified={handlePinGateVerified}
-        onSwitchUser={handlePinGateSwitchUser}
-      />
+<SessionPinGate
+  open={showPinGate}
+  workerId={userId || ''}
+  userName={userName}
+  onVerified={handlePinGateVerified}
+  onSwitchUser={handlePinGateSwitchUser}
+  />
 
       <IdentityConfirmationModal
         open={showIdentityConfirmation}
