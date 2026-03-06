@@ -180,6 +180,9 @@ const Index = () => {
     }
   }, [identityLoading, hasIdentity, isInitializing, identityConfirmed]);
 
+  // Download app banner: computed from localStorage state
+  const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());
+
 
   // Safety: never keep sensitive data on screen before identity is confirmed
   useEffect(() => {
