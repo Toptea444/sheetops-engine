@@ -609,6 +609,13 @@ const Index = () => {
         onIdValidated={handleIdValidation}
       />
 
+      <SessionPinGate
+        open={showPinGate}
+        workerId={userId || ''}
+        onVerified={handlePinGateVerified}
+        onSwitchUser={handlePinGateSwitchUser}
+      />
+
       <IdentityConfirmationModal
         open={showIdentityConfirmation}
         userId={userId || ''}
