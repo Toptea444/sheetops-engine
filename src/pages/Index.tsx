@@ -399,6 +399,8 @@ const Index = () => {
   }, [confirmIdentity, userId]);
 
   const handleIdentityDeny = useCallback(async () => {
+    sessionStorage.removeItem(PIN_VERIFIED_SESSION_KEY);
+    setPinVerifiedThisSession(false);
     clearIdentity();
     setResults([]);
     setDataError(null);
