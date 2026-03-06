@@ -626,7 +626,7 @@ const Index = () => {
 
             {/* Top Controls Section */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-8">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="flex items-center justify-between flex-1 min-w-0">
                 <CycleSelector
                   cycles={cycleOptions}
                   selectedCycle={selectedCycle}
