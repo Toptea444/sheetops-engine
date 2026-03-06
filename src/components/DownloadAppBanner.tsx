@@ -1,5 +1,6 @@
 import { Download } from 'lucide-react';
 import { APP_BANNER_CLICKED_AT_KEY } from '@/components/DownloadAppModal';
+import { toast } from 'sonner';
 
 interface DownloadAppBannerProps {
   visible: boolean;
