@@ -163,17 +163,13 @@ export function WelcomeModal({
 
   const displayName = validatedUserName || validatedUserId;
   const fullScreenModalClasses =
-    'inset-0 left-0 top-0 h-screen w-screen max-w-none translate-x-0 translate-y-0 transform-none border-0 bg-white p-0 shadow-none transition-none duration-0 sm:rounded-none [&>button]:hidden data-[state=open]:animate-none data-[state=closed]:animate-none';
-  const modalCardClasses = 'w-full max-w-md bg-white p-6';
+    'inset-0 left-0 top-0 h-screen w-screen max-w-none translate-x-0 translate-y-0 border-0 bg-white p-4 shadow-none sm:rounded-none sm:p-6 [&>button]:hidden';
+  const modalCardClasses = 'w-full max-w-md rounded-lg border bg-background p-6 shadow-lg';
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent
-        className={fullScreenModalClasses}
-        overlayClassName="bg-white"
-        onPointerDownOutside={(e) => e.preventDefault()}
-      >
-        <div className="flex min-h-screen items-center justify-center px-4 sm:px-6">
+      <DialogContent className={fullScreenModalClasses} onPointerDownOutside={(e) => e.preventDefault()}>
+        <div className="flex min-h-full items-center justify-center">
           <div className={modalCardClasses}>
         {step === 'id-entry' && (
           <>
