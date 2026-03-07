@@ -14,6 +14,7 @@ interface DownloadAppModalProps {
   userId: string | null;
   identityConfirmed: boolean;
   onShowBanner: (source: 'downloaded' | 'dismissed') => void;
+  openRequestId?: number;
 }
 
 function ApkIcon({ className }: { className?: string }) {
@@ -80,9 +81,12 @@ export function DownloadAppModal({
   userId,
   identityConfirmed,
   onShowBanner,
+  openRequestId,
 }: DownloadAppModalProps) {
   const [visible, setVisible] = useState(false);
   const [fadeIn, setFadeIn] = useState(false);
+
+  const [openedFromBanner, setOpenedFromBanner] = useState(false);
 
   useEffect(() => {
     if (!userId || !identityConfirmed) return;
@@ -101,15 +105,30 @@ export function DownloadAppModal({
     return () => clearTimeout(timer);
   }, [userId, identityConfirmed]);
 
+
+  useEffect(() => {
+    if (!openRequestId || !identityConfirmed) return;
+
+    setOpenedFromBanner(true);
+    setVisible(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setFadeIn(true));
+    });
+  }, [openRequestId, identityConfirmed]);
+
   const dismiss = useCallback(() => {
     setFadeIn(false);
     setTimeout(() => {
       setVisible(false);
       localStorage.setItem(APP_MODAL_SHOWN_KEY, 'true');
       localStorage.setItem(APP_MODAL_DISMISSED_KEY, 'true');
+      if (openedFromBanner) {
+        localStorage.setItem(APP_BANNER_CLICKED_AT_KEY, String(Date.now()));
+      }
+      setOpenedFromBanner(false);
       onShowBanner('dismissed');
     }, 350);
-  }, [onShowBanner]);
+  }, [onShowBanner, openedFromBanner]);
 
   const handleDownload = useCallback(() => {
     const link = document.createElement('a');
@@ -127,6 +146,7 @@ export function DownloadAppModal({
     setFadeIn(false);
     setTimeout(() => {
       setVisible(false);
+      setOpenedFromBanner(false);
       onShowBanner('downloaded');
     }, 350);
   }, [onShowBanner]);
