@@ -35,6 +35,7 @@ import { getCycleOptions, isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { 
@@ -74,6 +75,7 @@ const Index = () => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
+  const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
@@ -319,7 +321,7 @@ const Index = () => {
   }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots]);
 
   // Validate ID exists in sheets (used by WelcomeModal before PIN step)
-  const handleIdValidation = async (newUserId: string): Promise<boolean> => {
+  const handleIdValidation = async (newUserId: string): Promise<{ valid: boolean; userName?: string }> => {
     setIsValidating(true);
     setValidationError(null);
 
@@ -342,24 +344,24 @@ const Index = () => {
 
     if (!foundUser) {
       setValidationError(`ID "${newUserId}" not found. Please check and try again.`);
-      return false;
+      return { valid: false };
     }
 
-    // Store the user name for later
-    setUserId(newUserId, foundUserName);
-    return true;
+    // DON'T set userId here - it causes a race condition with SessionPinGate
+    return { valid: true, userName: foundUserName };
   };
 
-  const handleWelcomeComplete = async (newUserId: string, pinVerified: boolean, identityAlreadyConfirmed: boolean) => {
+  const handleWelcomeComplete = async (newUserId: string, newUserName: string | null, pinVerified: boolean) => {
     if (pinVerified) {
-      // Mark PIN as verified persistently (survives browser close)
+      // Now set the userId (after full flow completes)
+      setUserId(newUserId, newUserName || undefined);
       localStorage.setItem(PIN_VERIFIED_KEY, 'true');
       setPinVerifiedThisSession(true);
       setShowWelcome(false);
       
-      // Always confirm identity when PIN is verified (PIN is proof of identity)
+      // Always confirm identity when PIN is verified
       confirmIdentity(newUserId);
-      toast.success(`Welcome, ${userName || newUserId}! Your account is secured.`);
+      toast.success(`Welcome, ${newUserName || newUserId}! Your account is secured.`);
     }
   };
 
@@ -381,6 +383,20 @@ const Index = () => {
     setShowPinGate(false);
     setShowWelcome(true);
   }, [clearIdentity]);
+
+  // Handle forgot PIN - submit a reset request
+  const handleForgotPin = useCallback(async (workerId: string) => {
+    try {
+      const { error } = await (supabase as any).from('pin_reset_requests').insert({ 
+        worker_id: workerId.toUpperCase() 
+      });
+      if (error) throw error;
+      setForgotPinSubmitted(true);
+      toast.success('PIN reset request sent! Please contact your admin to approve.');
+    } catch (err) {
+      toast.error('Failed to submit request. Please try again.');
+    }
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     setDataError(null);
@@ -608,15 +624,18 @@ const Index = () => {
         isValidating={isValidating}
         validationError={validationError}
         onIdValidated={handleIdValidation}
+        onForgotPin={handleForgotPin}
       />
 
-<SessionPinGate
-  open={showPinGate}
-  workerId={userId || ''}
-  userName={userName}
-  onVerified={handlePinGateVerified}
-  onSwitchUser={handlePinGateSwitchUser}
-  />
+      <SessionPinGate
+        open={showPinGate}
+        workerId={userId || ''}
+        userName={userName}
+        onVerified={handlePinGateVerified}
+        onSwitchUser={handlePinGateSwitchUser}
+        onForgotPin={handleForgotPin}
+        forgotPinSubmitted={forgotPinSubmitted}
+      />
 
       <IdentityConfirmationModal
         open={showIdentityConfirmation}

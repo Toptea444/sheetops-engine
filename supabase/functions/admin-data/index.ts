@@ -467,6 +467,78 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'get_pin_reset_requests': {
+        const { data: requests } = await supabase
+          .from('pin_reset_requests')
+          .select('*')
+          .order('requested_at', { ascending: false });
+
+        const pending = requests?.filter(r => r.status === 'pending') || [];
+        const resolved = requests?.filter(r => r.status !== 'pending') || [];
+
+        result = {
+          requests: requests || [],
+          pending_count: pending.length,
+          resolved_count: resolved.length,
+        };
+        break;
+      }
+
+      case 'resolve_pin_reset_request': {
+        const requestId = params?.request_id;
+        const action_type = params?.action_type; // 'approve' or 'deny'
+
+        if (!requestId || !action_type) {
+          result = { success: false, error: 'Request ID and action type required' };
+          break;
+        }
+
+        if (action_type === 'approve') {
+          // Get the request to find worker_id
+          const { data: request } = await supabase
+            .from('pin_reset_requests')
+            .select('worker_id')
+            .eq('id', requestId)
+            .maybeSingle();
+
+          if (!request) {
+            result = { success: false, error: 'Request not found' };
+            break;
+          }
+
+          // Delete the worker's PIN
+          await supabase
+            .from('worker_pins')
+            .delete()
+            .eq('worker_id', request.worker_id.toUpperCase());
+
+          // Update request status
+          await supabase
+            .from('pin_reset_requests')
+            .update({ 
+              status: 'approved', 
+              resolved_at: new Date().toISOString(),
+              resolved_by: 'admin'
+            })
+            .eq('id', requestId);
+
+          result = { success: true, message: `PIN reset approved for ${request.worker_id}` };
+        } else {
+          // Deny the request
+          await supabase
+            .from('pin_reset_requests')
+            .update({ 
+              status: 'denied', 
+              resolved_at: new Date().toISOString(),
+              resolved_by: 'admin'
+            })
+            .eq('id', requestId);
+
+          result = { success: true, message: 'Request denied' };
+        }
+        break;
+      }
+
       default:
         result = { error: 'Unknown action' };
     }

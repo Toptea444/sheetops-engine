@@ -1234,6 +1234,135 @@ function FeedbackTab({ adminSecret }: { adminSecret: string }) {
   );
 }
 
+// ─── PIN Reset Requests Tab ──────────────────────────────────
+function PinResetRequestsTab({ adminSecret }: { adminSecret: string }) {
+  const { adminRequest, isLoading } = useAdminData();
+  const [data, setData] = useState<any>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const res = await adminRequest(adminSecret, 'get_pin_reset_requests');
+    if (res) setData(res);
+  }, [adminRequest, adminSecret]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleAction = async (requestId: string, actionType: 'approve' | 'deny') => {
+    setActionLoading(requestId);
+    const res = await adminRequest(adminSecret, 'resolve_pin_reset_request', { 
+      request_id: requestId, 
+      action_type: actionType 
+    });
+    if (res?.success) {
+      toast.success(res.message || `Request ${actionType}d`);
+      load();
+    } else {
+      toast.error(res?.error || 'Failed');
+    }
+    setActionLoading(null);
+  };
+
+  if (!data) return <div className="flex items-center justify-center py-12"><RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+
+  const pending = data.requests?.filter((r: any) => r.status === 'pending') || [];
+  const resolved = data.requests?.filter((r: any) => r.status !== 'pending') || [];
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Pending" value={data.pending_count || 0} icon={AlertCircle} />
+        <StatCard label="Resolved" value={data.resolved_count || 0} icon={CheckCircle2} />
+      </div>
+
+      {/* Pending Requests */}
+      <Card>
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-sm flex items-center gap-1.5">
+            <AlertCircle className="h-4 w-4 text-amber-500" />
+            Pending Requests ({pending.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          {pending.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No pending requests</p>
+          ) : (
+            <div className="space-y-2">
+              {pending.map((r: any) => (
+                <div key={r.id} className="flex items-center justify-between p-3 rounded-lg border bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                  <div>
+                    <p className="text-sm font-medium font-mono">{r.worker_id}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {new Date(r.requested_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => handleAction(r.id, 'approve')}
+                      disabled={actionLoading === r.id}
+                    >
+                      {actionLoading === r.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : 'Approve & Reset'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs text-destructive hover:text-destructive"
+                      onClick={() => handleAction(r.id, 'deny')}
+                      disabled={actionLoading === r.id}
+                    >
+                      Deny
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Resolved History */}
+      {resolved.length > 0 && (
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <History className="h-4 w-4" />
+              Resolved ({resolved.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <ScrollArea className="h-[200px]">
+              <div className="space-y-1">
+                {resolved.map((r: any) => (
+                  <div key={r.id} className="flex items-center justify-between py-2 px-2 text-xs border-b border-border/30 last:border-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-medium">{r.worker_id}</span>
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-[10px] h-4 ${r.status === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}
+                      >
+                        {r.status}
+                      </Badge>
+                    </div>
+                    <span className="text-muted-foreground">
+                      {r.resolved_at ? new Date(r.resolved_at).toLocaleDateString() : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+
+      <Button variant="outline" size="sm" onClick={load} disabled={isLoading}>
+        <RefreshCw className={`h-3 w-3 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
+        Refresh
+      </Button>
+    </div>
+  );
+}
+
 // ─── Main Admin Page ─────────────────────────────────────────
 export default function AdminPinReset() {
   const [adminSecret, setAdminSecret] = useState<string | null>(null);
@@ -1282,10 +1411,14 @@ export default function AdminPinReset() {
 
       <main className="container mx-auto px-4 py-4 max-w-2xl">
         <Tabs defaultValue="workers" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-7 h-9 gap-0.5">
+          <TabsList className="grid w-full grid-cols-8 h-9 gap-0.5">
             <TabsTrigger value="workers" className="text-xs gap-0.5 px-0.5">
               <Users className="h-3 w-3" />
               <span className="hidden sm:inline">Workers</span>
+            </TabsTrigger>
+            <TabsTrigger value="pin-requests" className="text-xs gap-0.5 px-0.5">
+              <KeyRound className="h-3 w-3" />
+              <span className="hidden sm:inline">PIN Reqs</span>
             </TabsTrigger>
             <TabsTrigger value="earnings" className="text-xs gap-0.5 px-0.5">
               <TrendingUp className="h-3 w-3" />
@@ -1315,6 +1448,9 @@ export default function AdminPinReset() {
 
           <TabsContent value="workers">
             <WorkersTab adminSecret={adminSecret} />
+          </TabsContent>
+          <TabsContent value="pin-requests">
+            <PinResetRequestsTab adminSecret={adminSecret} />
           </TabsContent>
           <TabsContent value="earnings">
             <EarningsTab adminSecret={adminSecret} />

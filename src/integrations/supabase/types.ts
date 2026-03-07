@@ -149,6 +149,33 @@ export type Database = {
         }
         Relationships: []
       }
+      pin_reset_requests: {
+        Row: {
+          id: string
+          requested_at: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          worker_id: string
+        }
+        Insert: {
+          id?: string
+          requested_at?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          worker_id: string
+        }
+        Update: {
+          id?: string
+          requested_at?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          worker_id?: string
+        }
+        Relationships: []
+      }
       worker_pins: {
         Row: {
           created_at: string
