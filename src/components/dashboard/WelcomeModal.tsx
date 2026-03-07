@@ -165,7 +165,7 @@ export function WelcomeModal({
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent className="sm:max-w-md" overlayVariant="white" onPointerDownOutside={(e) => e.preventDefault()}>
         {step === 'id-entry' && (
           <>
             <DialogHeader className="text-center">
@@ -297,7 +297,7 @@ export function WelcomeModal({
 
       {/* Final warning confirmation */}
       <AlertDialog open={showFinalWarning} onOpenChange={setShowFinalWarning}>
-        <AlertDialogContent>
+        <AlertDialogContent overlayVariant="white">
           <AlertDialogHeader>
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20">
               <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
