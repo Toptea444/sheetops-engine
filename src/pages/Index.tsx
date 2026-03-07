@@ -75,6 +75,7 @@ const Index = () => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
+  const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
