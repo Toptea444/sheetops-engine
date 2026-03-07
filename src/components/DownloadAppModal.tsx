@@ -191,13 +191,13 @@ export function DownloadAppModal({
 
             {/* Title */}
             <h2 className="text-lg font-bold text-foreground leading-snug">
-              We now have an app!
+              We Now Have An App!
             </h2>
 
             {/* Subtitle */}
             <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed max-w-[260px]">
               Get the full experience on your phone. Download the app and track
-              your earnings on the go.
+              your earnings more comfortably.
             </p>
 
             {/* Download Button - full width, primary theme */}
