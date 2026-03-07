@@ -319,7 +319,7 @@ const Index = () => {
   }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots]);
 
   // Validate ID exists in sheets (used by WelcomeModal before PIN step)
-  const handleIdValidation = async (newUserId: string): Promise<boolean> => {
+  const handleIdValidation = async (newUserId: string): Promise<{ valid: boolean; userName?: string }> => {
     setIsValidating(true);
     setValidationError(null);
 
@@ -342,24 +342,24 @@ const Index = () => {
 
     if (!foundUser) {
       setValidationError(`ID "${newUserId}" not found. Please check and try again.`);
-      return false;
+      return { valid: false };
     }
 
-    // Store the user name for later
-    setUserId(newUserId, foundUserName);
-    return true;
+    // DON'T set userId here - it causes a race condition with SessionPinGate
+    return { valid: true, userName: foundUserName };
   };
 
-  const handleWelcomeComplete = async (newUserId: string, pinVerified: boolean, identityAlreadyConfirmed: boolean) => {
+  const handleWelcomeComplete = async (newUserId: string, newUserName: string | null, pinVerified: boolean) => {
     if (pinVerified) {
-      // Mark PIN as verified persistently (survives browser close)
+      // Now set the userId (after full flow completes)
+      setUserId(newUserId, newUserName || undefined);
       localStorage.setItem(PIN_VERIFIED_KEY, 'true');
       setPinVerifiedThisSession(true);
       setShowWelcome(false);
       
-      // Always confirm identity when PIN is verified (PIN is proof of identity)
+      // Always confirm identity when PIN is verified
       confirmIdentity(newUserId);
-      toast.success(`Welcome, ${userName || newUserId}! Your account is secured.`);
+      toast.success(`Welcome, ${newUserName || newUserId}! Your account is secured.`);
     }
   };
 
