@@ -384,6 +384,20 @@ const Index = () => {
     setShowWelcome(true);
   }, [clearIdentity]);
 
+  // Handle forgot PIN - submit a reset request
+  const handleForgotPin = useCallback(async (workerId: string) => {
+    try {
+      const { error } = await (supabase as any).from('pin_reset_requests').insert({ 
+        worker_id: workerId.toUpperCase() 
+      });
+      if (error) throw error;
+      setForgotPinSubmitted(true);
+      toast.success('PIN reset request sent! Please contact your admin to approve.');
+    } catch (err) {
+      toast.error('Failed to submit request. Please try again.');
+    }
+  }, []);
+
   const handleRefresh = useCallback(async () => {
     setDataError(null);
     setSheetDataCache({});
