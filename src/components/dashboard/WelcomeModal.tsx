@@ -162,15 +162,10 @@ export function WelcomeModal({
   const isLoading = isValidating || pinLoading;
 
   const displayName = validatedUserName || validatedUserId;
-  const fullScreenModalClasses =
-    'inset-0 left-0 top-0 h-screen w-screen max-w-none translate-x-0 translate-y-0 border-0 bg-white p-4 shadow-none sm:rounded-none sm:p-6 [&>button]:hidden';
-  const modalCardClasses = 'w-full max-w-md rounded-lg border bg-background p-6 shadow-lg';
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className={fullScreenModalClasses} onPointerDownOutside={(e) => e.preventDefault()}>
-        <div className="flex min-h-full items-center justify-center">
-          <div className={modalCardClasses}>
+      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
         {step === 'id-entry' && (
           <>
             <DialogHeader className="text-center">
@@ -298,8 +293,6 @@ export function WelcomeModal({
             error={pinError}
           />
         )}
-          </div>
-        </div>
       </DialogContent>
 
       {/* Final warning confirmation */}
