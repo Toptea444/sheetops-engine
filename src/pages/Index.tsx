@@ -187,6 +187,7 @@ const Index = () => {
 
   // Download app banner
   const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());
+  const [downloadModalRequestId, setDownloadModalRequestId] = useState(0);
 
 
   // Safety: never keep sensitive data on screen before identity is confirmed
@@ -609,6 +610,7 @@ const Index = () => {
       <DownloadAppModal
         userId={userId}
         identityConfirmed={identityConfirmed}
+        openRequestId={downloadModalRequestId}
         onShowBanner={() => setShowDownloadBanner(true)}
       />
 
@@ -699,7 +701,7 @@ const Index = () => {
                 {identityConfirmed && showDownloadBanner && (
                   <DownloadAppBanner
                     visible={true}
-                    onHide={() => setShowDownloadBanner(false)}
+                    onOpenModal={() => setDownloadModalRequestId((current) => current + 1)}
                   />
                 )}
               </div>
