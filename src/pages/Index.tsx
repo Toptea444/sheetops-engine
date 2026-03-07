@@ -64,7 +64,9 @@ const Index = () => {
     hasIdentity,
   } = useUserIdentity();
 
+  const [showWelcome, setShowWelcome] = useState(false);
   const [showIdentityConfirmation, setShowIdentityConfirmation] = useState(false);
+  const [showPinGate, setShowPinGate] = useState(false);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
   const [results, setResults] = useState<BonusResult[]>([]);
   const [dataError, setDataError] = useState<string | null>(null);
@@ -167,6 +169,21 @@ const Index = () => {
     };
     init();
   }, [fetchSheets]);
+
+  // Show welcome modal for new users, PIN gate for returning users
+  // Note: Identity confirmation is now handled within WelcomeModal/SessionPinGate for users WITHOUT a PIN.
+  // Users WITH a PIN go straight to dashboard after PIN verification (PIN is proof of identity).
+  useEffect(() => {
+    if (!identityLoading && !isInitializing) {
+      if (!hasIdentity) {
+        setShowWelcome(true);
+      } else if (!pinVerifiedThisSession) {
+        // Returning user needs PIN verification every session
+        setShowPinGate(true);
+      }
+      // Removed: else if (!identityConfirmed) - PIN verification IS identity confirmation
+    }
+  }, [identityLoading, hasIdentity, isInitializing, pinVerifiedThisSession]);
 
   // Download app banner
   const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());
@@ -340,6 +357,7 @@ const Index = () => {
       setUserId(newUserId, newUserName || undefined);
       localStorage.setItem(PIN_VERIFIED_KEY, 'true');
       setPinVerifiedThisSession(true);
+      setShowWelcome(false);
       
       // Always confirm identity when PIN is verified
       confirmIdentity(newUserId);
@@ -350,6 +368,7 @@ const Index = () => {
   const handlePinGateVerified = useCallback((identityAlreadyConfirmed: boolean) => {
     localStorage.setItem(PIN_VERIFIED_KEY, 'true');
     setPinVerifiedThisSession(true);
+    setShowPinGate(false);
     
     // Always confirm identity when PIN is verified (PIN is proof of identity)
     confirmIdentity(userId || undefined);
@@ -361,6 +380,8 @@ const Index = () => {
     clearIdentity();
     setResults([]);
     setDataError(null);
+    setShowPinGate(false);
+    setShowWelcome(true);
   }, [clearIdentity]);
 
   // Handle forgot PIN - submit a reset request
@@ -401,6 +422,7 @@ const Index = () => {
     setResults([]);
     setDataError(null);
     setShowIdentityConfirmation(false);
+    setShowWelcome(true);
     toast.info('Logged out. Please log in with your own ID.');
   }, [clearIdentity]);
 
@@ -408,6 +430,7 @@ const Index = () => {
     clearIdentity();
     setResults([]);
     setDataError(null);
+    setShowWelcome(true);
   };
 
   const handleSheetSelectionChange = useCallback(async (newSelection: string[]) => {
@@ -567,44 +590,11 @@ const Index = () => {
   }, [selectedSheets, sheetDataCache]);
 
   const isLoading = sheetsLoading || identityLoading || isFetchingData;
-  const showWelcome = !isInitializing && !identityLoading && !hasIdentity;
-  const showPinGate = !isInitializing && !identityLoading && hasIdentity && !pinVerifiedThisSession;
   
   if (isInitializing || identityLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <LoadingState message="Loading..." />
-      </div>
-    );
-  }
-
-  if (showWelcome) {
-    return (
-      <div className="min-h-screen bg-white">
-        <WelcomeModal
-          open
-          onComplete={handleWelcomeComplete}
-          isValidating={isValidating}
-          validationError={validationError}
-          onIdValidated={handleIdValidation}
-          onForgotPin={handleForgotPin}
-        />
-      </div>
-    );
-  }
-
-  if (showPinGate) {
-    return (
-      <div className="min-h-screen bg-white">
-        <SessionPinGate
-          open
-          workerId={userId || ''}
-          userName={userName}
-          onVerified={handlePinGateVerified}
-          onSwitchUser={handlePinGateSwitchUser}
-          onForgotPin={handleForgotPin}
-          forgotPinSubmitted={forgotPinSubmitted}
-        />
       </div>
     );
   }
@@ -628,6 +618,25 @@ const Index = () => {
       {/* Weekly Bonus Alert */}
       <WeeklyBonusAlert />
       
+      <WelcomeModal
+        open={showWelcome}
+        onComplete={handleWelcomeComplete}
+        isValidating={isValidating}
+        validationError={validationError}
+        onIdValidated={handleIdValidation}
+        onForgotPin={handleForgotPin}
+      />
+
+      <SessionPinGate
+        open={showPinGate}
+        workerId={userId || ''}
+        userName={userName}
+        onVerified={handlePinGateVerified}
+        onSwitchUser={handlePinGateSwitchUser}
+        onForgotPin={handleForgotPin}
+        forgotPinSubmitted={forgotPinSubmitted}
+      />
+
       <IdentityConfirmationModal
         open={showIdentityConfirmation}
         userId={userId || ''}
