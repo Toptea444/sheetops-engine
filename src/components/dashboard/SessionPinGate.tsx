@@ -30,13 +30,15 @@ interface SessionPinGateProps {
   userName?: string | null;
   onVerified: (identityAlreadyConfirmed: boolean) => void;
   onSwitchUser: () => void;
+  onForgotPin?: (workerId: string) => void;
+  forgotPinSubmitted?: boolean;
 }
 
 /**
  * Shown on every new browser session for returning users.
  * Forces PIN verification (or setup if PIN was reset by admin).
  */
-export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchUser }: SessionPinGateProps) {
+export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchUser, onForgotPin, forgotPinSubmitted }: SessionPinGateProps) {
   const { isLoading, checkPinExists, setPin, verifyPin, error } = useWorkerPin();
   const [step, setStep] = useState<'loading' | 'pin-entry' | 'identity-confirm' | 'pin-setup'>('loading');
   const [showFinalWarning, setShowFinalWarning] = useState(false);
@@ -62,7 +64,6 @@ export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchU
   const handlePinVerify = async (pin: string) => {
     const result = await verifyPin(workerId, pin);
     if (result.valid) {
-      // PIN verified = identity is confirmed (PIN is proof of identity)
       onVerified(true);
     }
   };
@@ -70,12 +71,10 @@ export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchU
   const handlePinSetup = async (pin: string) => {
     const result = await setPin(workerId, pin);
     if (result.success) {
-      // Identity was already confirmed in identity-confirm step
       onVerified(true);
     }
   };
 
-  // Identity confirmation handlers
   const handleIdentityConfirmClick = () => {
     setShowFinalWarning(true);
   };
@@ -83,6 +82,12 @@ export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchU
   const handleFinalConfirm = () => {
     setShowFinalWarning(false);
     setStep('pin-setup');
+  };
+
+  const handleForgotPin = () => {
+    if (onForgotPin) {
+      onForgotPin(workerId);
+    }
   };
 
   if (!open) return null;
@@ -101,6 +106,8 @@ export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchU
             workerId={workerId}
             onSubmit={handlePinVerify}
             onBack={onSwitchUser}
+            onForgotPin={handleForgotPin}
+            forgotPinSubmitted={forgotPinSubmitted}
             isLoading={isLoading}
             error={error}
           />

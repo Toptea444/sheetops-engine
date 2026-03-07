@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lock, ArrowRight } from 'lucide-react';
+import { Lock, ArrowRight, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,16 +8,20 @@ interface PinEntryStepProps {
   workerId: string;
   onSubmit: (pin: string) => void;
   onBack?: () => void;
+  onForgotPin?: () => void;
   isLoading?: boolean;
   error?: string | null;
+  forgotPinSubmitted?: boolean;
 }
 
 export function PinEntryStep({ 
   workerId, 
   onSubmit, 
   onBack,
+  onForgotPin,
   isLoading = false, 
-  error = null 
+  error = null,
+  forgotPinSubmitted = false,
 }: PinEntryStepProps) {
   const [pin, setPin] = useState('');
 
@@ -45,6 +49,15 @@ export function PinEntryStep({
           Enter PIN for <span className="font-medium text-foreground">{workerId}</span>
         </p>
       </div>
+
+      {/* Forgot PIN success banner */}
+      {forgotPinSubmitted && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+          <p className="text-sm text-emerald-700 dark:text-emerald-300 text-center">
+            ✓ PIN reset request sent! Please contact your admin to approve the reset.
+          </p>
+        </div>
+      )}
 
       {/* PIN input */}
       <div className="space-y-1.5">
@@ -98,6 +111,18 @@ export function PinEntryStep({
           disabled={isLoading}
         >
           Not {workerId}? Use a different ID
+        </button>
+      )}
+
+      {/* Forgot PIN */}
+      {onForgotPin && !forgotPinSubmitted && (
+        <button
+          onClick={onForgotPin}
+          className="w-full flex items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          disabled={isLoading}
+        >
+          <HelpCircle className="h-3.5 w-3.5" />
+          Forgot your PIN?
         </button>
       )}
     </div>

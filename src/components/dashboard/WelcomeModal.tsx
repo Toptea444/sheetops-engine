@@ -29,10 +29,11 @@ type ModalStep = 'id-entry' | 'identity-confirm' | 'pin-setup' | 'pin-entry';
 
 interface WelcomeModalProps {
   open: boolean;
-  onComplete: (userId: string, pinVerified: boolean, identityAlreadyConfirmed: boolean) => void;
+  onComplete: (userId: string, userName: string | null, pinVerified: boolean) => void;
   isValidating?: boolean;
   validationError?: string | null;
-  onIdValidated?: (userId: string) => Promise<boolean>;
+  onIdValidated?: (userId: string) => Promise<{ valid: boolean; userName?: string }>;
+  onForgotPin?: (workerId: string) => void;
 }
 
 export function WelcomeModal({ 
@@ -41,12 +42,13 @@ export function WelcomeModal({
   isValidating = false,
   validationError = null,
   onIdValidated,
+  onForgotPin,
 }: WelcomeModalProps) {
   const [userId, setUserId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<ModalStep>('id-entry');
   const [validatedUserId, setValidatedUserId] = useState<string>('');
-  const [validatedUserName, setValidatedUserName] = useState<string>('');
+  const [validatedUserName, setValidatedUserName] = useState<string | null>(null);
   const [showFinalWarning, setShowFinalWarning] = useState(false);
   const [needsPinSetup, setNeedsPinSetup] = useState(false);
   
@@ -57,7 +59,7 @@ export function WelcomeModal({
     if (!open) {
       setStep('id-entry');
       setValidatedUserId('');
-      setValidatedUserName('');
+      setValidatedUserName(null);
       setError(null);
       setShowFinalWarning(false);
       setNeedsPinSetup(false);
@@ -74,7 +76,6 @@ export function WelcomeModal({
       return;
     }
 
-    // Format: NGDS----, GHAS----, etc. (4 letters + alphanumeric)
     const pattern = /^[A-Z]{4}[A-Z0-9-]+$/;
     if (!pattern.test(trimmedId)) {
       setError('Invalid format. Expected format: NGDS0001 or GHAS-001');
@@ -83,46 +84,41 @@ export function WelcomeModal({
 
     setError(null);
     
-    // If onIdValidated is provided, validate the ID first (checks if ID exists in sheets)
+    // Validate the ID exists in sheets
     if (onIdValidated) {
-      const isValid = await onIdValidated(trimmedId);
-      if (!isValid) {
-        // The parent component will set validationError
-        return;
-      }
+      const result = await onIdValidated(trimmedId);
+      if (!result.valid) return;
+      if (result.userName) setValidatedUserName(result.userName);
     }
 
-    // Check if PIN exists for this worker ID
+    // Check if PIN exists for this worker
     const hasPinSet = await checkPinExists(trimmedId);
     setValidatedUserId(trimmedId);
+    setNeedsPinSetup(!hasPinSet);
 
-    if (hasPinSet) {
-      // User has a PIN, prompt them to enter it
-      setStep('pin-entry');
-    } else {
-      // No PIN set yet - this is a new user or a PIN-reset user
-      // First show identity confirmation, THEN let them set PIN
-      setNeedsPinSetup(true);
-      setStep('identity-confirm');
-    }
+    // ALWAYS go to identity confirmation first
+    setStep('identity-confirm');
   };
 
-  // Handle identity confirmation for new users / PIN-reset users
   const handleIdentityConfirmClick = () => {
     setShowFinalWarning(true);
   };
 
   const handleFinalConfirm = () => {
     setShowFinalWarning(false);
-    // Now proceed to PIN setup
-    setStep('pin-setup');
+    // After identity confirmation, go to PIN entry or setup
+    if (needsPinSetup) {
+      setStep('pin-setup');
+    } else {
+      setStep('pin-entry');
+    }
   };
 
   const handleIdentityDeny = () => {
-    // User says this is not their account - go back to ID entry
     setStep('id-entry');
+    setUserId('');
     setValidatedUserId('');
-    setValidatedUserName('');
+    setValidatedUserName(null);
     setNeedsPinSetup(false);
     setError(null);
   };
@@ -130,27 +126,31 @@ export function WelcomeModal({
   const handlePinSetup = async (pin: string) => {
     const result = await setPin(validatedUserId, pin);
     if (result.success) {
-      // Reset step before completing to ensure clean state
       setStep('id-entry');
-      // Identity was already confirmed in the 'identity-confirm' step, so pass true
-      onComplete(validatedUserId, true, true);
+      onComplete(validatedUserId, validatedUserName, true);
     }
   };
 
   const handlePinVerify = async (pin: string) => {
     const result = await verifyPin(validatedUserId, pin);
     if (result.valid) {
-      // Reset step before completing to ensure clean state
       setStep('id-entry');
-      // PIN verified = identity is confirmed (PIN is proof of identity)
-      onComplete(validatedUserId, true, true);
+      onComplete(validatedUserId, validatedUserName, true);
     }
   };
 
   const handleBackToIdEntry = () => {
     setStep('id-entry');
+    setUserId('');
     setValidatedUserId('');
+    setValidatedUserName(null);
     setError(null);
+  };
+
+  const handleForgotPin = () => {
+    if (onForgotPin) {
+      onForgotPin(validatedUserId);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -160,6 +160,8 @@ export function WelcomeModal({
   };
 
   const isLoading = isValidating || pinLoading;
+
+  const displayName = validatedUserName || validatedUserId;
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
@@ -238,11 +240,17 @@ export function WelcomeModal({
 
             <div className="py-4">
               <div className="rounded-lg bg-muted/50 p-4 text-center">
-                <p className="text-lg font-semibold text-foreground">{validatedUserId}</p>
+                <p className="text-lg font-semibold text-foreground">{displayName}</p>
+                {validatedUserName && validatedUserName !== validatedUserId && (
+                  <p className="text-sm text-muted-foreground">{validatedUserId}</p>
+                )}
               </div>
               
               <p className="mt-4 text-sm text-muted-foreground text-center">
-                To prevent unauthorized access, please confirm this is your account before setting up your PIN.
+                {needsPinSetup 
+                  ? 'To prevent unauthorized access, please confirm this is your account before setting up your PIN.'
+                  : 'Please confirm this is your account before continuing.'
+                }
               </p>
             </div>
 
@@ -280,13 +288,14 @@ export function WelcomeModal({
             workerId={validatedUserId}
             onSubmit={handlePinVerify}
             onBack={handleBackToIdEntry}
+            onForgotPin={handleForgotPin}
             isLoading={pinLoading}
             error={pinError}
           />
         )}
       </DialogContent>
 
-      {/* Final warning confirmation for new users */}
+      {/* Final warning confirmation */}
       <AlertDialog open={showFinalWarning} onOpenChange={setShowFinalWarning}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -295,13 +304,16 @@ export function WelcomeModal({
             </div>
             <AlertDialogTitle className="text-center">Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription className="text-center">
-              Once you set a PIN, <span className="font-semibold text-foreground">{validatedUserId}</span> will be permanently linked to this device. 
-              You will not be able to switch to a different account.
+              {needsPinSetup ? (
+                <>Once you set a PIN, <span className="font-semibold text-foreground">{displayName}</span> will be permanently linked to this device. You will not be able to switch to a different account.</>
+              ) : (
+                <>You are about to access the account for <span className="font-semibold text-foreground">{displayName}</span>. Please confirm this is your account.</>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
             <AlertDialogAction onClick={handleFinalConfirm} className="w-full">
-              Yes, continue to set PIN
+              {needsPinSetup ? 'Yes, continue to set PIN' : 'Yes, continue'}
             </AlertDialogAction>
             <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
           </AlertDialogFooter>
