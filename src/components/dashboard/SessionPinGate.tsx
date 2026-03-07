@@ -43,6 +43,10 @@ export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchU
   const [step, setStep] = useState<'loading' | 'pin-entry' | 'identity-confirm' | 'pin-setup'>('loading');
   const [showFinalWarning, setShowFinalWarning] = useState(false);
   const displayName = userName || workerId;
+  const fullScreenModalClasses =
+    'inset-0 left-0 top-0 h-screen w-screen max-w-none translate-x-0 translate-y-0 border-0 bg-white p-4 shadow-none sm:rounded-none sm:p-6 [&>button]:hidden';
+  const modalCardClasses = 'w-full max-w-md rounded-lg border bg-background p-6 shadow-lg';
+
 
   useEffect(() => {
     if (!open || !workerId) return;
@@ -94,7 +98,9 @@ export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchU
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent className={fullScreenModalClasses} onPointerDownOutside={(e) => e.preventDefault()}>
+        <div className="flex min-h-full items-center justify-center">
+          <div className={modalCardClasses}>
         {step === 'loading' && (
           <div className="py-8">
             <LoadingState message="Checking account..." />
@@ -166,6 +172,8 @@ export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchU
             error={error}
           />
         )}
+          </div>
+        </div>
       </DialogContent>
 
       {/* Final warning confirmation for PIN reset users */}
