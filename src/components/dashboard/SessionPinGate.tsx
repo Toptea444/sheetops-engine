@@ -94,7 +94,7 @@ export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchU
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent className="sm:max-w-md" overlayVariant="white" onPointerDownOutside={(e) => e.preventDefault()}>
         {step === 'loading' && (
           <div className="py-8">
             <LoadingState message="Checking account..." />
@@ -170,7 +170,7 @@ export function SessionPinGate({ open, workerId, userName, onVerified, onSwitchU
 
       {/* Final warning confirmation for PIN reset users */}
       <AlertDialog open={showFinalWarning} onOpenChange={setShowFinalWarning}>
-        <AlertDialogContent>
+        <AlertDialogContent overlayVariant="white">
           <AlertDialogHeader>
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20">
               <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />

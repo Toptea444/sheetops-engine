@@ -68,6 +68,7 @@ export function IdentityConfirmationModal({
       <Dialog open={open && isIdentityStep} onOpenChange={() => {}}>
         <DialogContent 
           className="sm:max-w-md" 
+          overlayVariant="white"
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
@@ -116,7 +117,7 @@ export function IdentityConfirmationModal({
 
       {/* Warning confirmation dialog */}
       <AlertDialog open={showWarning} onOpenChange={setShowWarning}>
-        <AlertDialogContent>
+        <AlertDialogContent overlayVariant="white">
           <AlertDialogHeader>
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-warning/20">
               <AlertTriangle className="h-6 w-6 text-warning" />
@@ -140,6 +141,7 @@ export function IdentityConfirmationModal({
       <Dialog open={open && step === 'confirming'} onOpenChange={() => {}}>
         <DialogContent 
           className="sm:max-w-md" 
+          overlayVariant="white"
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
