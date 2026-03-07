@@ -1411,10 +1411,14 @@ export default function AdminPinReset() {
 
       <main className="container mx-auto px-4 py-4 max-w-2xl">
         <Tabs defaultValue="workers" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-7 h-9 gap-0.5">
+          <TabsList className="grid w-full grid-cols-8 h-9 gap-0.5">
             <TabsTrigger value="workers" className="text-xs gap-0.5 px-0.5">
               <Users className="h-3 w-3" />
               <span className="hidden sm:inline">Workers</span>
+            </TabsTrigger>
+            <TabsTrigger value="pin-requests" className="text-xs gap-0.5 px-0.5">
+              <KeyRound className="h-3 w-3" />
+              <span className="hidden sm:inline">PIN Reqs</span>
             </TabsTrigger>
             <TabsTrigger value="earnings" className="text-xs gap-0.5 px-0.5">
               <TrendingUp className="h-3 w-3" />
@@ -1444,6 +1448,9 @@ export default function AdminPinReset() {
 
           <TabsContent value="workers">
             <WorkersTab adminSecret={adminSecret} />
+          </TabsContent>
+          <TabsContent value="pin-requests">
+            <PinResetRequestsTab adminSecret={adminSecret} />
           </TabsContent>
           <TabsContent value="earnings">
             <EarningsTab adminSecret={adminSecret} />
