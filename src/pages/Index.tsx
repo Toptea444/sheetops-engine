@@ -624,15 +624,18 @@ const Index = () => {
         isValidating={isValidating}
         validationError={validationError}
         onIdValidated={handleIdValidation}
+        onForgotPin={handleForgotPin}
       />
 
-<SessionPinGate
-  open={showPinGate}
-  workerId={userId || ''}
-  userName={userName}
-  onVerified={handlePinGateVerified}
-  onSwitchUser={handlePinGateSwitchUser}
-  />
+      <SessionPinGate
+        open={showPinGate}
+        workerId={userId || ''}
+        userName={userName}
+        onVerified={handlePinGateVerified}
+        onSwitchUser={handlePinGateSwitchUser}
+        onForgotPin={handleForgotPin}
+        forgotPinSubmitted={forgotPinSubmitted}
+      />
 
       <IdentityConfirmationModal
         open={showIdentityConfirmation}
