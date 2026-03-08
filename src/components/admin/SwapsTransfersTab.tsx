@@ -622,37 +622,59 @@ function TransfersSection({ adminSecret }: Props) {
         </Card>
       )}
 
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          placeholder="Search by ID – e.g. NGDS2002"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="text-xs h-8 pl-8 font-mono"
+        />
+      </div>
+
       {/* Transfers list */}
       <ScrollArea className="h-[350px]">
         <div className="space-y-2">
-          {transfers.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No day transfers recorded for this cycle</p>
-          ) : transfers.map(t => (
-            <Card key={t.id} className="p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="space-y-1.5 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <Badge variant="outline" className="text-[10px] font-mono text-red-600 dark:text-red-400 border-red-300">{t.source_worker_id}</Badge>
-                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                    <Badge variant="outline" className="text-[10px] font-mono text-green-600 dark:text-green-400 border-green-300">{t.target_worker_id}</Badge>
+          {(() => {
+            const filtered = searchQuery.trim()
+              ? transfers.filter(t => {
+                  const q = searchQuery.trim().toUpperCase();
+                  return t.source_worker_id?.toUpperCase().includes(q) || t.target_worker_id?.toUpperCase().includes(q);
+                })
+              : transfers;
+            if (filtered.length === 0) return (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {searchQuery.trim() ? 'No transfers found for this search' : 'No day transfers recorded for this cycle'}
+              </p>
+            );
+            return filtered.map(t => (
+              <Card key={t.id} className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="outline" className="text-[10px] font-mono text-red-600 dark:text-red-400 border-red-300">{t.source_worker_id}</Badge>
+                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                      <Badge variant="outline" className="text-[10px] font-mono text-green-600 dark:text-green-400 border-green-300">{t.target_worker_id}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="secondary" className="text-[10px]">₦{Number(t.amount).toLocaleString()}</Badge>
+                      <span className="text-[10px] text-muted-foreground">{t.sheet_name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />Date: {new Date(t.transfer_date).toLocaleDateString()}</span>
+                      <span>Recorded: {new Date(t.created_at).toLocaleString()}</span>
+                    </div>
+                    {t.reason && <p className="text-[11px] text-muted-foreground italic">{t.reason}</p>}
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="secondary" className="text-[10px]">₦{Number(t.amount).toLocaleString()}</Badge>
-                    <span className="text-[10px] text-muted-foreground">{t.sheet_name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />Date: {new Date(t.transfer_date).toLocaleDateString()}</span>
-                    <span>Recorded: {new Date(t.created_at).toLocaleString()}</span>
-                  </div>
-                  {t.reason && <p className="text-[11px] text-muted-foreground italic">{t.reason}</p>}
+                  <Button variant="ghost" size="sm" className="h-7 text-destructive hover:text-destructive shrink-0"
+                    onClick={() => handleDelete(t.id)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
-                <Button variant="ghost" size="sm" className="h-7 text-destructive hover:text-destructive shrink-0"
-                  onClick={() => handleDelete(t.id)}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ));
+          })()}
         </div>
       </ScrollArea>
 
