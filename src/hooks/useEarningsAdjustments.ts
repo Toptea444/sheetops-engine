@@ -119,20 +119,22 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
 
       allTransfers.forEach(t => {
         if (t.source_worker_id === uid) {
+          const dateLabel = new Date(t.transfer_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           notes.push({
             type: 'transfer_debit',
             date: t.transfer_date,
             amount: -t.amount,
-            description: `Day earnings transferred to ${t.target_worker_id} on ${t.transfer_date} (${t.sheet_name})${t.reason ? ` — ${t.reason}` : ''}`,
+            description: `${t.target_worker_id} worked for you on ${dateLabel}. Earnings transferred to ${t.target_worker_id}.`,
             created_at: t.created_at,
           });
         }
         if (t.target_worker_id === uid) {
+          const dateLabel = new Date(t.transfer_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           notes.push({
             type: 'transfer_credit',
             date: t.transfer_date,
             amount: t.amount,
-            description: `Day earnings received from ${t.source_worker_id} on ${t.transfer_date} (${t.sheet_name})${t.reason ? ` — ${t.reason}` : ''}`,
+            description: `You worked for ${t.source_worker_id} on ${dateLabel}. Earnings received from ${t.source_worker_id}.`,
             created_at: t.created_at,
           });
         }

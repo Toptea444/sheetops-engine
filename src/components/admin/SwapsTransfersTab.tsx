@@ -269,7 +269,7 @@ function TransfersSection({ adminSecret }: Props) {
     const validDates = transferDates.filter(d => d);
     if (validDates.length === 0) return '';
     const dateStr = validDates.map(d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })).join(', ');
-    return `${fullTargetId} covered for ${fullSourceId} on ${dateStr}. Earnings transferred accordingly.`;
+    return `${fullTargetId} worked for ${fullSourceId} on ${dateStr}. Earnings transferred accordingly.`;
   }, [sourceId, targetId, transferDates, fullSourceId, fullTargetId]);
 
   // Update reason when inputs change
