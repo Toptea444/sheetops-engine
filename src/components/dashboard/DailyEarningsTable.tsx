@@ -33,6 +33,7 @@ interface DayData {
   bonus?: number;
   rankingBonus?: number;
   total?: number;
+  sourceWorkerId?: string;
 }
 
 export function DailyEarningsTable({
