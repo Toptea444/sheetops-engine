@@ -6,6 +6,7 @@ import {
   Trash2, Search, UserCheck, Wifi, WifiOff, Clock, TrendingUp,
   Eye, Settings, Bell, AlertCircle, CheckIcon, Copy, X, ChevronDown,
   History, User, Calendar, MessageSquare, ThumbsUp, ThumbsDown,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
