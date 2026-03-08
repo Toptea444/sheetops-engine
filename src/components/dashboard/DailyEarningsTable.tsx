@@ -227,12 +227,12 @@ export function DailyEarningsTable({
                             return (
                               <TableRow key={day.fullDate} className="h-11">
                                 <TableCell className="text-sm py-2.5">
-                                  <div className="flex items-center gap-1.5">
-                                    {day.date}
+                                  <div className="flex flex-col gap-0.5">
+                                    <span>{day.date}</span>
                                     {transferInfo && (
                                       <Badge 
                                         variant="outline" 
-                                        className={`text-[9px] px-1 py-0 h-4 font-mono ${
+                                        className={`text-[9px] px-1.5 py-0 h-4 font-mono w-fit ${
                                           transferInfo.type === 'credit' 
                                             ? 'text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30' 
                                             : 'text-red-600 dark:text-red-400 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30'
