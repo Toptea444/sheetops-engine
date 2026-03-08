@@ -146,14 +146,15 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
   const bestCycle = data?.earnings_by_cycle?.reduce((best: any, c: any) => (!best || c.total > best.total) ? c : best, null);
 
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleForceLogout = async () => {
     if (!workerId) return;
     setLogoutLoading(true);
+    setShowLogoutConfirm(false);
     const res = await adminRequest(adminSecret, 'force_logout', { worker_id: workerId });
     if (res?.success) {
-      toast.success(`Force logged out ${workerId}`);
-      // Refresh data to update session info
+      toast.success(`Successfully force logged out ${workerId}. They will be disconnected within 1 minute.`);
       const refreshed = await adminRequest(adminSecret, 'get_worker_detail', { worker_id: workerId });
       if (refreshed) setData(refreshed);
     } else {
