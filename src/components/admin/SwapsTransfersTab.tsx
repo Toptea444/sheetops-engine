@@ -243,7 +243,7 @@ function SwapsSection({ adminSecret }: Props) {
                   {s.notes && <p className="text-[11px] text-muted-foreground italic">{s.notes}</p>}
                 </div>
                 <Button variant="ghost" size="sm" className="h-7 text-destructive hover:text-destructive shrink-0"
-                  onClick={() => handleDelete(s.id)}>
+                  onClick={() => setDeleteId(s.id)}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
