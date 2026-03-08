@@ -178,12 +178,12 @@ function SwapsSection({ adminSecret }: Props) {
               <div className="space-y-1.5">
                 <Label className="text-xs">Old Worker ID</Label>
                 <Input placeholder="e.g. NGDS2002" value={form.old_worker_id}
-                  onChange={e => setForm({ ...form, old_worker_id: e.target.value })} className="text-sm font-mono h-9" />
+                  onChange={e => setForm({ ...form, old_worker_id: e.target.value.toUpperCase() })} className="text-sm font-mono h-9 uppercase" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">New Worker ID</Label>
                 <Input placeholder="e.g. NGDS1001" value={form.new_worker_id}
-                  onChange={e => setForm({ ...form, new_worker_id: e.target.value })} className="text-sm font-mono h-9" />
+                  onChange={e => setForm({ ...form, new_worker_id: e.target.value.toUpperCase() })} className="text-sm font-mono h-9 uppercase" />
               </div>
             </div>
             <div className="space-y-1.5">
