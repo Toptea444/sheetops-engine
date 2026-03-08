@@ -415,28 +415,25 @@ function TransfersSection({ adminSecret }: Props) {
     }
     setCreating(true);
 
-    // Create ONE transfer record per date with sheet_amounts JSON for per-sheet breakdown
+    // Create ONE transfer record per date with per-date per-sheet amounts
     let successCount = 0;
 
     for (const date of validDates) {
-      // Build sheet_amounts JSON: { "Sheet Name": amount, ... }
-      const sheetAmountsObj: Record<string, number> = {};
-      for (const sheetName of selectedSheets) {
-        const amt = sheetTotals[sheetName] || 0;
-        if (amt > 0) sheetAmountsObj[sheetName] = amt;
-      }
+      const dateSheetAmounts = perDateSheetTotals[date] || {};
+      const dateTotal = Object.values(dateSheetAmounts).reduce((s, v) => s + v, 0);
+      if (dateTotal <= 0) continue;
 
       const res = await adminRequest(adminSecret, 'create_transfer', {
         source_worker_id: fullSourceId,
         target_worker_id: fullTargetId,
         transfer_date: date,
         sheet_name: selectedSheets.join(', '),
-        amount: grandTotal,
+        amount: dateTotal,
         bonus_amount: 0,
         ranking_bonus_amount: 0,
         reason,
         cycle_key: selectedCycleKey,
-        sheet_amounts: sheetAmountsObj,
+        sheet_amounts: dateSheetAmounts,
       });
       if (res?.success) successCount++;
     }
