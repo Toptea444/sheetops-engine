@@ -428,10 +428,21 @@ const Index = () => {
       if (error) throw error;
       setForgotPinSubmitted(true);
     } catch (err) {
-      // Show error inline — don't use toast since it appears behind the modal
       setForgotPinSubmitted(false);
     }
   }, []);
+
+  const handleSwapLogout = useCallback(async () => {
+    if (userId) await releaseSession(userId);
+    localStorage.removeItem(PIN_VERIFIED_KEY);
+    setPinVerifiedThisSession(false);
+    clearIdentity();
+    setResults([]);
+    setDataError(null);
+    setSwapDetected(null);
+    setShowPinGate(false);
+    setShowWelcome(true);
+  }, [clearIdentity, releaseSession, userId]);
 
   const handleRefresh = useCallback(async () => {
     setDataError(null);
