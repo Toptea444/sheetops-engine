@@ -166,21 +166,6 @@ export function WelcomeModal({
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
-        {forceLoggedOut && (
-          <div className="mb-4 flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
-            <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-destructive">You have been logged out by an administrator.</p>
-              <p className="text-xs text-muted-foreground mt-1">Please log in again to continue.</p>
-            </div>
-            <button 
-              onClick={onForceLoggedOutDismissed} 
-              className="text-muted-foreground hover:text-foreground shrink-0"
-            >
-              <XCircle className="h-4 w-4" />
-            </button>
-          </div>
-        )}
         {step === 'id-entry' && (
           <>
             <DialogHeader className="text-center">
