@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, ArrowRight, Sparkles, ShieldCheck, LogOut, AlertTriangle } from 'lucide-react';
+import { User, ArrowRight, Sparkles, ShieldCheck, LogOut, AlertTriangle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
