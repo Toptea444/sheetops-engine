@@ -521,10 +521,11 @@ const Index = () => {
   }, []);
 
   const handleSwapLogout = useCallback(async () => {
-    // Acknowledge the swap so the modal doesn't reappear
-    if (swapDetected?.swapId) {
-      const direction = swapDetected.reassigned ? '_new' : '_old';
-      localStorage.setItem('performanceTracker_swapAck2_' + swapDetected.swapId + direction, 'true');
+    // Acknowledge the swap so the modal doesn't reappear — use sorted pair key
+    // so both directions of a bidirectional swap produce the same ack
+    if (swapDetected) {
+      const pair = [swapDetected.oldId, swapDetected.newId].sort().join('_');
+      localStorage.setItem('performanceTracker_swapAckPair_' + pair, 'true');
     }
     if (userId) await releaseSession(userId);
     localStorage.removeItem(PIN_VERIFIED_KEY);
