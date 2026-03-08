@@ -97,6 +97,23 @@ const Index = () => {
     };
   }, [userId, claimSession, startHeartbeat, stopHeartbeat]);
 
+  // Listen for force-logout event from heartbeat detection
+  useEffect(() => {
+    const handleForceLogout = () => {
+      stopHeartbeat();
+      localStorage.removeItem(PIN_VERIFIED_KEY);
+      setPinVerifiedThisSession(false);
+      clearIdentity();
+      setResults([]);
+      setDataError(null);
+      setShowPinGate(false);
+      setShowWelcome(true);
+    };
+
+    window.addEventListener('force-logout', handleForceLogout);
+    return () => window.removeEventListener('force-logout', handleForceLogout);
+  }, [stopHeartbeat, clearIdentity]);
+
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
 
