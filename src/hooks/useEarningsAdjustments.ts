@@ -102,7 +102,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
             type: 'swap_out',
             date: s.effective_date,
             amount: 0,
-            description: `ID swapped from ${s.old_worker_id} to ${s.new_worker_id} (${s.worker_name})${s.notes ? ` — ${s.notes}` : ''}`,
+            description: `Your ID was changed from ${s.old_worker_id} to ${s.new_worker_id}. Earnings before ${new Date(s.effective_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} belong to your old ID.${s.notes ? ` Note: ${s.notes}` : ''}`,
             created_at: s.created_at,
           });
         }
@@ -111,7 +111,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
             type: 'swap_in',
             date: s.effective_date,
             amount: 0,
-            description: `ID swapped from ${s.old_worker_id} to ${s.new_worker_id} (${s.worker_name})${s.notes ? ` — ${s.notes}` : ''}`,
+            description: `Your ID was changed from ${s.old_worker_id} to ${s.new_worker_id}. Earnings from ${new Date(s.effective_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} onward are under your new ID.${s.notes ? ` Note: ${s.notes}` : ''}`,
             created_at: s.created_at,
           });
         }

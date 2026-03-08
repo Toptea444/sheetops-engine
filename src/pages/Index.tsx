@@ -307,6 +307,47 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [notificationsEnabled, userId, identityConfirmed, selectedSheets, fetchUserData]);
 
+  // Background swap detection: check every 30s if logged-in user has been swapped
+  useEffect(() => {
+    if (!userId || !identityConfirmed || !pinVerifiedThisSession) return;
+
+    const checkSwap = async () => {
+      const uid = userId.toUpperCase();
+      // Check if user's ID appears as old_worker_id OR new_worker_id in any swap
+      const [oldRes, newRes] = await Promise.all([
+        supabase.from('id_swaps').select('old_worker_id, new_worker_id')
+          .eq('old_worker_id', uid).order('created_at', { ascending: false }).limit(1),
+        supabase.from('id_swaps').select('old_worker_id, new_worker_id')
+          .eq('new_worker_id', uid).order('created_at', { ascending: false }).limit(1),
+      ]);
+
+      // If this user's ID is the OLD id in a swap → they need to switch to the new ID
+      if (oldRes.data && oldRes.data.length > 0) {
+        setSwapDetected({ oldId: oldRes.data[0].old_worker_id, newId: oldRes.data[0].new_worker_id });
+        return;
+      }
+      // If this user's ID is the NEW id in a swap → they also need to re-login (PIN was cleared)
+      if (newRes.data && newRes.data.length > 0) {
+        // For the new-id worker, force re-auth by triggering logout (their PIN was cleared)
+        // Only if they haven't already re-authenticated since the swap
+        try {
+          const { data: pinExists } = await supabase.from('worker_pins').select('id').eq('worker_id', uid).limit(1);
+          if (!pinExists || pinExists.length === 0) {
+            // PIN was cleared by the swap — force re-login
+            handleSwapLogout();
+          }
+        } catch { /* ignore */ }
+      }
+    };
+
+    // Check immediately on mount
+    checkSwap();
+
+    // Then poll every 30 seconds
+    const interval = setInterval(checkSwap, 30_000);
+    return () => clearInterval(interval);
+  }, [userId, identityConfirmed, pinVerifiedThisSession]);
+
   // When switching cycles, try to load cached data for past cycles
   useEffect(() => {
     if (!userId || !identityConfirmed || isInitializing) return;

@@ -174,11 +174,6 @@ function SwapsSection({ adminSecret }: Props) {
             <CardDescription className="text-xs">Record when a worker is permanently moved to a different ID</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Worker Name</Label>
-              <Input placeholder="e.g. Adelaja" value={form.worker_name}
-                onChange={e => setForm({ ...form, worker_name: e.target.value })} className="text-sm h-9" />
-            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Old Worker ID</Label>
