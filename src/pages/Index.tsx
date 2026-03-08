@@ -577,12 +577,12 @@ const Index = () => {
 
   // Get current user's stage from results
   const userStage = useMemo(() => {
-    for (const result of results) {
+    for (const result of adjustedResults) {
       const stage = (result.stage || '').trim();
       if (stage && stage.toUpperCase() !== 'N/A') return stage;
     }
     return null;
-  }, [results]);
+  }, [adjustedResults]);
 
   // Merge all Daily & Performance sheets for leaderboard (combines data across sheets in the same cycle)
   const leaderboardSheetData = useMemo(() => {
