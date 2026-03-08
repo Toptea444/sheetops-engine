@@ -768,6 +768,7 @@ const Index = () => {
         open={!!swapDetected}
         oldWorkerId={swapDetected?.oldId || ''}
         newWorkerId={swapDetected?.newId || ''}
+        reassigned={swapDetected?.reassigned}
         onLogout={handleSwapLogout}
       />
 
