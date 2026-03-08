@@ -352,8 +352,8 @@ function TransfersSection({ adminSecret }: Props) {
       }
 
       const res = await adminRequest(adminSecret, 'create_transfer', {
-        source_worker_id: `GHAS${sourceId.trim()}`,
-        target_worker_id: `NGDS${targetId.trim()}`,
+        source_worker_id: fullSourceId,
+        target_worker_id: fullTargetId,
         transfer_date: date,
         sheet_name: selectedSheets.join(', '),
         amount: grandTotal,
