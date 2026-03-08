@@ -80,7 +80,7 @@ const Index = () => {
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
-  const [swapDetected, setSwapDetected] = useState<{ oldId: string; newId: string } | null>(null);
+  const [swapDetected, setSwapDetected] = useState<{ oldId: string; newId: string; reassigned?: boolean } | null>(null);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
