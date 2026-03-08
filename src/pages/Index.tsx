@@ -3,6 +3,7 @@ import { Header } from '@/components/dashboard/Header';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
 import { IdentityConfirmationModal } from '@/components/dashboard/IdentityConfirmationModal';
 import { SessionPinGate } from '@/components/dashboard/SessionPinGate';
+import { SwapDetectionModal } from '@/components/dashboard/SwapDetectionModal';
 import { CycleSelector } from '@/components/dashboard/CycleSelector';
 import { CycleSummaryCard } from '@/components/dashboard/CycleSummaryCard';
 import { SheetBreakdownCards } from '@/components/dashboard/SheetBreakdownCards';
@@ -79,6 +80,7 @@ const Index = () => {
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
+  const [swapDetected, setSwapDetected] = useState<{ oldId: string; newId: string } | null>(null);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
@@ -375,6 +377,20 @@ const Index = () => {
 
   const handleWelcomeComplete = async (newUserId: string, newUserName: string | null, pinVerified: boolean) => {
     if (pinVerified) {
+      // Check for ID swap before granting access
+      const { data: swapRows } = await supabase
+        .from('id_swaps')
+        .select('old_worker_id, new_worker_id')
+        .eq('old_worker_id', newUserId.toUpperCase())
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (swapRows && swapRows.length > 0) {
+        setSwapDetected({ oldId: swapRows[0].old_worker_id, newId: swapRows[0].new_worker_id });
+        setShowWelcome(false);
+        return; // Don't grant access
+      }
+
       setUserId(newUserId, newUserName || undefined);
       localStorage.setItem(PIN_VERIFIED_KEY, 'true');
       setPinVerifiedThisSession(true);
@@ -385,6 +401,21 @@ const Index = () => {
   };
 
   const handlePinGateVerified = useCallback(async (identityAlreadyConfirmed: boolean) => {
+    // Check for ID swap before granting access
+    if (userId) {
+      const { data: swapRows } = await supabase
+        .from('id_swaps')
+        .select('old_worker_id, new_worker_id')
+        .eq('old_worker_id', userId.toUpperCase())
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (swapRows && swapRows.length > 0) {
+        setSwapDetected({ oldId: swapRows[0].old_worker_id, newId: swapRows[0].new_worker_id });
+        return; // Don't grant access
+      }
+    }
+
     localStorage.setItem(PIN_VERIFIED_KEY, 'true');
     setPinVerifiedThisSession(true);
     setShowPinGate(false);
@@ -411,10 +442,21 @@ const Index = () => {
       if (error) throw error;
       setForgotPinSubmitted(true);
     } catch (err) {
-      // Show error inline — don't use toast since it appears behind the modal
       setForgotPinSubmitted(false);
     }
   }, []);
+
+  const handleSwapLogout = useCallback(async () => {
+    if (userId) await releaseSession(userId);
+    localStorage.removeItem(PIN_VERIFIED_KEY);
+    setPinVerifiedThisSession(false);
+    clearIdentity();
+    setResults([]);
+    setDataError(null);
+    setSwapDetected(null);
+    setShowPinGate(false);
+    setShowWelcome(true);
+  }, [clearIdentity, releaseSession, userId]);
 
   const handleRefresh = useCallback(async () => {
     setDataError(null);
@@ -668,7 +710,14 @@ const Index = () => {
         onDeny={handleIdentityDeny}
       />
 
-      {/* Daily Earnings Reveal Animation */}
+      <SwapDetectionModal
+        open={!!swapDetected}
+        oldWorkerId={swapDetected?.oldId || ''}
+        newWorkerId={swapDetected?.newId || ''}
+        onLogout={handleSwapLogout}
+      />
+
+
       <EarningsReveal
         totalEarnings={cycleStats.totalEarnings}
         daysActive={cycleStats.daysActive}

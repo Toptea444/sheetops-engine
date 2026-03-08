@@ -575,10 +575,13 @@ Deno.serve(async (req) => {
           result = { success: false, error: 'worker_name, old_worker_id, new_worker_id, effective_date, and cycle_key are required' };
           break;
         }
+        const oldId = old_worker_id.trim().toUpperCase();
+        const newId = new_worker_id.trim().toUpperCase();
+
         const { data, error } = await supabase.from('id_swaps').insert({
           worker_name: worker_name.trim(),
-          old_worker_id: old_worker_id.trim().toUpperCase(),
-          new_worker_id: new_worker_id.trim().toUpperCase(),
+          old_worker_id: oldId,
+          new_worker_id: newId,
           effective_date,
           cycle_key,
           notes: notes || null,
@@ -586,7 +589,10 @@ Deno.serve(async (req) => {
         if (error) {
           result = { success: false, error: error.message };
         } else {
-          result = { success: true, swap: data };
+          // Clear PINs for BOTH old and new worker IDs so they must re-authenticate
+          await supabase.from('worker_pins').delete().eq('worker_id', oldId);
+          await supabase.from('worker_pins').delete().eq('worker_id', newId);
+          result = { success: true, swap: data, pins_cleared: [oldId, newId] };
         }
         break;
       }
