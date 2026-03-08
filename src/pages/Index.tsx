@@ -557,7 +557,7 @@ const Index = () => {
     const yKey = `${yesterday.getFullYear()}-${yesterday.getMonth()}-${yesterday.getDate()}`;
     let total = 0;
 
-    results.forEach((result) => {
+    adjustedResults.forEach((result) => {
       if (result.valueType === 'percent') return;
       if (result.sheetName && !selectedSheets.includes(result.sheetName)) return;
       if (result.sheetName && (isWeeklyBonusGhSheet(result.sheetName) || isRankingBonusGhSheet(result.sheetName))) return;
