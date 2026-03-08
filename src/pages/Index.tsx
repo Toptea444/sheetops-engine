@@ -84,8 +84,18 @@ const Index = () => {
     return localStorage.getItem(PIN_VERIFIED_KEY) === 'true';
   });
 
-  // Session lock & heartbeat
+  // Session heartbeat for online presence (no device locking)
   const { claimSession, startHeartbeat, stopHeartbeat, releaseSession } = useSessionLock();
+
+  // Start heartbeat whenever we have a userId (even before PIN verification)
+  useEffect(() => {
+    if (userId) {
+      claimSession(userId).then(() => startHeartbeat(userId));
+    }
+    return () => {
+      stopHeartbeat();
+    };
+  }, [userId, claimSession, startHeartbeat, stopHeartbeat]);
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
