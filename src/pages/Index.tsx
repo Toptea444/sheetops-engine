@@ -689,7 +689,7 @@ const Index = () => {
         daysActive={cycleStats.daysActive}
         userName={userName}
         previousDayEarnings={previousDayEarnings}
-        isDataReady={!isLoading && identityConfirmed && results.length > 0}
+        isDataReady={!isLoading && identityConfirmed && adjustedResults.length > 0}
       />
 
       <div
