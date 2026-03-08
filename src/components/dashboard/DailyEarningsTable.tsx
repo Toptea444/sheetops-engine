@@ -229,6 +229,14 @@ export function DailyEarningsTable({
                                 <TableCell className="text-sm py-3">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span>{day.date}</span>
+                                    {day.sourceWorkerId && (
+                                      <Badge 
+                                        variant="outline" 
+                                        className="text-[10px] px-1.5 py-0.5 whitespace-nowrap text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/30"
+                                      >
+                                        via {day.sourceWorkerId}
+                                      </Badge>
+                                    )}
                                     {transferInfo && (
                                       <Badge 
                                         variant="outline" 
