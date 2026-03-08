@@ -387,6 +387,21 @@ const Index = () => {
   };
 
   const handlePinGateVerified = useCallback(async (identityAlreadyConfirmed: boolean) => {
+    // Check for ID swap before granting access
+    if (userId) {
+      const { data: swapRows } = await supabase
+        .from('id_swaps')
+        .select('old_worker_id, new_worker_id')
+        .eq('old_worker_id', userId.toUpperCase())
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (swapRows && swapRows.length > 0) {
+        setSwapDetected({ oldId: swapRows[0].old_worker_id, newId: swapRows[0].new_worker_id });
+        return; // Don't grant access
+      }
+    }
+
     localStorage.setItem(PIN_VERIFIED_KEY, 'true');
     setPinVerifiedThisSession(true);
     setShowPinGate(false);
