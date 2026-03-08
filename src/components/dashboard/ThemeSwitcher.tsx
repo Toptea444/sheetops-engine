@@ -23,6 +23,9 @@ const accentOptions: { value: AccentColor; label: string; color: string }[] = [
   { value: 'purple', label: 'Purple', color: 'bg-purple-600' },
   { value: 'orange', label: 'Orange', color: 'bg-orange-500' },
   { value: 'rose', label: 'Rose', color: 'bg-rose-500' },
+  { value: 'teal', label: 'Teal', color: 'bg-teal-500' },
+  { value: 'indigo', label: 'Indigo', color: 'bg-indigo-600' },
+  { value: 'amber', label: 'Amber Gold', color: 'bg-amber-500' },
 ];
 
 export function ThemeSwitcher({

@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
-type AccentColor = 'blue' | 'green' | 'purple' | 'orange' | 'rose';
+type AccentColor = 'blue' | 'green' | 'purple' | 'orange' | 'rose' | 'teal' | 'indigo' | 'amber';
 
 const THEME_KEY = 'performanceTracker_theme';
 const ACCENT_KEY = 'performanceTracker_accent';
 const ACCENT_INITIALIZED_KEY = 'performanceTracker_accentInitialized';
 
-const ALL_ACCENTS: AccentColor[] = ['blue', 'green', 'purple', 'orange', 'rose'];
+const ALL_ACCENTS: AccentColor[] = ['blue', 'green', 'purple', 'orange', 'rose', 'teal', 'indigo', 'amber'];
 
 function getRandomAccent(): AccentColor {
   const randomIndex = Math.floor(Math.random() * ALL_ACCENTS.length);
@@ -41,6 +41,18 @@ const accentColors: Record<AccentColor, { primary: string; chart1: string }> = {
   rose: {
     primary: '350 70% 50%',
     chart1: '350 70% 55%',
+  },
+  teal: {
+    primary: '175 75% 35%',
+    chart1: '175 75% 45%',
+  },
+  indigo: {
+    primary: '238 65% 35%',
+    chart1: '238 65% 45%',
+  },
+  amber: {
+    primary: '42 95% 35%',
+    chart1: '42 95% 45%',
   },
 };
 
