@@ -377,6 +377,20 @@ const Index = () => {
 
   const handleWelcomeComplete = async (newUserId: string, newUserName: string | null, pinVerified: boolean) => {
     if (pinVerified) {
+      // Check for ID swap before granting access
+      const { data: swapRows } = await supabase
+        .from('id_swaps')
+        .select('old_worker_id, new_worker_id')
+        .eq('old_worker_id', newUserId.toUpperCase())
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (swapRows && swapRows.length > 0) {
+        setSwapDetected({ oldId: swapRows[0].old_worker_id, newId: swapRows[0].new_worker_id });
+        setShowWelcome(false);
+        return; // Don't grant access
+      }
+
       setUserId(newUserId, newUserName || undefined);
       localStorage.setItem(PIN_VERIFIED_KEY, 'true');
       setPinVerifiedThisSession(true);
