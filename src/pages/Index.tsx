@@ -139,6 +139,7 @@ const Index = () => {
     adjustmentNotes,
     applyAdjustments,
     getWorkerIdsToFetch,
+    getTransferInfoForDate,
     isLoading: adjustmentsLoading,
   } = useEarningsAdjustments(userId, selectedCycle);
 
@@ -767,18 +768,7 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Earnings Adjustments Panel - Show when there are adjustments */}
-            {adjustmentNotes.length > 0 && (
-              <div className="mb-8">
-                <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
-                  <AdjustmentsPanel
-                    notes={adjustmentNotes}
-                    netAdjustment={netAdjustment}
-                    isLoading={adjustmentsLoading}
-                  />
-                </div>
-              </div>
-            )}
+            {/* Removed standalone AdjustmentsPanel — now shown inside Daily Earnings section */}
 
             {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
             <div className="mb-8">
@@ -805,13 +795,23 @@ const Index = () => {
 
             {/* Daily Earnings Table - Detailed breakdown */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto">
+              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6">
                 <DailyEarningsTable
                   results={adjustedResults}
                   sheetNames={selectedSheets}
                   cycle={selectedCycle}
                   isLoading={isLoading}
+                  getTransferInfo={getTransferInfoForDate}
+                  currentUserId={userId}
                 />
+                {/* Adjustments info — collapsed inside the daily view */}
+                {adjustmentNotes.length > 0 && (
+                  <AdjustmentsPanel
+                    notes={adjustmentNotes}
+                    netAdjustment={netAdjustment}
+                    isLoading={adjustmentsLoading}
+                  />
+                )}
               </div>
             </div>
 

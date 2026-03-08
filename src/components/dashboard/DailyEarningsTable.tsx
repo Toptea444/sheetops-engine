@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Table,
@@ -20,12 +21,14 @@ interface DailyEarningsTableProps {
   sheetNames: string[];
   cycle: CyclePeriod;
   isLoading?: boolean;
+  /** Function to get transfer info for a date (returns credit/debit indicator) */
+  getTransferInfo?: (workerId: string, dateStr: string) => { type: 'credit' | 'debit'; amount: number } | null;
+  currentUserId?: string | null;
 }
 
 interface DayData {
   date: string;
   fullDate: number;
-  /** Per-day total (backwards compatible with old 'value') */
   value: number;
   bonus?: number;
   rankingBonus?: number;
@@ -37,19 +40,19 @@ export function DailyEarningsTable({
   sheetNames,
   cycle,
   isLoading,
+  getTransferInfo,
+  currentUserId,
 }: DailyEarningsTableProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showAll, setShowAll] = useState(false);
   const [activeTab, setActiveTab] = useState(sheetNames[0] || '');
 
-  // Update active tab when sheet names change
   useEffect(() => {
     if (!sheetNames.includes(activeTab) && sheetNames.length > 0) {
       setActiveTab(sheetNames[0]);
     }
   }, [sheetNames, activeTab]);
 
-  // Get data for the active sheet only — match by sheetName, not index
   const sheetData = useMemo(() => {
     const result = results.find(r => r.sheetName === activeTab);
     if (!result) return [];
@@ -79,13 +82,11 @@ export function DailyEarningsTable({
     return days;
   }, [results, sheetNames, activeTab, cycle, sortOrder]);
 
-  // Get value type for the active sheet
   const isPercent = useMemo(() => {
     const result = results.find(r => r.sheetName === activeTab);
     return result?.valueType === 'percent';
   }, [results, activeTab]);
 
-  // Stats for this sheet
   const stats = useMemo(() => {
     const total = sheetData.reduce((sum, day) => sum + (day.total ?? day.value), 0);
     const bonusTotal = sheetData.reduce((sum, day) => sum + (day.bonus ?? 0), 0);
@@ -104,6 +105,13 @@ export function DailyEarningsTable({
     return formatCurrency(value);
   };
 
+  // Get transfer indicator for a specific day
+  const getTransferIndicator = (day: DayData) => {
+    if (!getTransferInfo || !currentUserId) return null;
+    const dayStr = new Date(day.fullDate).toISOString().split('T')[0];
+    return getTransferInfo(currentUserId, dayStr);
+  };
+
   const displayedDays = showAll ? sheetData : sheetData.slice(0, 6);
 
   const tabLabel = (name: string) => (name.split(' ')[0] || name).toUpperCase();
@@ -119,7 +127,6 @@ export function DailyEarningsTable({
 
   return (
     <div className="space-y-3">
-      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between gap-2">
           <TabsList className="h-9 p-0.5 bg-muted/40">
@@ -149,12 +156,10 @@ export function DailyEarningsTable({
           <TabsContent key={name} value={name} className="mt-3">
             {name === activeTab && (
               <>
-                {/* Active sheet label */}
                 <p className="text-sm font-medium text-foreground truncate mb-2" title={activeTab}>
                   {activeTab}
                 </p>
 
-                {/* Summary stats for this sheet only */}
                 {stats.hasSplit && !isPercent ? (
                   <div className="grid grid-cols-4 gap-2 mb-3 p-3 bg-muted/20 rounded-lg text-center">
                     <div>
@@ -216,28 +221,47 @@ export function DailyEarningsTable({
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {displayedDays.map((day) => (
-                            <TableRow key={day.fullDate} className="h-11">
-                              <TableCell className="text-sm py-2.5">{day.date}</TableCell>
-                              {stats.hasSplit && !isPercent ? (
-                                <>
-                                  <TableCell className="text-sm py-2.5 text-right font-medium">
-                                    {formatCurrency(day.bonus ?? 0)}
-                                  </TableCell>
-                                  <TableCell className="text-sm py-2.5 text-right font-medium">
-                                    {formatCurrency(day.rankingBonus ?? 0)}
-                                  </TableCell>
-                                  <TableCell className="text-sm py-2.5 text-right font-semibold">
-                                    {formatCurrency(day.total ?? day.value)}
-                                  </TableCell>
-                                </>
-                              ) : (
-                                <TableCell className="text-sm py-2.5 text-right font-medium">
-                                  {formatValue(day.value)}
+                          {displayedDays.map((day) => {
+                            const transferInfo = getTransferIndicator(day);
+                            return (
+                              <TableRow key={day.fullDate} className="h-11">
+                                <TableCell className="text-sm py-2.5">
+                                  <div className="flex items-center gap-1.5">
+                                    {day.date}
+                                    {transferInfo && (
+                                      <Badge 
+                                        variant="outline" 
+                                        className={`text-[9px] px-1 py-0 h-4 font-mono ${
+                                          transferInfo.type === 'credit' 
+                                            ? 'text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30' 
+                                            : 'text-red-600 dark:text-red-400 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30'
+                                        }`}
+                                      >
+                                        {transferInfo.type === 'credit' ? '+' : '-'}₦{transferInfo.amount.toLocaleString()}
+                                      </Badge>
+                                    )}
+                                  </div>
                                 </TableCell>
-                              )}
-                            </TableRow>
-                          ))}
+                                {stats.hasSplit && !isPercent ? (
+                                  <>
+                                    <TableCell className="text-sm py-2.5 text-right font-medium">
+                                      {formatCurrency(day.bonus ?? 0)}
+                                    </TableCell>
+                                    <TableCell className="text-sm py-2.5 text-right font-medium">
+                                      {formatCurrency(day.rankingBonus ?? 0)}
+                                    </TableCell>
+                                    <TableCell className="text-sm py-2.5 text-right font-semibold">
+                                      {formatCurrency(day.total ?? day.value)}
+                                    </TableCell>
+                                  </>
+                                ) : (
+                                  <TableCell className="text-sm py-2.5 text-right font-medium">
+                                    {formatValue(day.value)}
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>
