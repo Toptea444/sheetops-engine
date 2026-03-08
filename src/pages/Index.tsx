@@ -501,6 +501,11 @@ const Index = () => {
   }, []);
 
   const handleSwapLogout = useCallback(async () => {
+    // Acknowledge the swap so the modal doesn't reappear
+    if (swapDetected?.swapId) {
+      const direction = swapDetected.reassigned ? '_new' : '_old';
+      localStorage.setItem('performanceTracker_swapAck2_' + swapDetected.swapId + direction, 'true');
+    }
     if (userId) await releaseSession(userId);
     localStorage.removeItem(PIN_VERIFIED_KEY);
     setPinVerifiedThisSession(false);
@@ -510,7 +515,7 @@ const Index = () => {
     setSwapDetected(null);
     setShowPinGate(false);
     setShowWelcome(true);
-  }, [clearIdentity, releaseSession, userId]);
+  }, [clearIdentity, releaseSession, userId, swapDetected]);
 
   const handleRefresh = useCallback(async () => {
     setDataError(null);
