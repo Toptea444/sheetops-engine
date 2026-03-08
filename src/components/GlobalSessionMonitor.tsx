@@ -46,6 +46,10 @@ export function GlobalSessionMonitor() {
         .eq('device_fingerprint', deviceFingerprint.current)
         .maybeSingle();
 
+      // Re-check that we're still tracking the same user after the async call.
+      // If the user switched accounts while we were awaiting, abort.
+      if (trackedUserId.current !== userId) return;
+
       if (!sessionExists) {
         // Session was deleted (force logout by admin)
         console.warn('Session deleted by admin, forcing client logout');
@@ -132,13 +136,15 @@ export function GlobalSessionMonitor() {
       const normalized = currentUserId ? currentUserId.toUpperCase() : null;
 
       if (normalized !== trackedUserId.current) {
+        // IMPORTANT: Stop old heartbeat and update tracked user IMMEDIATELY
+        // to prevent race conditions where old heartbeat fires for previous user,
+        // detects their deleted session, and wipes the new user's localStorage
+        clearHeartbeat();
+        trackedUserId.current = normalized;
+
         if (normalized) {
           // New user logged in (or re-logged in after force-logout)
           claimAndStartHeartbeat(normalized);
-        } else {
-          // User logged out
-          clearHeartbeat();
-          trackedUserId.current = null;
         }
       }
     };
