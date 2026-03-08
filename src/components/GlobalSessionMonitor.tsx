@@ -96,7 +96,7 @@ export function GlobalSessionMonitor() {
     } finally {
       isClaimingRef.current = false;
     }
-  }, [clearHeartbeat, sendHeartbeatAndCheck]);
+  }, [clearHeartbeat, sendHeartbeat]);
 
   // Poll localStorage for userId changes (handles login, logout, re-login)
   useEffect(() => {
