@@ -453,6 +453,7 @@ function TransfersSection({ adminSecret }: Props) {
     const res = await adminRequest(adminSecret, 'delete_transfer', { transfer_id: id });
     if (res?.success) { toast.success('Transfer deleted'); load(); }
     else toast.error('Failed to delete');
+    setDeleteId(null);
   };
 
   const toggleSheet = (name: string) => {
