@@ -49,6 +49,7 @@ function SwapsSection({ adminSecret }: Props) {
   const [form, setForm] = useState({ worker_name: '', old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycleIdx, setSelectedCycleIdx] = useState(0);
