@@ -99,6 +99,12 @@ export function useTheme(): UseThemeResult {
       const root = document.documentElement;
       root.classList.remove('light', 'dark');
       root.classList.add(resolved);
+
+      // Update Android status bar / PWA theme-color dynamically
+      const themeColorValue = resolved === 'dark' ? '#09090b' : '#ffffff';
+      document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
+        meta.setAttribute('content', themeColorValue);
+      });
     };
 
     updateResolvedTheme();
