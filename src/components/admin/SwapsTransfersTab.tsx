@@ -225,13 +225,13 @@ function TransfersSection({ adminSecret }: Props) {
   const [targetId, setTargetId] = useState('');
   const [transferDates, setTransferDates] = useState<string[]>(['']);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
-  const [amount, setAmount] = useState('');
-  const [bonusAmount, setBonusAmount] = useState('');
-  const [rankingBonusAmount, setRankingBonusAmount] = useState('');
   const [reason, setReason] = useState('');
   const [creating, setCreating] = useState(false);
   const [fetchingEarnings, setFetchingEarnings] = useState(false);
   const [earningsFetched, setEarningsFetched] = useState(false);
+
+  // Per-sheet fetched totals (editable)
+  const [sheetTotals, setSheetTotals] = useState<Record<string, number>>({});
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycleIdx, setSelectedCycleIdx] = useState(0);
@@ -275,7 +275,7 @@ function TransfersSection({ adminSecret }: Props) {
     if (autoReason) setReason(autoReason);
   }, [generateReason]);
 
-  // Fetch earnings for source ID on selected dates/sheets
+  // Fetch earnings for source ID on selected dates/sheets — returns total per sheet
   const fetchEarnings = useCallback(async () => {
     const validDates = transferDates.filter(d => d);
     if (!sourceId.trim() || validDates.length === 0 || selectedSheets.length === 0) {
@@ -283,7 +283,7 @@ function TransfersSection({ adminSecret }: Props) {
       return;
     }
     setFetchingEarnings(true);
-    let totalVal = 0, totalBonus = 0, totalRanking = 0;
+    const totals: Record<string, number> = {};
 
     try {
       for (const sheetName of selectedSheets) {
@@ -292,24 +292,25 @@ function TransfersSection({ adminSecret }: Props) {
         const worker = searchWorker(data, `GHAS${sourceId.trim()}`);
         if (!worker) continue;
 
+        let sheetTotal = 0;
         for (const dateStr of validDates) {
           const dateObj = new Date(dateStr + 'T12:00:00');
           const result = calculateBonus(worker, dateObj, dateObj);
           if (result && result.dailyBreakdown.length > 0) {
             result.dailyBreakdown.forEach(day => {
-              totalVal += day.value || 0;
-              totalBonus += day.bonus || 0;
-              totalRanking += day.rankingBonus || 0;
+              sheetTotal += day.value || 0;
             });
           }
         }
+        totals[sheetName] = sheetTotal;
       }
-      setAmount(totalVal.toString());
-      setBonusAmount(totalBonus.toString());
-      setRankingBonusAmount(totalRanking.toString());
+
+      setSheetTotals(totals);
       setEarningsFetched(true);
-      if (totalVal > 0) {
-        toast.success(`Found earnings: ₦${totalVal.toLocaleString()}`);
+      
+      const grandTotal = Object.values(totals).reduce((s, v) => s + v, 0);
+      if (grandTotal > 0) {
+        toast.success(`Found total earnings: ₦${grandTotal.toLocaleString()}`);
       } else {
         toast.warning('No earnings found for this ID on the selected dates/sheets');
       }
@@ -322,35 +323,40 @@ function TransfersSection({ adminSecret }: Props) {
   const resetForm = () => {
     setSourceId(''); setTargetId(''); setTransferDates(['']); 
     setSelectedSheets(availableSheets.map(s => s.name));
-    setAmount(''); setBonusAmount(''); setRankingBonusAmount(''); 
+    setSheetTotals({});
     setReason(''); setEarningsFetched(false);
   };
 
+  // Grand total across all sheets
+  const grandTotal = useMemo(() => Object.values(sheetTotals).reduce((s, v) => s + v, 0), [sheetTotals]);
+
   const handleCreate = async () => {
     const validDates = transferDates.filter(d => d);
-    if (!sourceId.trim() || !targetId.trim() || validDates.length === 0 || selectedSheets.length === 0 || !amount) {
-      toast.error('Source ID, target ID, at least one date, sheets, and amount are required');
+    if (!sourceId.trim() || !targetId.trim() || validDates.length === 0 || selectedSheets.length === 0 || grandTotal <= 0) {
+      toast.error('Source ID, target ID, at least one date, sheets, and a positive amount are required');
       return;
     }
     setCreating(true);
+
+    // Create ONE transfer per date (not per sheet). Store all sheet names in the sheet_name field joined.
+    const allSheetsStr = selectedSheets.join(', ');
     let successCount = 0;
-    // Create one transfer per date per sheet
+
     for (const date of validDates) {
-      for (const sheet of selectedSheets) {
-        const res = await adminRequest(adminSecret, 'create_transfer', {
-          source_worker_id: `GHAS${sourceId.trim()}`,
-          target_worker_id: `NGDS${targetId.trim()}`,
-          transfer_date: date,
-          sheet_name: sheet,
-          amount: Number(amount),
-          bonus_amount: Number(bonusAmount || 0),
-          ranking_bonus_amount: Number(rankingBonusAmount || 0),
-          reason,
-          cycle_key: selectedCycleKey,
-        });
-        if (res?.success) successCount++;
-      }
+      const res = await adminRequest(adminSecret, 'create_transfer', {
+        source_worker_id: `GHAS${sourceId.trim()}`,
+        target_worker_id: `NGDS${targetId.trim()}`,
+        transfer_date: date,
+        sheet_name: allSheetsStr,
+        amount: grandTotal,
+        bonus_amount: 0,
+        ranking_bonus_amount: 0,
+        reason,
+        cycle_key: selectedCycleKey,
+      });
+      if (res?.success) successCount++;
     }
+
     if (successCount > 0) {
       toast.success(`${successCount} transfer(s) recorded`);
       resetForm();
@@ -373,6 +379,11 @@ function TransfersSection({ adminSecret }: Props) {
       prev.includes(name) ? prev.filter(s => s !== name) : [...prev, name]
     );
     setEarningsFetched(false);
+    setSheetTotals(prev => {
+      const copy = { ...prev };
+      delete copy[name];
+      return copy;
+    });
   };
 
   const addDate = () => setTransferDates(prev => [...prev, '']);
@@ -436,7 +447,7 @@ function TransfersSection({ adminSecret }: Props) {
             <CardDescription className="text-xs">Transfer earnings from one ID to the person who actually worked</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-3">
-            {/* Source & Target IDs with GHAS prefix */}
+            {/* Source & Target IDs */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Source ID (debit from)</Label>
@@ -505,24 +516,30 @@ function TransfersSection({ adminSecret }: Props) {
               {earningsFetched ? 'Re-fetch Earnings' : 'Fetch Earnings from Sheet'}
             </Button>
 
-            {/* Amounts - editable */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Total Amount (₦)</Label>
-                <Input type="number" placeholder="0" value={amount}
-                  onChange={e => setAmount(e.target.value)} className="text-sm h-9" />
+            {/* Per-sheet totals (editable) */}
+            {earningsFetched && (
+              <div className="space-y-2">
+                <Label className="text-xs">Earnings per Sheet (editable)</Label>
+                {selectedSheets.map(name => (
+                  <div key={name} className="flex items-center gap-2">
+                    <span className="text-xs truncate flex-1 min-w-0 text-muted-foreground">{name.split(' ')[0]}</span>
+                    <div className="flex items-center">
+                      <span className="text-xs text-muted-foreground mr-1">₦</span>
+                      <Input
+                        type="number"
+                        value={sheetTotals[name] || 0}
+                        onChange={e => setSheetTotals(prev => ({ ...prev, [name]: Number(e.target.value) || 0 }))}
+                        className="text-sm h-8 w-28 font-mono"
+                      />
+                    </div>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between pt-1 border-t">
+                  <span className="text-xs font-medium">Grand Total</span>
+                  <span className="text-sm font-bold">₦{grandTotal.toLocaleString()}</span>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Bonus (₦)</Label>
-                <Input type="number" placeholder="0" value={bonusAmount}
-                  onChange={e => setBonusAmount(e.target.value)} className="text-sm h-9" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Ranking (₦)</Label>
-                <Input type="number" placeholder="0" value={rankingBonusAmount}
-                  onChange={e => setRankingBonusAmount(e.target.value)} className="text-sm h-9" />
-              </div>
-            </div>
+            )}
 
             {/* Reason - auto-generated, editable */}
             <div className="space-y-1.5">
