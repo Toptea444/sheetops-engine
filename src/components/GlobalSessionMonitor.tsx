@@ -90,7 +90,7 @@ export function GlobalSessionMonitor() {
       // Track this user and start heartbeat
       trackedUserId.current = normalizedId;
       clearHeartbeat();
-      heartbeatRef.current = setInterval(sendHeartbeatAndCheck, CHECK_INTERVAL);
+      heartbeatRef.current = setInterval(sendHeartbeat, CHECK_INTERVAL);
     } catch (err) {
       console.error('Session claim error:', err);
     } finally {
