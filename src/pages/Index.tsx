@@ -23,6 +23,7 @@ import { DownloadAppModal, shouldShowDownloadBanner } from '@/components/Downloa
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
 import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
