@@ -386,19 +386,8 @@ const Index = () => {
     setIsValidating(true);
     setValidationError(null);
 
-    // Check if this ID was swapped to a new ID — block login with old ID
-    const { data: swapRows } = await supabase
-      .from('id_swaps')
-      .select('old_worker_id, new_worker_id')
-      .eq('old_worker_id', newUserId.toUpperCase())
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (swapRows && swapRows.length > 0) {
-      setIsValidating(false);
-      setValidationError(`This ID has been changed to ${swapRows[0].new_worker_id}. Please log in with your new ID.`);
-      return { valid: false };
-    }
+    // Don't block login based on swaps — in bidirectional swaps both IDs are valid
+    // for different people. Swap detection happens after PIN verification instead.
 
     let foundUser = false;
     let foundUserName = '';
