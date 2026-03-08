@@ -84,23 +84,12 @@ const Index = () => {
     return localStorage.getItem(PIN_VERIFIED_KEY) === 'true';
   });
 
-  // Session heartbeat for online presence (no device locking)
-  const { claimSession, startHeartbeat, stopHeartbeat, releaseSession } = useSessionLock();
+  // Session release on logout (heartbeat is handled globally by GlobalSessionMonitor)
+  const { releaseSession } = useSessionLock();
 
-  // Start heartbeat whenever we have a userId (even before PIN verification)
-  useEffect(() => {
-    if (userId) {
-      claimSession(userId).then(() => startHeartbeat(userId));
-    }
-    return () => {
-      stopHeartbeat();
-    };
-  }, [userId, claimSession, startHeartbeat, stopHeartbeat]);
-
-  // Listen for force-logout event from heartbeat detection
+  // Listen for force-logout event from GlobalSessionMonitor
   useEffect(() => {
     const handleForceLogout = () => {
-      stopHeartbeat();
       localStorage.removeItem(PIN_VERIFIED_KEY);
       setPinVerifiedThisSession(false);
       clearIdentity();
@@ -112,7 +101,7 @@ const Index = () => {
 
     window.addEventListener('force-logout', handleForceLogout);
     return () => window.removeEventListener('force-logout', handleForceLogout);
-  }, [stopHeartbeat, clearIdentity]);
+  }, [clearIdentity]);
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
@@ -402,7 +391,6 @@ const Index = () => {
   }, [confirmIdentity, userId]);
 
   const handlePinGateSwitchUser = useCallback(async () => {
-    stopHeartbeat();
     if (userId) await releaseSession(userId);
     localStorage.removeItem(PIN_VERIFIED_KEY);
     setPinVerifiedThisSession(false);
@@ -411,7 +399,7 @@ const Index = () => {
     setDataError(null);
     setShowPinGate(false);
     setShowWelcome(true);
-  }, [clearIdentity, stopHeartbeat, releaseSession, userId]);
+  }, [clearIdentity, releaseSession, userId]);
 
   // Handle forgot PIN - submit a reset request
   const handleForgotPin = useCallback(async (workerId: string) => {

@@ -154,7 +154,7 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
     setShowLogoutConfirm(false);
     const res = await adminRequest(adminSecret, 'force_logout', { worker_id: workerId });
     if (res?.success) {
-      toast.success(`Successfully force logged out ${workerId}. They will be disconnected within 1 minute.`);
+      toast.success(`Successfully force logged out ${workerId}. They will be disconnected within 30 seconds.`);
       const refreshed = await adminRequest(adminSecret, 'get_worker_detail', { worker_id: workerId });
       if (refreshed) setData(refreshed);
     } else {
