@@ -334,7 +334,7 @@ function TransfersSection({ adminSecret }: Props) {
 
   const handleCreate = async () => {
     const validDates = transferDates.filter(d => d);
-    if (!sourceId.trim() || !targetId.trim() || validDates.length === 0 || selectedSheets.length === 0 || grandTotal <= 0) {
+    if (!sourceId.trim() || !targetId.trim() || !sourcePrefix.trim() || !targetPrefix.trim() || validDates.length === 0 || selectedSheets.length === 0 || grandTotal <= 0) {
       toast.error('Source ID, target ID, at least one date, sheets, and a positive amount are required');
       return;
     }
