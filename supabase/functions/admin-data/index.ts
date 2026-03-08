@@ -610,7 +610,7 @@ Deno.serve(async (req) => {
       }
 
       case 'create_transfer': {
-        const { source_worker_id, target_worker_id, transfer_date, sheet_name, amount, bonus_amount, ranking_bonus_amount, cycle_key: tCycleKey, reason } = params || {};
+        const { source_worker_id, target_worker_id, transfer_date, sheet_name, amount, bonus_amount, ranking_bonus_amount, cycle_key: tCycleKey, reason, sheet_amounts } = params || {};
         if (!source_worker_id || !target_worker_id || !transfer_date || !sheet_name || amount === undefined || !tCycleKey) {
           result = { success: false, error: 'source_worker_id, target_worker_id, transfer_date, sheet_name, amount, and cycle_key are required' };
           break;
@@ -625,6 +625,7 @@ Deno.serve(async (req) => {
           ranking_bonus_amount: Number(ranking_bonus_amount || 0),
           cycle_key: tCycleKey,
           reason: reason || null,
+          sheet_amounts: sheet_amounts || {},
         }).select().maybeSingle();
         if (error) {
           result = { success: false, error: error.message };
