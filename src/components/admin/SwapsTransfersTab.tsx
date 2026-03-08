@@ -289,7 +289,7 @@ function TransfersSection({ adminSecret }: Props) {
       for (const sheetName of selectedSheets) {
         const data = await fetchSheetData(sheetName);
         if (!data) continue;
-        const worker = searchWorker(data, `NGDS${sourceId.trim()}`);
+        const worker = searchWorker(data, `GHAS${sourceId.trim()}`);
         if (!worker) continue;
 
         for (const dateStr of validDates) {
