@@ -36,6 +36,7 @@ import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useSessionLock } from '@/hooks/useSessionLock';
 
 const Index = () => {
   const { 
@@ -82,6 +83,9 @@ const Index = () => {
   const [pinVerifiedThisSession, setPinVerifiedThisSession] = useState(() => {
     return localStorage.getItem(PIN_VERIFIED_KEY) === 'true';
   });
+
+  // Session lock & heartbeat
+  const { claimSession, startHeartbeat, stopHeartbeat, releaseSession } = useSessionLock();
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
@@ -362,20 +366,35 @@ const Index = () => {
       
       // Always confirm identity when PIN is verified
       confirmIdentity(newUserId);
+      
+      // Claim session and start heartbeat for online presence
+      await claimSession(newUserId);
+      startHeartbeat(newUserId);
+      
       toast.success(`Welcome, ${newUserName || newUserId}! Your account is secured.`);
     }
   };
 
-  const handlePinGateVerified = useCallback((identityAlreadyConfirmed: boolean) => {
+  const handlePinGateVerified = useCallback(async (identityAlreadyConfirmed: boolean) => {
     localStorage.setItem(PIN_VERIFIED_KEY, 'true');
     setPinVerifiedThisSession(true);
     setShowPinGate(false);
     
     // Always confirm identity when PIN is verified (PIN is proof of identity)
     confirmIdentity(userId || undefined);
-  }, [confirmIdentity, userId]);
+    
+    // Claim session and start heartbeat for online presence
+    if (userId) {
+      await claimSession(userId);
+      startHeartbeat(userId);
+    }
+  }, [confirmIdentity, userId, claimSession, startHeartbeat]);
 
-  const handlePinGateSwitchUser = useCallback(() => {
+  const handlePinGateSwitchUser = useCallback(async () => {
+    // Stop heartbeat and release session before switching
+    stopHeartbeat();
+    if (userId) await releaseSession(userId);
+    
     localStorage.removeItem(PIN_VERIFIED_KEY);
     setPinVerifiedThisSession(false);
     clearIdentity();
@@ -383,7 +402,7 @@ const Index = () => {
     setDataError(null);
     setShowPinGate(false);
     setShowWelcome(true);
-  }, [clearIdentity]);
+  }, [clearIdentity, stopHeartbeat, releaseSession, userId]);
 
   // Handle forgot PIN - submit a reset request
   const handleForgotPin = useCallback(async (workerId: string) => {
