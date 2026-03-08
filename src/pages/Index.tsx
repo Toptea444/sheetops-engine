@@ -768,18 +768,7 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Earnings Adjustments Panel - Show when there are adjustments */}
-            {adjustmentNotes.length > 0 && (
-              <div className="mb-8">
-                <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
-                  <AdjustmentsPanel
-                    notes={adjustmentNotes}
-                    netAdjustment={netAdjustment}
-                    isLoading={adjustmentsLoading}
-                  />
-                </div>
-              </div>
-            )}
+            {/* Removed standalone AdjustmentsPanel — now shown inside Daily Earnings section */}
 
             {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
             <div className="mb-8">
