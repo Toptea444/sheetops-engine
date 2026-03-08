@@ -97,24 +97,27 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       const uid = userId.toUpperCase();
 
       allSwaps.forEach(s => {
+        // Determine direction for THIS user
+        let userPrevId: string, userNewId: string;
         if (s.old_worker_id === uid) {
-          notes.push({
-            type: 'swap_out',
-            date: s.effective_date,
-            amount: 0,
-            description: `Your ID was changed from ${s.old_worker_id} to ${s.new_worker_id}. Earnings before ${new Date(s.effective_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} belong to your old ID.${s.notes ? ` Note: ${s.notes}` : ''}`,
-            created_at: s.created_at,
-          });
+          // Direct: user was old_worker_id, now is new_worker_id
+          userPrevId = s.old_worker_id;
+          userNewId = s.new_worker_id;
+        } else if (s.new_worker_id === uid) {
+          // Reverse (bidirectional swap): user was new_worker_id, now is old_worker_id
+          userPrevId = s.new_worker_id;
+          userNewId = s.old_worker_id;
+        } else {
+          return;
         }
-        if (s.new_worker_id === uid) {
-          notes.push({
-            type: 'swap_in',
-            date: s.effective_date,
-            amount: 0,
-            description: `Your ID was changed from ${s.old_worker_id} to ${s.new_worker_id}. Earnings from ${new Date(s.effective_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} onward are under your new ID.${s.notes ? ` Note: ${s.notes}` : ''}`,
-            created_at: s.created_at,
-          });
-        }
+        const dateLabel = new Date(s.effective_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        notes.push({
+          type: 'swap_in',
+          date: s.effective_date,
+          amount: 0,
+          description: `Your ID was changed from ${userPrevId} to ${userNewId} on ${dateLabel}. Earnings before ${dateLabel} are from your old ID (${userPrevId}), and earnings from ${dateLabel} onward are under your new ID (${userNewId}).${s.notes ? ` Note: ${s.notes}` : ''}`,
+          created_at: s.created_at,
+        });
       });
 
       allTransfers.forEach(t => {
@@ -193,21 +196,37 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
           for (const swap of swapsForThisId) {
             const effectiveStr = swap.effective_date;
             
-            if (swap.old_worker_id === resultId && swap.old_worker_id === uid) {
+            // Determine this user's previous and current IDs from this swap
+            let userPreviousId: string, userCurrentId: string;
+            if (swap.new_worker_id === uid) {
+              // Direct: user moved from old to new
+              userPreviousId = swap.old_worker_id;
+              userCurrentId = swap.new_worker_id;
+            } else {
+              // Reverse (bidirectional swap): user moved from new to old
+              userPreviousId = swap.new_worker_id;
+              userCurrentId = swap.old_worker_id;
+            }
+            
+            if (resultId === userPreviousId) {
+              // Data from user's previous ID — only keep days BEFORE effective date
               if (dayStr >= effectiveStr) return false;
             }
-            if (swap.old_worker_id === resultId && swap.new_worker_id === uid) {
+            if (resultId === userCurrentId) {
+              // Data from user's current ID — only keep days FROM effective date onward
               if (dayStr < effectiveStr) return false;
-            }
-            if (swap.new_worker_id === resultId && swap.new_worker_id === uid) {
-              if (dayStr < effectiveStr) return false;
-            }
-            if (swap.new_worker_id === resultId && swap.old_worker_id === uid) {
-              if (dayStr >= effectiveStr) return false;
             }
           }
           return true;
         });
+
+        // Tag kept days with their source worker ID if it differs from the user's current ID
+        if (resultId !== uid) {
+          adjusted.dailyBreakdown = adjusted.dailyBreakdown.map(day => ({
+            ...day,
+            sourceWorkerId: resultId,
+          }));
+        }
         
         adjusted.totalBonus = adjusted.dailyBreakdown.reduce((sum, d) => sum + d.value, 0);
       }

@@ -35,6 +35,8 @@ export interface DailyBonus {
   bonus?: number;
   rankingBonus?: number;
   total?: number;
+  /** When earnings come from a swapped ID, this tracks the original source */
+  sourceWorkerId?: string;
 }
 
 export interface BonusResult {
