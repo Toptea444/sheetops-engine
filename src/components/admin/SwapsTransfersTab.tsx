@@ -221,7 +221,9 @@ function TransfersSection({ adminSecret }: Props) {
   const { sheets: allSheets, fetchSheets, fetchSheetData, searchWorker, calculateBonus } = useGoogleSheets();
   const [transfers, setTransfers] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [sourcePrefix, setSourcePrefix] = useState('GHAS');
   const [sourceId, setSourceId] = useState('');
+  const [targetPrefix, setTargetPrefix] = useState('NGDS');
   const [targetId, setTargetId] = useState('');
   const [transferDates, setTransferDates] = useState<string[]>(['']);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
