@@ -132,13 +132,15 @@ export function GlobalSessionMonitor() {
       const normalized = currentUserId ? currentUserId.toUpperCase() : null;
 
       if (normalized !== trackedUserId.current) {
+        // IMPORTANT: Stop old heartbeat and update tracked user IMMEDIATELY
+        // to prevent race conditions where old heartbeat fires for previous user,
+        // detects their deleted session, and wipes the new user's localStorage
+        clearHeartbeat();
+        trackedUserId.current = normalized;
+
         if (normalized) {
           // New user logged in (or re-logged in after force-logout)
           claimAndStartHeartbeat(normalized);
-        } else {
-          // User logged out
-          clearHeartbeat();
-          trackedUserId.current = null;
         }
       }
     };
