@@ -134,9 +134,23 @@ const Index = () => {
     loadAllSheetSnapshots,
   } = useCycleCache();
 
+  // Earnings Adjustments (swap/transfer correction layer)
+  const {
+    adjustmentNotes,
+    applyAdjustments,
+    getWorkerIdsToFetch,
+    isLoading: adjustmentsLoading,
+  } = useEarningsAdjustments(userId, selectedCycle);
+
+  // Apply adjustments to results
+  const { adjustedResults, netAdjustment } = useMemo(() => {
+    if (results.length === 0) return { adjustedResults: results, netAdjustment: 0 };
+    return applyAdjustments(results);
+  }, [results, applyAdjustments]);
+
   // Streaks & Achievements
   const { streakData, achievements, totalUnlocked } = useStreaksAndAchievements(
-    results,
+    adjustedResults,
     selectedCycle
   );
 
