@@ -573,7 +573,7 @@ const Index = () => {
     });
 
     return total;
-  }, [results, selectedSheets]);
+  }, [adjustedResults, selectedSheets]);
 
   // Get current user's stage from results
   const userStage = useMemo(() => {
