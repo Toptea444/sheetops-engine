@@ -445,6 +445,9 @@ const Index = () => {
   }, [clearIdentity]);
 
   const handleSwitchUser = async () => {
+    if (userId) await releaseSession(userId);
+    localStorage.removeItem(PIN_VERIFIED_KEY);
+    setPinVerifiedThisSession(false);
     clearIdentity();
     setResults([]);
     setDataError(null);

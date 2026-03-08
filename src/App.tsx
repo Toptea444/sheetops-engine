@@ -19,6 +19,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <GlobalSessionMonitor />
       
       <BrowserRouter>
         <Routes>

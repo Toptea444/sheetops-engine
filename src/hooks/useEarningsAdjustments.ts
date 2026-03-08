@@ -187,7 +187,6 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       if (swapsForThisId.length > 0) {
         adjusted.dailyBreakdown = result.dailyBreakdown.filter(day => {
           if (!day.fullDate) return true;
-          const dayDate = new Date(day.fullDate);
           const dayStr = toLocalDateStr(day.fullDate);
           
           for (const swap of swapsForThisId) {
