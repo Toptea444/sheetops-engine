@@ -256,7 +256,11 @@ function SwapsSection({ adminSecret }: Props) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this swap?</AlertDialogTitle>
-            <AlertDialogDescription>This action cannot be undone. The swap record will be permanently removed.</AlertDialogDescription>
+            <AlertDialogDescription>
+              This action cannot be undone. The swap record will be permanently removed.
+              <br /><br />
+              <strong>Note:</strong> Both workers' PINs were already cleared when this swap was created. They will need to set new PINs on their next login regardless.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
