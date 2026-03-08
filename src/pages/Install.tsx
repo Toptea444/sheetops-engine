@@ -100,20 +100,25 @@ export default function InstallPage() {
           ) : isIOS ? (
             <>
               <div className="space-y-3">
-              <StepItem
+                <StepItem
                   step={1}
-                  title='Tap the "•••" icon'
-                  description='Look for the three dots at the bottom right of the screen, beside the address bar. This opens the Share menu.'
+                  title='Tap the "•••" icon in Safari'
+                  description='In Safari, look for the three dots at the bottom right of the screen, beside the address bar.'
                 />
                 <StepItem
                   step={2}
-                  title='Tap "Add to Home Screen"'
-                  description="Scroll down in the share menu and select this option"
+                  title='Tap "Share"'
+                  description='After tapping the three dots, tap the "Share" option from the menu that appears.'
                 />
                 <StepItem
                   step={3}
+                  title='Tap "Add to Home Screen"'
+                  description='Scroll down, down in the share menu and tap "Add to Home Screen".'
+                />
+                <StepItem
+                  step={4}
                   title='Tap "Add"'
-                  description="The app icon will appear on your home screen — open it from there"
+                  description='Tap "Add" at the top right. The app icon will appear on your home screen — open it from there.'
                 />
               </div>
             </>
