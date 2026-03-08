@@ -46,6 +46,10 @@ export function GlobalSessionMonitor() {
         .eq('device_fingerprint', deviceFingerprint.current)
         .maybeSingle();
 
+      // Re-check that we're still tracking the same user after the async call.
+      // If the user switched accounts while we were awaiting, abort.
+      if (trackedUserId.current !== userId) return;
+
       if (!sessionExists) {
         // Session was deleted (force logout by admin)
         console.warn('Session deleted by admin, forcing client logout');
