@@ -77,18 +77,19 @@ function SwapsSection({ adminSecret }: Props) {
   useEffect(() => { load(); }, [load]);
 
   const handleCreate = async () => {
-    if (!form.worker_name.trim() || !form.old_worker_id.trim() || !form.new_worker_id.trim() || !form.effective_date) {
-      toast.error('Worker name, old ID, new ID, and effective date are required');
+    if (!form.old_worker_id.trim() || !form.new_worker_id.trim() || !form.effective_date) {
+      toast.error('Old ID, new ID, and effective date are required');
       return;
     }
     setCreating(true);
     const res = await adminRequest(adminSecret, 'create_swap', {
       ...form,
+      worker_name: `${form.old_worker_id.trim().toUpperCase()} → ${form.new_worker_id.trim().toUpperCase()}`,
       cycle_key: selectedCycleKey,
     });
     if (res?.success) {
-      toast.success('ID Swap recorded');
-      setForm({ worker_name: '', old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
+      toast.success('ID Swap recorded — PINs cleared for both workers');
+      setForm({ old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
       setShowForm(false);
       load();
     } else {
