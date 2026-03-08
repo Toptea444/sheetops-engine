@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const HEARTBEAT_INTERVAL = 60 * 1000; // 1 minute
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
