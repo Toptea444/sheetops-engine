@@ -465,16 +465,28 @@ const Index = () => {
   const handlePinGateVerified = useCallback(async (identityAlreadyConfirmed: boolean) => {
     // Check for ID swap before granting access
     if (userId) {
+      const uid = userId.toUpperCase();
       const { data: swapRows } = await supabase
         .from('id_swaps')
         .select('id, old_worker_id, new_worker_id')
-        .eq('old_worker_id', userId.toUpperCase())
+        .or(`old_worker_id.eq.${uid},new_worker_id.eq.${uid}`)
         .order('created_at', { ascending: false })
         .limit(1);
 
       if (swapRows && swapRows.length > 0) {
-        setSwapDetected({ oldId: swapRows[0].old_worker_id, newId: swapRows[0].new_worker_id, swapId: swapRows[0].id });
-        return; // Don't grant access
+        const swap = swapRows[0];
+        const pair = [swap.old_worker_id, swap.new_worker_id].sort().join('_');
+        const ackKey = 'performanceTracker_swapAckPair_' + pair;
+        if (!localStorage.getItem(ackKey)) {
+          const isOldSide = swap.old_worker_id === uid;
+          setSwapDetected({
+            oldId: swap.old_worker_id,
+            newId: swap.new_worker_id,
+            reassigned: !isOldSide,
+            swapId: swap.id,
+          });
+          return; // Don't grant access
+        }
       }
     }
 
