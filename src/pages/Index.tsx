@@ -329,23 +329,17 @@ const Index = () => {
         return;
       }
 
-      // Check if user's ID is the NEW id in a swap → force re-auth if PIN was cleared
-      const { data: newRes } = await supabase.from('id_swaps').select('id, old_worker_id, new_worker_id')
+      // Check if user's ID is the NEW id in a swap — just acknowledge silently.
+      // The new-ID user keeps access; their PIN was cleared by the swap,
+      // and SessionPinGate will prompt them to set a new one on next session.
+      const { data: newRes } = await supabase.from('id_swaps').select('id')
         .eq('new_worker_id', uid).order('created_at', { ascending: false }).limit(1);
 
       if (newRes && newRes.length > 0) {
         const swapId = newRes[0].id;
-        if (localStorage.getItem(SWAP_ACK_PREFIX + swapId)) return; // Already handled
-        try {
-          const { data: pinExists } = await supabase.from('worker_pins').select('id').eq('worker_id', uid).limit(1);
-          if (!pinExists || pinExists.length === 0) {
-            localStorage.setItem(SWAP_ACK_PREFIX + swapId, 'true');
-            handleSwapLogout();
-          } else {
-            // PIN exists = user already re-set it, mark as handled
-            localStorage.setItem(SWAP_ACK_PREFIX + swapId, 'true');
-          }
-        } catch { /* ignore */ }
+        if (!localStorage.getItem(SWAP_ACK_PREFIX + swapId)) {
+          localStorage.setItem(SWAP_ACK_PREFIX + swapId, 'true');
+        }
       }
     };
 
