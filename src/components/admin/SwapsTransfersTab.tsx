@@ -470,7 +470,7 @@ function TransfersSection({ adminSecret }: Props) {
       </Card>
 
       {/* Cycle filter */}
-      <div className="relative">
+      <div className="relative" ref={cycleDropdownRef}>
         <Button variant="outline" size="sm" className="w-full justify-between text-xs"
           onClick={() => setShowCycleDropdown(!showCycleDropdown)}>
           <div className="flex items-center gap-1.5">
