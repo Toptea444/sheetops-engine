@@ -528,7 +528,7 @@ const Index = () => {
     let totalEarnings = 0;
     const activeDays = new Set<number>();
 
-    results.forEach((result) => {
+    adjustedResults.forEach((result) => {
       if (result.valueType === 'percent') return;
 
       // Exclude sheets not currently selected
