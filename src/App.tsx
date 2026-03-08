@@ -17,7 +17,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <GlobalSessionMonitor />
+      
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<RestrictedRoute><Index /></RestrictedRoute>} />

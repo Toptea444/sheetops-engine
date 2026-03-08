@@ -49,7 +49,7 @@ export function AdjustmentsPanel({ notes, netAdjustment, isLoading }: Props) {
           </p>
         </div>
 
-        <ScrollArea className="max-h-[250px]">
+        <ScrollArea className="h-auto max-h-[300px] overflow-y-auto">
           <div className="space-y-2">
             {notes.map((note, i) => {
               const config = typeConfig[note.type];
