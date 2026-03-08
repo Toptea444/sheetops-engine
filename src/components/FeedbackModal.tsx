@@ -38,36 +38,9 @@ export function FeedbackModal({ userId, identityConfirmed }: FeedbackModalProps)
     setSubmitting(true);
 
     try {
-      // Read existing feedback
-      const { data: existing } = await supabase
-        .from('admin_settings')
-        .select('id, setting_value')
-        .eq('setting_key', 'user_feedback')
-        .maybeSingle();
-
-      const responses = (existing?.setting_value as any[]) || [];
-      const newEntry = {
-        worker_id: userId,
-        answer,
-        timestamp: new Date().toISOString(),
-      };
-      responses.push(newEntry);
-
-      if (existing) {
-        await supabase
-          .from('admin_settings')
-          .update({
-          setting_value: responses as unknown as import('@/integrations/supabase/types').Json,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id);
-      } else {
-        await supabase.from('admin_settings').insert([{
-          setting_key: 'user_feedback',
-          setting_value: responses as unknown as import('@/integrations/supabase/types').Json,
-          description: 'User feedback responses',
-        }]);
-      }
+      await supabase.functions.invoke('submit-feedback', {
+        body: { worker_id: userId, answer },
+      });
     } catch {
       // Silent fail - don't block the user
     }
