@@ -66,6 +66,7 @@ const Index = () => {
   } = useUserIdentity();
 
   const [showWelcome, setShowWelcome] = useState(false);
+  const [forceLoggedOut, setForceLoggedOut] = useState(false);
   const [showIdentityConfirmation, setShowIdentityConfirmation] = useState(false);
   const [showPinGate, setShowPinGate] = useState(false);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
@@ -96,6 +97,7 @@ const Index = () => {
       setResults([]);
       setDataError(null);
       setShowPinGate(false);
+      setForceLoggedOut(true);
       setShowWelcome(true);
     };
 
@@ -643,6 +645,8 @@ const Index = () => {
         validationError={validationError}
         onIdValidated={handleIdValidation}
         onForgotPin={handleForgotPin}
+        forceLoggedOut={forceLoggedOut}
+        onForceLoggedOutDismissed={() => setForceLoggedOut(false)}
       />
 
       <SessionPinGate
