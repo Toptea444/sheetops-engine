@@ -700,7 +700,7 @@ function TransfersSection({ adminSecret }: Props) {
                     {t.reason && <p className="text-[11px] text-muted-foreground italic">{t.reason}</p>}
                   </div>
                   <Button variant="ghost" size="sm" className="h-7 text-destructive hover:text-destructive shrink-0"
-                    onClick={() => handleDelete(t.id)}>
+                    onClick={() => setDeleteId(t.id)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
