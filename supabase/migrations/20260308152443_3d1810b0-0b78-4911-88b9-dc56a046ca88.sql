@@ -1,0 +1,1 @@
+ALTER TABLE public.day_transfers ADD COLUMN IF NOT EXISTS sheet_amounts jsonb DEFAULT '{}'::jsonb;
