@@ -145,24 +145,24 @@ function SwapsSection({ adminSecret }: Props) {
             <div className="space-y-1.5">
               <Label className="text-xs">Worker Name</Label>
               <Input placeholder="e.g. John Doe" value={form.worker_name}
-                onChange={e => setForm({ ...form, worker_name: e.target.value })} className="text-sm" />
+                onChange={e => setForm({ ...form, worker_name: e.target.value })} className="text-sm h-9" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Old Worker ID</Label>
                 <Input placeholder="e.g. NGDS2002" value={form.old_worker_id}
-                  onChange={e => setForm({ ...form, old_worker_id: e.target.value })} className="text-sm font-mono" />
+                  onChange={e => setForm({ ...form, old_worker_id: e.target.value })} className="text-sm font-mono h-9" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">New Worker ID</Label>
                 <Input placeholder="e.g. NGDS1001" value={form.new_worker_id}
-                  onChange={e => setForm({ ...form, new_worker_id: e.target.value })} className="text-sm font-mono" />
+                  onChange={e => setForm({ ...form, new_worker_id: e.target.value })} className="text-sm font-mono h-9" />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Effective Date (swap happened on this date)</Label>
               <Input type="date" value={form.effective_date}
-                onChange={e => setForm({ ...form, effective_date: e.target.value })} className="text-sm" />
+                onChange={e => setForm({ ...form, effective_date: e.target.value })} className="text-sm h-9" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Notes (optional)</Label>
