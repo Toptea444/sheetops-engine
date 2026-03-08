@@ -10,6 +10,7 @@ import TL from "./pages/TL";
 import AdminPinReset from "./pages/AdminPinReset";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
+import { GlobalSessionMonitor } from "./components/GlobalSessionMonitor";
 
 const queryClient = new QueryClient();
 
