@@ -34,8 +34,6 @@ interface WelcomeModalProps {
   validationError?: string | null;
   onIdValidated?: (userId: string) => Promise<{ valid: boolean; userName?: string }>;
   onForgotPin?: (workerId: string) => void;
-  forceLoggedOut?: boolean;
-  onForceLoggedOutDismissed?: () => void;
 }
 
 export function WelcomeModal({ 
