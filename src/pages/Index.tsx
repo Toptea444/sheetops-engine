@@ -84,6 +84,9 @@ const Index = () => {
     return localStorage.getItem(PIN_VERIFIED_KEY) === 'true';
   });
 
+  // Session lock & heartbeat
+  const { claimSession, startHeartbeat, stopHeartbeat, releaseSession } = useSessionLock();
+
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
 
