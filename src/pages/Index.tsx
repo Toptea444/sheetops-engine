@@ -311,33 +311,33 @@ const Index = () => {
   useEffect(() => {
     if (!userId || !identityConfirmed || !pinVerifiedThisSession) return;
 
-    const SWAP_ACK_PREFIX = 'performanceTracker_swapAck_';
+    const SWAP_ACK_PREFIX = 'performanceTracker_swapAck2_';
 
     const checkSwap = async () => {
       const uid = userId.toUpperCase();
       
       // Check if user's ID appears as old_worker_id in any swap
+      // (meaning: this user's ID was changed to something new)
       const { data: oldRes } = await supabase.from('id_swaps').select('id, old_worker_id, new_worker_id')
         .eq('old_worker_id', uid).order('created_at', { ascending: false }).limit(1);
 
       if (oldRes && oldRes.length > 0) {
-        const swapId = oldRes[0].id;
-        // Only show if not already acknowledged
-        if (!localStorage.getItem(SWAP_ACK_PREFIX + swapId)) {
-          setSwapDetected({ oldId: oldRes[0].old_worker_id, newId: oldRes[0].new_worker_id });
+        const ackKey = SWAP_ACK_PREFIX + oldRes[0].id + '_old';
+        if (!localStorage.getItem(ackKey)) {
+          setSwapDetected({ oldId: oldRes[0].old_worker_id, newId: oldRes[0].new_worker_id, swapId: oldRes[0].id });
         }
         return;
       }
 
       // Check if user's ID is the NEW id in a swap — this means their ID
-      // has been reassigned to someone else. Force them to logout.
+      // has been reassigned to someone else (someone took their ID).
       const { data: newRes } = await supabase.from('id_swaps').select('id, old_worker_id, new_worker_id')
         .eq('new_worker_id', uid).order('created_at', { ascending: false }).limit(1);
 
       if (newRes && newRes.length > 0) {
-        const swapId = newRes[0].id;
-        if (!localStorage.getItem(SWAP_ACK_PREFIX + swapId)) {
-          setSwapDetected({ oldId: newRes[0].old_worker_id, newId: newRes[0].new_worker_id, reassigned: true });
+        const ackKey = SWAP_ACK_PREFIX + newRes[0].id + '_new';
+        if (!localStorage.getItem(ackKey)) {
+          setSwapDetected({ oldId: newRes[0].old_worker_id, newId: newRes[0].new_worker_id, reassigned: true, swapId: newRes[0].id });
         }
       }
     };
