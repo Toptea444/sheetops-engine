@@ -184,61 +184,57 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       }
       
       // ── Transfers: apply debit/credit on the transfer_date ──
-      // A transfer's sheet_name can now be a comma-separated list of sheets.
-      // We match if any of the transfer's sheets overlap with this result's sheetName.
+      // Each transfer record is per-sheet with its own amount.
+      const resultSheet = result.sheetName || '';
+      
       userTransfers.forEach(t => {
-        const transferSheets = t.sheet_name.split(',').map(s => s.trim());
-        const resultSheet = result.sheetName || '';
-        const sheetMatches = transferSheets.some(ts => ts === resultSheet);
+        // Only apply to the matching sheet
+        if (t.sheet_name !== resultSheet) return;
+        
+        const transferDateStr = t.transfer_date;
+        
+        // Helper: convert fullDate timestamp to YYYY-MM-DD in local time (avoids UTC shift)
+        const toLocalDateStr = (ts: number) => {
+          const d = new Date(ts);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
         
         // For source: zero out the day's value on the matching date
-        // Only apply once — match against the FIRST sheet in the list to avoid doubling
         if (t.source_worker_id === uid && resultId === uid) {
-          // Only debit from the first matching sheet to avoid double-counting
-          if (resultSheet === transferSheets[0] || (!sheetMatches && transferSheets[0] === transferSheets.join(', '))) {
-            const transferDateStr = t.transfer_date;
-            adjusted.dailyBreakdown = adjusted.dailyBreakdown.map(day => {
-              if (!day.fullDate) return day;
-              const dayStr = new Date(day.fullDate).toISOString().split('T')[0];
-              if (dayStr === transferDateStr) {
-                netAdjustment -= day.value;
-                return { ...day, value: 0, bonus: 0, rankingBonus: 0, total: 0 };
-              }
-              return day;
-            });
-          }
+          adjusted.dailyBreakdown = adjusted.dailyBreakdown.map(day => {
+            if (!day.fullDate) return day;
+            const dayStr = toLocalDateStr(day.fullDate);
+            if (dayStr === transferDateStr) {
+              netAdjustment -= day.value;
+              return { ...day, value: 0, bonus: 0, rankingBonus: 0, total: 0 };
+            }
+            return day;
+          });
         }
         
         // For target: add the transfer amount on the correct date
-        // Only credit once — on the first matching sheet
-        if (t.target_worker_id === uid) {
-          // Find the first result's sheet that matches so we only add once
-          const isFirstMatchingSheet = resultSheet === transferSheets[0] || 
-            (!transferSheets.includes(resultSheet) && results.indexOf(result) === 0);
+        if (t.target_worker_id === uid && resultId === uid) {
+          const existing = adjusted.dailyBreakdown.find(day => {
+            if (!day.fullDate) return false;
+            return toLocalDateStr(day.fullDate) === transferDateStr;
+          });
           
-          if (isFirstMatchingSheet) {
-            const transferDateStr = t.transfer_date;
+          if (existing) {
+            existing.value += t.amount;
+            if (existing.bonus !== undefined) existing.bonus += t.amount;
+            if (existing.total !== undefined) existing.total += t.amount;
+          } else {
             const transferDate = new Date(transferDateStr + 'T12:00:00');
-            const existing = adjusted.dailyBreakdown.find(day => {
-              if (!day.fullDate) return false;
-              return new Date(day.fullDate).toISOString().split('T')[0] === transferDateStr;
+            adjusted.dailyBreakdown.push({
+              date: transferDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              fullDate: transferDate.getTime(),
+              value: t.amount,
+              bonus: t.amount,
+              rankingBonus: 0,
+              total: t.amount,
             });
-            
-            if (existing) {
-              existing.value += t.amount;
-              if (existing.total !== undefined) existing.total += t.amount;
-            } else {
-              adjusted.dailyBreakdown.push({
-                date: transferDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                fullDate: transferDate.getTime(),
-                value: t.amount,
-                bonus: 0,
-                rankingBonus: 0,
-                total: t.amount,
-              });
-            }
-            netAdjustment += t.amount;
           }
+          netAdjustment += t.amount;
         }
       });
       
@@ -252,9 +248,9 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
   }, [userId, swaps, transfers]);
 
   /**
-   * Get transfer info for a specific worker and date, for showing +/- indicators
+   * Get transfer info for a specific worker, date, and sheet for showing +/- indicators
    */
-  const getTransferInfoForDate = useCallback((workerId: string, dateStr: string): { 
+  const getTransferInfoForDate = useCallback((workerId: string, dateStr: string, sheetName?: string): { 
     type: 'credit' | 'debit'; 
     amount: number 
   } | null => {
@@ -262,7 +258,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     const uid = workerId.toUpperCase();
     
     for (const t of transfers) {
-      if (t.transfer_date === dateStr) {
+      if (t.transfer_date === dateStr && (!sheetName || t.sheet_name === sheetName)) {
         if (t.target_worker_id === uid) {
           return { type: 'credit', amount: t.amount };
         }
