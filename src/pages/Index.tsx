@@ -80,7 +80,7 @@ const Index = () => {
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
-  const [swapDetected, setSwapDetected] = useState<{ oldId: string; newId: string } | null>(null);
+  const [swapDetected, setSwapDetected] = useState<{ oldId: string; newId: string; reassigned?: boolean } | null>(null);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
@@ -329,16 +329,15 @@ const Index = () => {
         return;
       }
 
-      // Check if user's ID is the NEW id in a swap — just acknowledge silently.
-      // The new-ID user keeps access; their PIN was cleared by the swap,
-      // and SessionPinGate will prompt them to set a new one on next session.
-      const { data: newRes } = await supabase.from('id_swaps').select('id')
+      // Check if user's ID is the NEW id in a swap — this means their ID
+      // has been reassigned to someone else. Force them to logout.
+      const { data: newRes } = await supabase.from('id_swaps').select('id, old_worker_id, new_worker_id')
         .eq('new_worker_id', uid).order('created_at', { ascending: false }).limit(1);
 
       if (newRes && newRes.length > 0) {
         const swapId = newRes[0].id;
         if (!localStorage.getItem(SWAP_ACK_PREFIX + swapId)) {
-          localStorage.setItem(SWAP_ACK_PREFIX + swapId, 'true');
+          setSwapDetected({ oldId: newRes[0].old_worker_id, newId: newRes[0].new_worker_id, reassigned: true });
         }
       }
     };
@@ -769,6 +768,7 @@ const Index = () => {
         open={!!swapDetected}
         oldWorkerId={swapDetected?.oldId || ''}
         newWorkerId={swapDetected?.newId || ''}
+        reassigned={swapDetected?.reassigned}
         onLogout={handleSwapLogout}
       />
 
