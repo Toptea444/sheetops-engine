@@ -366,6 +366,11 @@ const Index = () => {
       
       // Always confirm identity when PIN is verified
       confirmIdentity(newUserId);
+      
+      // Claim session and start heartbeat for online presence
+      await claimSession(newUserId);
+      startHeartbeat(newUserId);
+      
       toast.success(`Welcome, ${newUserName || newUserId}! Your account is secured.`);
     }
   };
