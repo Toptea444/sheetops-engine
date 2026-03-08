@@ -36,6 +36,7 @@ import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useSessionLock } from '@/hooks/useSessionLock';
 
 const Index = () => {
   const { 
