@@ -351,7 +351,7 @@ function TransfersSection({ adminSecret }: Props) {
     if (autoReason) setReason(autoReason);
   }, [generateReason]);
 
-  // Fetch earnings for source ID on selected dates/sheets — returns total per sheet
+  // Fetch earnings for source ID — returns per-date per-sheet amounts
   const fetchEarnings = useCallback(async () => {
     const validDates = transferDates.filter(d => d);
     if (!sourceId.trim() || validDates.length === 0 || selectedSheets.length === 0) {
@@ -359,32 +359,31 @@ function TransfersSection({ adminSecret }: Props) {
       return;
     }
     setFetchingEarnings(true);
-    const totals: Record<string, number> = {};
+    const perDate: Record<string, Record<string, number>> = {};
 
     try {
-      for (const sheetName of selectedSheets) {
-        const data = await fetchSheetData(sheetName);
-        if (!data) continue;
-        const worker = searchWorker(data, fullSourceId);
-        if (!worker) continue;
-
-        let sheetTotal = 0;
-        for (const dateStr of validDates) {
-          const dateObj = new Date(dateStr + 'T12:00:00');
+      for (const dateStr of validDates) {
+        perDate[dateStr] = {};
+        const dateObj = new Date(dateStr + 'T12:00:00');
+        for (const sheetName of selectedSheets) {
+          const data = await fetchSheetData(sheetName);
+          if (!data) continue;
+          const worker = searchWorker(data, fullSourceId);
+          if (!worker) continue;
           const result = calculateBonus(worker, dateObj, dateObj);
+          let dayAmount = 0;
           if (result && result.dailyBreakdown.length > 0) {
-            result.dailyBreakdown.forEach(day => {
-              sheetTotal += day.value || 0;
-            });
+            result.dailyBreakdown.forEach(day => { dayAmount += day.value || 0; });
           }
+          if (dayAmount > 0) perDate[dateStr][sheetName] = dayAmount;
         }
-        totals[sheetName] = sheetTotal;
       }
 
-      setSheetTotals(totals);
+      setPerDateSheetTotals(perDate);
       setEarningsFetched(true);
       
-      const grandTotal = Object.values(totals).reduce((s, v) => s + v, 0);
+      const grandTotal = Object.values(perDate).reduce((sum, sheets) => 
+        sum + Object.values(sheets).reduce((s, v) => s + v, 0), 0);
       if (grandTotal > 0) {
         toast.success(`Found total earnings: ₦${grandTotal.toLocaleString()}`);
       } else {
@@ -394,16 +393,19 @@ function TransfersSection({ adminSecret }: Props) {
       toast.error('Failed to fetch earnings');
     }
     setFetchingEarnings(false);
-  }, [sourceId, transferDates, selectedSheets, fetchSheetData, searchWorker, calculateBonus]);
+  }, [sourceId, transferDates, selectedSheets, fetchSheetData, searchWorker, calculateBonus, fullSourceId]);
 
   const resetForm = () => {
     setSourcePrefix('GHAS'); setSourceId(''); setTargetPrefix('NGDS'); setTargetId(''); 
     setTransferDates(['']); setSelectedSheets(availableSheets.map(s => s.name));
-    setSheetTotals({}); setReason(''); setEarningsFetched(false);
+    setPerDateSheetTotals({}); setReason(''); setEarningsFetched(false);
   };
 
-  // Grand total across all sheets
-  const grandTotal = useMemo(() => Object.values(sheetTotals).reduce((s, v) => s + v, 0), [sheetTotals]);
+  // Grand total across all dates and sheets
+  const grandTotal = useMemo(() => 
+    Object.values(perDateSheetTotals).reduce((sum, sheets) => 
+      sum + Object.values(sheets).reduce((s, v) => s + v, 0), 0), 
+    [perDateSheetTotals]);
 
   const handleCreate = async () => {
     const validDates = transferDates.filter(d => d);
