@@ -391,7 +391,6 @@ const Index = () => {
   }, [confirmIdentity, userId]);
 
   const handlePinGateSwitchUser = useCallback(async () => {
-    stopHeartbeat();
     if (userId) await releaseSession(userId);
     localStorage.removeItem(PIN_VERIFIED_KEY);
     setPinVerifiedThisSession(false);
@@ -400,7 +399,7 @@ const Index = () => {
     setDataError(null);
     setShowPinGate(false);
     setShowWelcome(true);
-  }, [clearIdentity, stopHeartbeat, releaseSession, userId]);
+  }, [clearIdentity, releaseSession, userId]);
 
   // Handle forgot PIN - submit a reset request
   const handleForgotPin = useCallback(async (workerId: string) => {
