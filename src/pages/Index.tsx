@@ -645,6 +645,8 @@ const Index = () => {
         validationError={validationError}
         onIdValidated={handleIdValidation}
         onForgotPin={handleForgotPin}
+        forceLoggedOut={forceLoggedOut}
+        onForceLoggedOutDismissed={() => setForceLoggedOut(false)}
       />
 
       <SessionPinGate
