@@ -1423,11 +1423,75 @@ function PinResetRequestsTab({ adminSecret }: { adminSecret: string }) {
   );
 }
 
+// ─── Notification Dot Hook ────────────────────────────────────
+function useTabNotifications(adminSecret: string | null) {
+  const [dots, setDots] = useState<Record<string, boolean>>({
+    'pin-requests': false,
+    'activity': false,
+    'feedback': false,
+  });
+  const { adminRequest } = useAdminData();
+
+  // Check for new content on mount and periodically
+  useEffect(() => {
+    if (!adminSecret) return;
+
+    const checkNew = async () => {
+      const newDots: Record<string, boolean> = { 'pin-requests': false, activity: false, feedback: false };
+
+      // Check PIN reset requests
+      const pinRes = await adminRequest(adminSecret, 'get_pin_reset_requests');
+      if (pinRes?.requests?.length) {
+        const lastViewed = localStorage.getItem('admin_tab_last_viewed_pin-requests') || '0';
+        const hasNew = pinRes.requests.some((r: any) => 
+          new Date(r.requested_at).getTime() > parseInt(lastViewed)
+        );
+        newDots['pin-requests'] = hasNew;
+      }
+
+      // Check activity
+      const actRes = await adminRequest(adminSecret, 'get_activity');
+      if (actRes) {
+        const lastViewed = localStorage.getItem('admin_tab_last_viewed_activity') || '0';
+        const allTimes = [
+          ...(actRes.recent_pins?.map((p: any) => new Date(p.created_at).getTime()) || []),
+          ...(actRes.recent_identities?.map((i: any) => new Date(i.confirmed_at).getTime()) || []),
+          ...(actRes.recent_sessions?.map((s: any) => new Date(s.created_at).getTime()) || []),
+        ];
+        const latestTime = Math.max(0, ...allTimes);
+        newDots['activity'] = latestTime > parseInt(lastViewed);
+      }
+
+      // Check feedback
+      const fbRes = await adminRequest(adminSecret, 'get_feedback');
+      if (fbRes?.responses?.length) {
+        const lastViewed = localStorage.getItem('admin_tab_last_viewed_feedback') || '0';
+        const hasNew = fbRes.responses.some((r: any) => 
+          new Date(r.created_at || r.submitted_at || 0).getTime() > parseInt(lastViewed)
+        );
+        newDots['feedback'] = hasNew;
+      }
+
+      setDots(newDots);
+    };
+
+    checkNew();
+  }, [adminSecret, adminRequest]);
+
+  const markViewed = useCallback((tab: string) => {
+    localStorage.setItem(`admin_tab_last_viewed_${tab}`, Date.now().toString());
+    setDots(prev => ({ ...prev, [tab]: false }));
+  }, []);
+
+  return { dots, markViewed };
+}
+
 // ─── Main Admin Page ─────────────────────────────────────────
 export default function AdminPinReset() {
   const [adminSecret, setAdminSecret] = useState<string | null>(null);
   const [authError, setAuthError] = useState(false);
   const { adminRequest } = useAdminData();
+  const { dots, markViewed } = useTabNotifications(adminSecret);
 
   const handleAuth = async (secret: string) => {
     setAuthError(false);
@@ -1470,15 +1534,20 @@ export default function AdminPinReset() {
       </header>
 
       <main className="container mx-auto px-4 py-4 max-w-2xl">
-        <Tabs defaultValue="workers" className="space-y-4">
+        <Tabs defaultValue="workers" className="space-y-4" onValueChange={(val) => {
+          if (dots[val]) markViewed(val);
+        }}>
           <TabsList className="grid w-full h-9 gap-0.5" style={{ gridTemplateColumns: 'repeat(9, 1fr)' }}>
             <TabsTrigger value="workers" className="text-xs gap-0.5 px-0.5">
               <Users className="h-3 w-3" />
               <span className="hidden sm:inline">Workers</span>
             </TabsTrigger>
-            <TabsTrigger value="pin-requests" className="text-xs gap-0.5 px-0.5">
+            <TabsTrigger value="pin-requests" className="text-xs gap-0.5 px-0.5 relative">
               <KeyRound className="h-3 w-3" />
               <span className="hidden sm:inline">PIN Reqs</span>
+              {dots['pin-requests'] && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
+              )}
             </TabsTrigger>
             <TabsTrigger value="earnings" className="text-xs gap-0.5 px-0.5">
               <TrendingUp className="h-3 w-3" />
@@ -1492,13 +1561,19 @@ export default function AdminPinReset() {
               <Database className="h-3 w-3" />
               <span className="hidden sm:inline">Cache</span>
             </TabsTrigger>
-            <TabsTrigger value="activity" className="text-xs gap-0.5 px-0.5">
+            <TabsTrigger value="activity" className="text-xs gap-0.5 px-0.5 relative">
               <Activity className="h-3 w-3" />
               <span className="hidden sm:inline">Activity</span>
+              {dots['activity'] && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
+              )}
             </TabsTrigger>
-            <TabsTrigger value="feedback" className="text-xs gap-0.5 px-0.5">
+            <TabsTrigger value="feedback" className="text-xs gap-0.5 px-0.5 relative">
               <MessageSquare className="h-3 w-3" />
               <span className="hidden sm:inline">Feedback</span>
+              {dots['feedback'] && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
+              )}
             </TabsTrigger>
             <TabsTrigger value="alerts" className="text-xs gap-0.5 px-0.5">
               <Bell className="h-3 w-3" />
