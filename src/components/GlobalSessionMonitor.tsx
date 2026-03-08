@@ -1,11 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 const STORAGE_KEY = 'performanceTracker_userId';
 const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
 const CHECK_INTERVAL = 30 * 1000; // 30 seconds
-const HEARTBEAT_INTERVAL = 60 * 1000; // 1 minute
+const USER_POLL_INTERVAL = 2 * 1000; // 2 seconds — check if userId changed
 
 function getDeviceFingerprint(): string {
   const storageKey = 'performanceTracker_deviceFingerprint';
@@ -19,37 +18,40 @@ function getDeviceFingerprint(): string {
 
 /**
  * Global session monitor that runs at App level.
- * Handles heartbeats and force-logout detection regardless of which page is mounted.
+ * Handles heartbeats, force-logout detection, and re-claiming sessions after login.
  */
 export function GlobalSessionMonitor() {
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const userPollRef = useRef<NodeJS.Timeout | null>(null);
   const deviceFingerprint = useRef(getDeviceFingerprint());
-  const lastKnownUserId = useRef<string | null>(null);
+  const trackedUserId = useRef<string | null>(null);
+  const isClaimingRef = useRef(false);
+
+  const clearHeartbeat = useCallback(() => {
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    }
+  }, []);
 
   const sendHeartbeatAndCheck = useCallback(async () => {
-    const userId = localStorage.getItem(STORAGE_KEY);
-    
-    if (!userId) {
-      lastKnownUserId.current = null;
-      return;
-    }
-
-    const normalizedId = userId.toUpperCase();
-    lastKnownUserId.current = normalizedId;
+    const userId = trackedUserId.current;
+    if (!userId) return;
 
     try {
-      // Check if our session still exists
       const { data: sessionExists } = await supabase
         .from('worker_sessions')
         .select('id')
-        .eq('worker_id', normalizedId)
+        .eq('worker_id', userId)
         .eq('device_fingerprint', deviceFingerprint.current)
         .maybeSingle();
 
       if (!sessionExists) {
         // Session was deleted (force logout by admin)
         console.warn('Session deleted by admin, forcing client logout');
-        
+        clearHeartbeat();
+        trackedUserId.current = null;
+
         // Clear all identity data from localStorage
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(PIN_VERIFIED_KEY);
@@ -59,8 +61,7 @@ export function GlobalSessionMonitor() {
         localStorage.removeItem('performanceTracker_identityConfirmed');
         localStorage.removeItem('performanceTracker_confirmedWorkerId');
 
-        // Dispatch event for any mounted components to react
-        window.dispatchEvent(new CustomEvent('force-logout', { detail: { workerId: normalizedId } }));
+        window.dispatchEvent(new CustomEvent('force-logout', { detail: { workerId: userId } }));
         return;
       }
 
@@ -68,25 +69,22 @@ export function GlobalSessionMonitor() {
       await supabase
         .from('worker_sessions')
         .update({ last_heartbeat: new Date().toISOString() })
-        .eq('worker_id', normalizedId)
+        .eq('worker_id', userId)
         .eq('device_fingerprint', deviceFingerprint.current);
     } catch {
       console.error('Session monitor: heartbeat failed');
     }
-  }, []);
+  }, [clearHeartbeat]);
 
-  // Claim session on mount if user is logged in
-  const claimSession = useCallback(async () => {
-    const userId = localStorage.getItem(STORAGE_KEY);
-    if (!userId) return;
-    
-    const normalizedId = userId.toUpperCase();
+  const claimAndStartHeartbeat = useCallback(async (normalizedId: string) => {
+    if (isClaimingRef.current) return;
+    isClaimingRef.current = true;
 
     try {
       // Check if we already have a session
       const { data: existing } = await supabase
         .from('worker_sessions')
-        .select('id, device_fingerprint')
+        .select('id')
         .eq('worker_id', normalizedId)
         .eq('device_fingerprint', deviceFingerprint.current)
         .maybeSingle();
@@ -97,62 +95,65 @@ export function GlobalSessionMonitor() {
           .from('worker_sessions')
           .update({ last_heartbeat: new Date().toISOString() })
           .eq('id', existing.id);
-        return;
+      } else {
+        // Delete stale sessions
+        const staleCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+        await supabase
+          .from('worker_sessions')
+          .delete()
+          .eq('worker_id', normalizedId)
+          .lt('last_heartbeat', staleCutoff);
+
+        // Insert new session
+        await supabase
+          .from('worker_sessions')
+          .insert({
+            worker_id: normalizedId,
+            device_fingerprint: deviceFingerprint.current,
+            last_heartbeat: new Date().toISOString(),
+          });
       }
 
-      // Delete stale sessions
-      const staleCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-      await supabase
-        .from('worker_sessions')
-        .delete()
-        .eq('worker_id', normalizedId)
-        .lt('last_heartbeat', staleCutoff);
-
-      // Insert new session
-      await supabase
-        .from('worker_sessions')
-        .insert({
-          worker_id: normalizedId,
-          device_fingerprint: deviceFingerprint.current,
-          last_heartbeat: new Date().toISOString(),
-        });
+      // Track this user and start heartbeat
+      trackedUserId.current = normalizedId;
+      clearHeartbeat();
+      heartbeatRef.current = setInterval(sendHeartbeatAndCheck, CHECK_INTERVAL);
     } catch (err) {
       console.error('Session claim error:', err);
+    } finally {
+      isClaimingRef.current = false;
     }
-  }, []);
+  }, [clearHeartbeat, sendHeartbeatAndCheck]);
 
+  // Poll localStorage for userId changes (handles login, logout, re-login)
   useEffect(() => {
-    // Claim session first, THEN start periodic checks
-    // This prevents the race condition where heartbeat check runs before session exists
-    let cancelled = false;
+    const checkForUserChange = () => {
+      const currentUserId = localStorage.getItem(STORAGE_KEY);
+      const normalized = currentUserId ? currentUserId.toUpperCase() : null;
 
-    const init = async () => {
-      await claimSession();
-      if (cancelled) return;
-
-      // Only start checking AFTER session is claimed
-      intervalRef.current = setInterval(sendHeartbeatAndCheck, CHECK_INTERVAL);
-    };
-
-    init();
-
-    return () => {
-      cancelled = true;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      if (normalized !== trackedUserId.current) {
+        if (normalized) {
+          // New user logged in (or re-logged in after force-logout)
+          claimAndStartHeartbeat(normalized);
+        } else {
+          // User logged out
+          clearHeartbeat();
+          trackedUserId.current = null;
+        }
       }
     };
-  }, [claimSession, sendHeartbeatAndCheck]);
 
-  // Listen for manual logout (user switches account) to release session
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      // Don't release on page close — session will expire naturally
+    // Check immediately on mount
+    checkForUserChange();
+
+    // Poll every 2 seconds for changes
+    userPollRef.current = setInterval(checkForUserChange, USER_POLL_INTERVAL);
+
+    return () => {
+      if (userPollRef.current) clearInterval(userPollRef.current);
+      clearHeartbeat();
     };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []);
+  }, [claimAndStartHeartbeat, clearHeartbeat]);
 
   return null;
 }
