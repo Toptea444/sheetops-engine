@@ -41,7 +41,7 @@ export function SwapDetectionModal({ open, oldWorkerId, newWorkerId, reassigned,
           </DialogTitle>
           <DialogDescription className="text-base mt-2">
             {reassigned
-              ? `Your worker ID (${newWorkerId}) has been reassigned to another worker by management.`
+              ? `Your worker ID (${newWorkerId}) has been reassigned to another worker by management. You may have been assigned a new ID.`
               : 'Your worker ID has been updated by management.'}
           </DialogDescription>
         </DialogHeader>
