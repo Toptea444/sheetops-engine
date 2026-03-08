@@ -23,12 +23,14 @@ import { DownloadAppModal, shouldShowDownloadBanner } from '@/components/Downloa
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
 import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
 import { useTheme } from '@/hooks/useTheme';
 import { useDisplayMode } from '@/hooks/useDisplayMode';
+import { useEarningsAdjustments } from '@/hooks/useEarningsAdjustments';
 import { useNotifications, generateDataHash, NOTIFICATION_POLL_INTERVAL_MS } from '@/hooks/useNotifications';
 import { useCycleCache } from '@/hooks/useCycleCache';
 import { getCycleOptions, isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
@@ -132,9 +134,23 @@ const Index = () => {
     loadAllSheetSnapshots,
   } = useCycleCache();
 
+  // Earnings Adjustments (swap/transfer correction layer)
+  const {
+    adjustmentNotes,
+    applyAdjustments,
+    getWorkerIdsToFetch,
+    isLoading: adjustmentsLoading,
+  } = useEarningsAdjustments(userId, selectedCycle);
+
+  // Apply adjustments to results
+  const { adjustedResults, netAdjustment } = useMemo(() => {
+    if (results.length === 0) return { adjustedResults: results, netAdjustment: 0 };
+    return applyAdjustments(results);
+  }, [results, applyAdjustments]);
+
   // Streaks & Achievements
   const { streakData, achievements, totalUnlocked } = useStreaksAndAchievements(
-    results,
+    adjustedResults,
     selectedCycle
   );
 
@@ -512,7 +528,7 @@ const Index = () => {
     let totalEarnings = 0;
     const activeDays = new Set<number>();
 
-    results.forEach((result) => {
+    adjustedResults.forEach((result) => {
       if (result.valueType === 'percent') return;
 
       // Exclude sheets not currently selected
@@ -532,7 +548,7 @@ const Index = () => {
     });
 
     return { totalEarnings, daysActive: activeDays.size };
-  }, [results, selectedCycle, selectedSheets]);
+  }, [adjustedResults, selectedCycle, selectedSheets]);
 
   // Compute yesterday's earnings for the reveal animation
   const previousDayEarnings = useMemo(() => {
@@ -541,7 +557,7 @@ const Index = () => {
     const yKey = `${yesterday.getFullYear()}-${yesterday.getMonth()}-${yesterday.getDate()}`;
     let total = 0;
 
-    results.forEach((result) => {
+    adjustedResults.forEach((result) => {
       if (result.valueType === 'percent') return;
       if (result.sheetName && !selectedSheets.includes(result.sheetName)) return;
       if (result.sheetName && (isWeeklyBonusGhSheet(result.sheetName) || isRankingBonusGhSheet(result.sheetName))) return;
@@ -557,16 +573,16 @@ const Index = () => {
     });
 
     return total;
-  }, [results, selectedSheets]);
+  }, [adjustedResults, selectedSheets]);
 
   // Get current user's stage from results
   const userStage = useMemo(() => {
-    for (const result of results) {
+    for (const result of adjustedResults) {
       const stage = (result.stage || '').trim();
       if (stage && stage.toUpperCase() !== 'N/A') return stage;
     }
     return null;
-  }, [results]);
+  }, [adjustedResults]);
 
   // Merge all Daily & Performance sheets for leaderboard (combines data across sheets in the same cycle)
   const leaderboardSheetData = useMemo(() => {
@@ -673,7 +689,7 @@ const Index = () => {
         daysActive={cycleStats.daysActive}
         userName={userName}
         previousDayEarnings={previousDayEarnings}
-        isDataReady={!isLoading && identityConfirmed && results.length > 0}
+        isDataReady={!isLoading && identityConfirmed && adjustedResults.length > 0}
       />
 
       <div
@@ -751,10 +767,23 @@ const Index = () => {
               </div>
             </div>
 
+            {/* Earnings Adjustments Panel - Show when there are adjustments */}
+            {adjustmentNotes.length > 0 && (
+              <div className="mb-8">
+                <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+                  <AdjustmentsPanel
+                    notes={adjustmentNotes}
+                    netAdjustment={netAdjustment}
+                    isLoading={adjustmentsLoading}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
             <div className="mb-8">
               <SheetBreakdownCards
-                results={results}
+                results={adjustedResults}
                 sheetNames={selectedSheets}
                 cycle={selectedCycle}
                 isLoading={isLoading}
@@ -766,7 +795,7 @@ const Index = () => {
             <div className="mb-8">
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
                 <WeeklyBreakdown 
-                  results={results} 
+                  results={adjustedResults} 
                   cycle={selectedCycle}
                   isLoading={isLoading}
                   displayMode={earningsDisplay}
@@ -778,7 +807,7 @@ const Index = () => {
             <div className="mb-8">
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto">
                 <DailyEarningsTable
-                  results={results}
+                  results={adjustedResults}
                   sheetNames={selectedSheets}
                   cycle={selectedCycle}
                   isLoading={isLoading}
@@ -804,7 +833,7 @@ const Index = () => {
               {/* Goals Panel */}
               <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
                 <GoalsPanel
-                  results={results}
+                  results={adjustedResults}
                   cycle={selectedCycle}
                   cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
                   onUpdateCycleTarget={setCycleTarget}
@@ -824,7 +853,7 @@ const Index = () => {
               {/* Earnings Projection */}
               <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
                 <EarningsProjection
-                  results={results}
+                  results={adjustedResults}
                   cycle={selectedCycle}
                   cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
                   isLoading={isLoading}

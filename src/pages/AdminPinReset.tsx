@@ -6,6 +6,7 @@ import {
   Trash2, Search, UserCheck, Wifi, WifiOff, Clock, TrendingUp,
   Eye, Settings, Bell, AlertCircle, CheckIcon, Copy, X, ChevronDown,
   History, User, Calendar, MessageSquare, ThumbsUp, ThumbsDown,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { useAdminData } from '@/hooks/useAdminData';
 import { useSiteRestrictionAdmin } from '@/hooks/useSiteRestriction';
+import { SwapsTransfersTab } from '@/components/admin/SwapsTransfersTab';
 import { toast } from 'sonner';
 import { formatNaira } from '@/utils/currencyUtils';
 import { getCycleOptions, getCycleKey } from '@/lib/cycleUtils';
@@ -1469,7 +1471,7 @@ export default function AdminPinReset() {
 
       <main className="container mx-auto px-4 py-4 max-w-2xl">
         <Tabs defaultValue="workers" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-8 h-9 gap-0.5">
+          <TabsList className="grid w-full h-9 gap-0.5" style={{ gridTemplateColumns: 'repeat(9, 1fr)' }}>
             <TabsTrigger value="workers" className="text-xs gap-0.5 px-0.5">
               <Users className="h-3 w-3" />
               <span className="hidden sm:inline">Workers</span>
@@ -1481,6 +1483,10 @@ export default function AdminPinReset() {
             <TabsTrigger value="earnings" className="text-xs gap-0.5 px-0.5">
               <TrendingUp className="h-3 w-3" />
               <span className="hidden sm:inline">Earnings</span>
+            </TabsTrigger>
+            <TabsTrigger value="swaps" className="text-xs gap-0.5 px-0.5">
+              <ArrowLeftRight className="h-3 w-3" />
+              <span className="hidden sm:inline">Swaps</span>
             </TabsTrigger>
             <TabsTrigger value="cache" className="text-xs gap-0.5 px-0.5">
               <Database className="h-3 w-3" />
@@ -1512,6 +1518,9 @@ export default function AdminPinReset() {
           </TabsContent>
           <TabsContent value="earnings">
             <EarningsTab adminSecret={adminSecret} />
+          </TabsContent>
+          <TabsContent value="swaps">
+            <SwapsTransfersTab adminSecret={adminSecret} />
           </TabsContent>
           <TabsContent value="cache">
             <CacheTab adminSecret={adminSecret} />

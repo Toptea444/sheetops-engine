@@ -559,6 +559,89 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // ─── ID Swaps ─────────────────────────────────────────
+      case 'get_swaps': {
+        const filterCycle = params?.cycle_key;
+        let query = supabase.from('id_swaps').select('*').order('created_at', { ascending: false });
+        if (filterCycle) query = query.eq('cycle_key', filterCycle);
+        const { data: swaps } = await query;
+        result = { swaps: swaps || [] };
+        break;
+      }
+
+      case 'create_swap': {
+        const { worker_name, old_worker_id, new_worker_id, effective_date, cycle_key, notes } = params || {};
+        if (!worker_name || !old_worker_id || !new_worker_id || !effective_date || !cycle_key) {
+          result = { success: false, error: 'worker_name, old_worker_id, new_worker_id, effective_date, and cycle_key are required' };
+          break;
+        }
+        const { data, error } = await supabase.from('id_swaps').insert({
+          worker_name: worker_name.trim(),
+          old_worker_id: old_worker_id.trim().toUpperCase(),
+          new_worker_id: new_worker_id.trim().toUpperCase(),
+          effective_date,
+          cycle_key,
+          notes: notes || null,
+        }).select().maybeSingle();
+        if (error) {
+          result = { success: false, error: error.message };
+        } else {
+          result = { success: true, swap: data };
+        }
+        break;
+      }
+
+      case 'delete_swap': {
+        const swapId = params?.swap_id;
+        if (!swapId) { result = { success: false, error: 'swap_id required' }; break; }
+        const { error } = await supabase.from('id_swaps').delete().eq('id', swapId);
+        result = error ? { success: false, error: error.message } : { success: true };
+        break;
+      }
+
+      // ─── Day Transfers ────────────────────────────────────
+      case 'get_transfers': {
+        const filterCycle2 = params?.cycle_key;
+        let query2 = supabase.from('day_transfers').select('*').order('created_at', { ascending: false });
+        if (filterCycle2) query2 = query2.eq('cycle_key', filterCycle2);
+        const { data: transfers } = await query2;
+        result = { transfers: transfers || [] };
+        break;
+      }
+
+      case 'create_transfer': {
+        const { source_worker_id, target_worker_id, transfer_date, sheet_name, amount, bonus_amount, ranking_bonus_amount, cycle_key: tCycleKey, reason } = params || {};
+        if (!source_worker_id || !target_worker_id || !transfer_date || !sheet_name || amount === undefined || !tCycleKey) {
+          result = { success: false, error: 'source_worker_id, target_worker_id, transfer_date, sheet_name, amount, and cycle_key are required' };
+          break;
+        }
+        const { data, error } = await supabase.from('day_transfers').insert({
+          source_worker_id: source_worker_id.trim().toUpperCase(),
+          target_worker_id: target_worker_id.trim().toUpperCase(),
+          transfer_date,
+          sheet_name: sheet_name.trim(),
+          amount: Number(amount),
+          bonus_amount: Number(bonus_amount || 0),
+          ranking_bonus_amount: Number(ranking_bonus_amount || 0),
+          cycle_key: tCycleKey,
+          reason: reason || null,
+        }).select().maybeSingle();
+        if (error) {
+          result = { success: false, error: error.message };
+        } else {
+          result = { success: true, transfer: data };
+        }
+        break;
+      }
+
+      case 'delete_transfer': {
+        const transferId = params?.transfer_id;
+        if (!transferId) { result = { success: false, error: 'transfer_id required' }; break; }
+        const { error } = await supabase.from('day_transfers').delete().eq('id', transferId);
+        result = error ? { success: false, error: error.message } : { success: true };
+        break;
+      }
+
       default:
         result = { error: 'Unknown action' };
     }
