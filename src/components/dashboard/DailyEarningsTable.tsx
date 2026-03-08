@@ -21,8 +21,8 @@ interface DailyEarningsTableProps {
   sheetNames: string[];
   cycle: CyclePeriod;
   isLoading?: boolean;
-  /** Function to get transfer info for a date (returns credit/debit indicator) */
-  getTransferInfo?: (workerId: string, dateStr: string) => { type: 'credit' | 'debit'; amount: number } | null;
+  /** Function to get transfer info for a date+sheet (returns credit/debit indicator) */
+  getTransferInfo?: (workerId: string, dateStr: string, sheetName?: string) => { type: 'credit' | 'debit'; amount: number } | null;
   currentUserId?: string | null;
 }
 
