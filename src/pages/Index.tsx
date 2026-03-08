@@ -66,6 +66,7 @@ const Index = () => {
   } = useUserIdentity();
 
   const [showWelcome, setShowWelcome] = useState(false);
+  const [forceLoggedOut, setForceLoggedOut] = useState(false);
   const [showIdentityConfirmation, setShowIdentityConfirmation] = useState(false);
   const [showPinGate, setShowPinGate] = useState(false);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
