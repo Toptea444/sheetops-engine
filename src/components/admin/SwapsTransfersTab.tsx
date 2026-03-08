@@ -461,11 +461,6 @@ function TransfersSection({ adminSecret }: Props) {
       prev.includes(name) ? prev.filter(s => s !== name) : [...prev, name]
     );
     setEarningsFetched(false);
-    setSheetTotals(prev => {
-      const copy = { ...prev };
-      delete copy[name];
-      return copy;
-    });
   };
 
   const addDate = () => setTransferDates(prev => [...prev, '']);
