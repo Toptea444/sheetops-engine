@@ -146,14 +146,15 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
   const bestCycle = data?.earnings_by_cycle?.reduce((best: any, c: any) => (!best || c.total > best.total) ? c : best, null);
 
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleForceLogout = async () => {
     if (!workerId) return;
     setLogoutLoading(true);
+    setShowLogoutConfirm(false);
     const res = await adminRequest(adminSecret, 'force_logout', { worker_id: workerId });
     if (res?.success) {
-      toast.success(`Force logged out ${workerId}`);
-      // Refresh data to update session info
+      toast.success(`Successfully force logged out ${workerId}. They will be disconnected within 1 minute.`);
       const refreshed = await adminRequest(adminSecret, 'get_worker_detail', { worker_id: workerId });
       if (refreshed) setData(refreshed);
     } else {
@@ -218,12 +219,40 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
                       variant="destructive"
                       size="sm"
                       className="h-6 text-[10px] px-2 gap-1"
-                      onClick={handleForceLogout}
+                      onClick={() => setShowLogoutConfirm(true)}
                       disabled={logoutLoading}
                     >
                       {logoutLoading ? <RefreshCw className="h-2.5 w-2.5 animate-spin" /> : <WifiOff className="h-2.5 w-2.5" />}
                       Force Logout
                     </Button>
+                  )}
+
+                  {/* Force Logout Confirmation */}
+                  {showLogoutConfirm && (
+                    <div className="mt-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+                      <p className="text-xs text-destructive font-medium">⚠️ Are you sure you want to force logout {workerId}?</p>
+                      <p className="text-[10px] text-muted-foreground">This will terminate all their active sessions. They will be disconnected within 1 minute.</p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-6 text-[10px] px-3"
+                          onClick={handleForceLogout}
+                          disabled={logoutLoading}
+                        >
+                          {logoutLoading ? <RefreshCw className="h-2.5 w-2.5 animate-spin" /> : null}
+                          Yes, Force Logout
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-[10px] px-3"
+                          onClick={() => setShowLogoutConfirm(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </CardTitle>
               </CardHeader>

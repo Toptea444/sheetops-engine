@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const HEARTBEAT_INTERVAL = 60 * 1000; // 1 minute
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
@@ -225,6 +226,27 @@ export function useSessionLock(): UseSessionLockResult {
 
     const sendHeartbeat = async () => {
       try {
+        // First check if our session still exists (admin may have force-deleted it)
+        const { data: sessionExists } = await supabase
+          .from('worker_sessions')
+          .select('id')
+          .eq('worker_id', workerId.toUpperCase())
+          .eq('device_fingerprint', deviceFingerprint.current)
+          .maybeSingle();
+
+        if (!sessionExists) {
+          // Session was deleted (force logout by admin) — trigger client-side logout
+          console.warn('Session deleted by admin, forcing client logout');
+          if (heartbeatIntervalRef.current) {
+            clearInterval(heartbeatIntervalRef.current);
+            heartbeatIntervalRef.current = null;
+          }
+          // Dispatch a custom event that Index.tsx can listen for
+          window.dispatchEvent(new CustomEvent('force-logout', { detail: { workerId } }));
+          toast.error('You have been logged out by an administrator.');
+          return;
+        }
+
         await supabase
           .from('worker_sessions')
           .update({ last_heartbeat: new Date().toISOString() })
