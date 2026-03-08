@@ -86,25 +86,8 @@ const Index = () => {
     return localStorage.getItem(PIN_VERIFIED_KEY) === 'true';
   });
 
-  // Session release on logout (heartbeat is handled globally by GlobalSessionMonitor)
+  // Session release on logout
   const { releaseSession } = useSessionLock();
-
-  // Listen for force-logout event from GlobalSessionMonitor
-  useEffect(() => {
-    const handleForceLogout = () => {
-      localStorage.removeItem(PIN_VERIFIED_KEY);
-      setPinVerifiedThisSession(false);
-      clearIdentity();
-      setResults([]);
-      setDataError(null);
-      setShowPinGate(false);
-      setForceLoggedOut(true);
-      setShowWelcome(true);
-    };
-
-    window.addEventListener('force-logout', handleForceLogout);
-    return () => window.removeEventListener('force-logout', handleForceLogout);
-  }, [clearIdentity]);
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
