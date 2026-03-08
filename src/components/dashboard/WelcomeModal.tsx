@@ -293,6 +293,7 @@ export function WelcomeModal({
             onForgotPin={handleForgotPin}
             isLoading={pinLoading}
             error={pinError}
+            forgotPinSubmitted={forgotPinSubmitted}
           />
         )}
       </DialogContent>
