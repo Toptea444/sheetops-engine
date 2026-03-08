@@ -248,9 +248,9 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
   }, [userId, swaps, transfers]);
 
   /**
-   * Get transfer info for a specific worker and date, for showing +/- indicators
+   * Get transfer info for a specific worker, date, and sheet for showing +/- indicators
    */
-  const getTransferInfoForDate = useCallback((workerId: string, dateStr: string): { 
+  const getTransferInfoForDate = useCallback((workerId: string, dateStr: string, sheetName?: string): { 
     type: 'credit' | 'debit'; 
     amount: number 
   } | null => {
@@ -258,7 +258,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     const uid = workerId.toUpperCase();
     
     for (const t of transfers) {
-      if (t.transfer_date === dateStr) {
+      if (t.transfer_date === dateStr && (!sheetName || t.sheet_name === sheetName)) {
         if (t.target_worker_id === uid) {
           return { type: 'credit', amount: t.amount };
         }

@@ -105,11 +105,12 @@ export function DailyEarningsTable({
     return formatCurrency(value);
   };
 
-  // Get transfer indicator for a specific day
+  // Get transfer indicator for a specific day (using local date to avoid UTC shift)
   const getTransferIndicator = (day: DayData) => {
     if (!getTransferInfo || !currentUserId) return null;
-    const dayStr = new Date(day.fullDate).toISOString().split('T')[0];
-    return getTransferInfo(currentUserId, dayStr);
+    const d = new Date(day.fullDate);
+    const dayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return getTransferInfo(currentUserId, dayStr, activeTab);
   };
 
   const displayedDays = showAll ? sheetData : sheetData.slice(0, 6);

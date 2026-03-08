@@ -338,23 +338,26 @@ function TransfersSection({ adminSecret }: Props) {
     }
     setCreating(true);
 
-    // Create ONE transfer per date (not per sheet). Store all sheet names in the sheet_name field joined.
-    const allSheetsStr = selectedSheets.join(', ');
+    // Create one transfer per sheet per date with the per-sheet amount
     let successCount = 0;
 
     for (const date of validDates) {
-      const res = await adminRequest(adminSecret, 'create_transfer', {
-        source_worker_id: `GHAS${sourceId.trim()}`,
-        target_worker_id: `NGDS${targetId.trim()}`,
-        transfer_date: date,
-        sheet_name: allSheetsStr,
-        amount: grandTotal,
-        bonus_amount: 0,
-        ranking_bonus_amount: 0,
-        reason,
-        cycle_key: selectedCycleKey,
-      });
-      if (res?.success) successCount++;
+      for (const sheetName of selectedSheets) {
+        const perSheetAmount = sheetTotals[sheetName] || 0;
+        if (perSheetAmount <= 0) continue;
+        const res = await adminRequest(adminSecret, 'create_transfer', {
+          source_worker_id: `GHAS${sourceId.trim()}`,
+          target_worker_id: `NGDS${targetId.trim()}`,
+          transfer_date: date,
+          sheet_name: sheetName,
+          amount: perSheetAmount,
+          bonus_amount: 0,
+          ranking_bonus_amount: 0,
+          reason,
+          cycle_key: selectedCycleKey,
+        });
+        if (res?.success) successCount++;
+      }
     }
 
     if (successCount > 0) {
