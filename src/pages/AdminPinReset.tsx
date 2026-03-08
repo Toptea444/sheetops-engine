@@ -1423,11 +1423,75 @@ function PinResetRequestsTab({ adminSecret }: { adminSecret: string }) {
   );
 }
 
+// ─── Notification Dot Hook ────────────────────────────────────
+function useTabNotifications(adminSecret: string | null) {
+  const [dots, setDots] = useState<Record<string, boolean>>({
+    'pin-requests': false,
+    'activity': false,
+    'feedback': false,
+  });
+  const { adminRequest } = useAdminData();
+
+  // Check for new content on mount and periodically
+  useEffect(() => {
+    if (!adminSecret) return;
+
+    const checkNew = async () => {
+      const newDots: Record<string, boolean> = { 'pin-requests': false, activity: false, feedback: false };
+
+      // Check PIN reset requests
+      const pinRes = await adminRequest(adminSecret, 'get_pin_reset_requests');
+      if (pinRes?.requests?.length) {
+        const lastViewed = localStorage.getItem('admin_tab_last_viewed_pin-requests') || '0';
+        const hasNew = pinRes.requests.some((r: any) => 
+          new Date(r.requested_at).getTime() > parseInt(lastViewed)
+        );
+        newDots['pin-requests'] = hasNew;
+      }
+
+      // Check activity
+      const actRes = await adminRequest(adminSecret, 'get_activity');
+      if (actRes) {
+        const lastViewed = localStorage.getItem('admin_tab_last_viewed_activity') || '0';
+        const allTimes = [
+          ...(actRes.recent_pins?.map((p: any) => new Date(p.created_at).getTime()) || []),
+          ...(actRes.recent_identities?.map((i: any) => new Date(i.confirmed_at).getTime()) || []),
+          ...(actRes.recent_sessions?.map((s: any) => new Date(s.created_at).getTime()) || []),
+        ];
+        const latestTime = Math.max(0, ...allTimes);
+        newDots['activity'] = latestTime > parseInt(lastViewed);
+      }
+
+      // Check feedback
+      const fbRes = await adminRequest(adminSecret, 'get_feedback');
+      if (fbRes?.responses?.length) {
+        const lastViewed = localStorage.getItem('admin_tab_last_viewed_feedback') || '0';
+        const hasNew = fbRes.responses.some((r: any) => 
+          new Date(r.created_at || r.submitted_at || 0).getTime() > parseInt(lastViewed)
+        );
+        newDots['feedback'] = hasNew;
+      }
+
+      setDots(newDots);
+    };
+
+    checkNew();
+  }, [adminSecret, adminRequest]);
+
+  const markViewed = useCallback((tab: string) => {
+    localStorage.setItem(`admin_tab_last_viewed_${tab}`, Date.now().toString());
+    setDots(prev => ({ ...prev, [tab]: false }));
+  }, []);
+
+  return { dots, markViewed };
+}
+
 // ─── Main Admin Page ─────────────────────────────────────────
 export default function AdminPinReset() {
   const [adminSecret, setAdminSecret] = useState<string | null>(null);
   const [authError, setAuthError] = useState(false);
   const { adminRequest } = useAdminData();
+  const { dots, markViewed } = useTabNotifications(adminSecret);
 
   const handleAuth = async (secret: string) => {
     setAuthError(false);
