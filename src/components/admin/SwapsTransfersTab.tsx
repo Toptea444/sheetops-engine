@@ -436,12 +436,12 @@ function TransfersSection({ adminSecret }: Props) {
             <CardDescription className="text-xs">Transfer earnings from one ID to the person who actually worked</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-3">
-            {/* Source & Target IDs with NGDS prefix */}
+            {/* Source & Target IDs with GHAS prefix */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Source ID (debit from)</Label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">NGDS</span>
+                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">GHAS</span>
                   <Input placeholder="2002" value={sourceId}
                     onChange={e => { setSourceId(e.target.value); setEarningsFetched(false); }}
                     className="text-sm font-mono rounded-l-none" />
