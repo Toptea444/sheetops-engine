@@ -80,7 +80,7 @@ const Index = () => {
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
-  const [swapDetected, setSwapDetected] = useState<{ oldId: string; newId: string; reassigned?: boolean } | null>(null);
+  const [swapDetected, setSwapDetected] = useState<{ oldId: string; newId: string; reassigned?: boolean; swapId: string } | null>(null);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
@@ -311,33 +311,33 @@ const Index = () => {
   useEffect(() => {
     if (!userId || !identityConfirmed || !pinVerifiedThisSession) return;
 
-    const SWAP_ACK_PREFIX = 'performanceTracker_swapAck_';
+    const SWAP_ACK_PREFIX = 'performanceTracker_swapAck2_';
 
     const checkSwap = async () => {
       const uid = userId.toUpperCase();
       
       // Check if user's ID appears as old_worker_id in any swap
+      // (meaning: this user's ID was changed to something new)
       const { data: oldRes } = await supabase.from('id_swaps').select('id, old_worker_id, new_worker_id')
         .eq('old_worker_id', uid).order('created_at', { ascending: false }).limit(1);
 
       if (oldRes && oldRes.length > 0) {
-        const swapId = oldRes[0].id;
-        // Only show if not already acknowledged
-        if (!localStorage.getItem(SWAP_ACK_PREFIX + swapId)) {
-          setSwapDetected({ oldId: oldRes[0].old_worker_id, newId: oldRes[0].new_worker_id });
+        const ackKey = SWAP_ACK_PREFIX + oldRes[0].id + '_old';
+        if (!localStorage.getItem(ackKey)) {
+          setSwapDetected({ oldId: oldRes[0].old_worker_id, newId: oldRes[0].new_worker_id, swapId: oldRes[0].id });
         }
         return;
       }
 
       // Check if user's ID is the NEW id in a swap — this means their ID
-      // has been reassigned to someone else. Force them to logout.
+      // has been reassigned to someone else (someone took their ID).
       const { data: newRes } = await supabase.from('id_swaps').select('id, old_worker_id, new_worker_id')
         .eq('new_worker_id', uid).order('created_at', { ascending: false }).limit(1);
 
       if (newRes && newRes.length > 0) {
-        const swapId = newRes[0].id;
-        if (!localStorage.getItem(SWAP_ACK_PREFIX + swapId)) {
-          setSwapDetected({ oldId: newRes[0].old_worker_id, newId: newRes[0].new_worker_id, reassigned: true });
+        const ackKey = SWAP_ACK_PREFIX + newRes[0].id + '_new';
+        if (!localStorage.getItem(ackKey)) {
+          setSwapDetected({ oldId: newRes[0].old_worker_id, newId: newRes[0].new_worker_id, reassigned: true, swapId: newRes[0].id });
         }
       }
     };
@@ -434,13 +434,13 @@ const Index = () => {
       // Check for ID swap before granting access
       const { data: swapRows } = await supabase
         .from('id_swaps')
-        .select('old_worker_id, new_worker_id')
+        .select('id, old_worker_id, new_worker_id')
         .eq('old_worker_id', newUserId.toUpperCase())
         .order('created_at', { ascending: false })
         .limit(1);
 
       if (swapRows && swapRows.length > 0) {
-        setSwapDetected({ oldId: swapRows[0].old_worker_id, newId: swapRows[0].new_worker_id });
+        setSwapDetected({ oldId: swapRows[0].old_worker_id, newId: swapRows[0].new_worker_id, swapId: swapRows[0].id });
         setShowWelcome(false);
         return; // Don't grant access
       }
@@ -459,13 +459,13 @@ const Index = () => {
     if (userId) {
       const { data: swapRows } = await supabase
         .from('id_swaps')
-        .select('old_worker_id, new_worker_id')
+        .select('id, old_worker_id, new_worker_id')
         .eq('old_worker_id', userId.toUpperCase())
         .order('created_at', { ascending: false })
         .limit(1);
 
       if (swapRows && swapRows.length > 0) {
-        setSwapDetected({ oldId: swapRows[0].old_worker_id, newId: swapRows[0].new_worker_id });
+        setSwapDetected({ oldId: swapRows[0].old_worker_id, newId: swapRows[0].new_worker_id, swapId: swapRows[0].id });
         return; // Don't grant access
       }
     }
@@ -501,6 +501,11 @@ const Index = () => {
   }, []);
 
   const handleSwapLogout = useCallback(async () => {
+    // Acknowledge the swap so the modal doesn't reappear
+    if (swapDetected?.swapId) {
+      const direction = swapDetected.reassigned ? '_new' : '_old';
+      localStorage.setItem('performanceTracker_swapAck2_' + swapDetected.swapId + direction, 'true');
+    }
     if (userId) await releaseSession(userId);
     localStorage.removeItem(PIN_VERIFIED_KEY);
     setPinVerifiedThisSession(false);
@@ -510,7 +515,7 @@ const Index = () => {
     setSwapDetected(null);
     setShowPinGate(false);
     setShowWelcome(true);
-  }, [clearIdentity, releaseSession, userId]);
+  }, [clearIdentity, releaseSession, userId, swapDetected]);
 
   const handleRefresh = useCallback(async () => {
     setDataError(null);
