@@ -159,6 +159,7 @@ export type Database = {
           id: string
           ranking_bonus_amount: number | null
           reason: string | null
+          sheet_amounts: Json | null
           sheet_name: string
           source_worker_id: string
           target_worker_id: string
@@ -173,6 +174,7 @@ export type Database = {
           id?: string
           ranking_bonus_amount?: number | null
           reason?: string | null
+          sheet_amounts?: Json | null
           sheet_name: string
           source_worker_id: string
           target_worker_id: string
@@ -187,6 +189,7 @@ export type Database = {
           id?: string
           ranking_bonus_amount?: number | null
           reason?: string | null
+          sheet_amounts?: Json | null
           sheet_name?: string
           source_worker_id?: string
           target_worker_id?: string

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { BonusResult, DailyBonus } from '@/types/bonus';
+import type { BonusResult } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { getCycleKey } from '@/lib/cycleUtils';
 
@@ -27,6 +27,7 @@ export interface DayTransfer {
   cycle_key: string;
   reason: string | null;
   created_at: string;
+  sheet_amounts?: Record<string, number> | null;
 }
 
 export interface AdjustmentNote {
@@ -35,6 +36,33 @@ export interface AdjustmentNote {
   amount: number;
   description: string;
   created_at: string;
+}
+
+/** Convert a timestamp to YYYY-MM-DD in local time (avoids UTC shift) */
+const toLocalDateStr = (ts: number) => {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** Get per-sheet amount from a transfer. Falls back to total amount if no sheet_amounts. */
+function getTransferAmountForSheet(t: DayTransfer, sheetName: string): number {
+  if (t.sheet_amounts && typeof t.sheet_amounts === 'object') {
+    const amt = (t.sheet_amounts as Record<string, number>)[sheetName];
+    if (amt !== undefined) return amt;
+    // If sheet not found in sheet_amounts, this transfer doesn't apply to this sheet
+    return 0;
+  }
+  // Legacy: single-sheet record — match by sheet_name
+  if (t.sheet_name === sheetName) return t.amount;
+  return 0;
+}
+
+/** Check if a transfer applies to a given sheet */
+function transferAppliesToSheet(t: DayTransfer, sheetName: string): boolean {
+  if (t.sheet_amounts && typeof t.sheet_amounts === 'object') {
+    return sheetName in (t.sheet_amounts as Record<string, number>);
+  }
+  return t.sheet_name === sheetName;
 }
 
 /**
@@ -124,7 +152,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
   /**
    * Apply corrections to results:
    * 1. ID Swaps: filter daily data based on date ownership
-   * 2. Day Transfers: debit/credit the full transfer amount on the correct date
+   * 2. Day Transfers: debit/credit the per-sheet amount on the correct date
    * Returns adjusted results + net adjustment amount.
    */
   const applyAdjustments = useCallback((results: BonusResult[]): {
@@ -149,6 +177,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     const adjustedResults = results.map(result => {
       const resultId = result.workerId.toUpperCase();
       const adjusted = { ...result };
+      const resultSheet = result.sheetName || '';
       
       // ── Swaps: filter daily breakdown based on ownership periods ──
       const swapsForThisId = relevantSwaps.filter(s => 
@@ -159,7 +188,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
         adjusted.dailyBreakdown = result.dailyBreakdown.filter(day => {
           if (!day.fullDate) return true;
           const dayDate = new Date(day.fullDate);
-          const dayStr = dayDate.toISOString().split('T')[0];
+          const dayStr = toLocalDateStr(day.fullDate);
           
           for (const swap of swapsForThisId) {
             const effectiveStr = swap.effective_date;
@@ -183,21 +212,15 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
         adjusted.totalBonus = adjusted.dailyBreakdown.reduce((sum, d) => sum + d.value, 0);
       }
       
-      // ── Transfers: apply debit/credit on the transfer_date ──
-      // Each transfer record is per-sheet with its own amount.
-      const resultSheet = result.sheetName || '';
-      
+      // ── Transfers: apply debit/credit using per-sheet amounts ──
       userTransfers.forEach(t => {
-        // Only apply to the matching sheet
-        if (t.sheet_name !== resultSheet) return;
+        // Check if this transfer applies to this specific sheet
+        if (!transferAppliesToSheet(t, resultSheet)) return;
+        
+        const perSheetAmount = getTransferAmountForSheet(t, resultSheet);
+        if (perSheetAmount <= 0) return;
         
         const transferDateStr = t.transfer_date;
-        
-        // Helper: convert fullDate timestamp to YYYY-MM-DD in local time (avoids UTC shift)
-        const toLocalDateStr = (ts: number) => {
-          const d = new Date(ts);
-          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        };
         
         // For source: zero out the day's value on the matching date
         if (t.source_worker_id === uid && resultId === uid) {
@@ -212,7 +235,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
           });
         }
         
-        // For target: add the transfer amount on the correct date
+        // For target: add the per-sheet transfer amount on the correct date
         if (t.target_worker_id === uid && resultId === uid) {
           const existing = adjusted.dailyBreakdown.find(day => {
             if (!day.fullDate) return false;
@@ -220,21 +243,21 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
           });
           
           if (existing) {
-            existing.value += t.amount;
-            if (existing.bonus !== undefined) existing.bonus += t.amount;
-            if (existing.total !== undefined) existing.total += t.amount;
+            existing.value += perSheetAmount;
+            if (existing.bonus !== undefined) existing.bonus += perSheetAmount;
+            if (existing.total !== undefined) existing.total += perSheetAmount;
           } else {
             const transferDate = new Date(transferDateStr + 'T12:00:00');
             adjusted.dailyBreakdown.push({
               date: transferDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
               fullDate: transferDate.getTime(),
-              value: t.amount,
-              bonus: t.amount,
+              value: perSheetAmount,
+              bonus: perSheetAmount,
               rankingBonus: 0,
-              total: t.amount,
+              total: perSheetAmount,
             });
           }
-          netAdjustment += t.amount;
+          netAdjustment += perSheetAmount;
         }
       });
       
@@ -258,13 +281,19 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     const uid = workerId.toUpperCase();
     
     for (const t of transfers) {
-      if (t.transfer_date === dateStr && (!sheetName || t.sheet_name === sheetName)) {
-        if (t.target_worker_id === uid) {
-          return { type: 'credit', amount: t.amount };
-        }
-        if (t.source_worker_id === uid) {
-          return { type: 'debit', amount: t.amount };
-        }
+      if (t.transfer_date !== dateStr) continue;
+      
+      const sheet = sheetName || '';
+      if (sheet && !transferAppliesToSheet(t, sheet)) continue;
+      
+      const perSheetAmount = sheet ? getTransferAmountForSheet(t, sheet) : t.amount;
+      if (perSheetAmount <= 0) continue;
+      
+      if (t.target_worker_id === uid) {
+        return { type: 'credit', amount: perSheetAmount };
+      }
+      if (t.source_worker_id === uid) {
+        return { type: 'debit', amount: perSheetAmount };
       }
     }
     return null;
