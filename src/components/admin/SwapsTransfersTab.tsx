@@ -292,7 +292,7 @@ function TransfersSection({ adminSecret }: Props) {
       for (const sheetName of selectedSheets) {
         const data = await fetchSheetData(sheetName);
         if (!data) continue;
-        const worker = searchWorker(data, `GHAS${sourceId.trim()}`);
+        const worker = searchWorker(data, fullSourceId);
         if (!worker) continue;
 
         let sheetTotal = 0;
