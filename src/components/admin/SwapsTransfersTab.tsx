@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ArrowLeftRight, Plus, Trash2, RefreshCw, Calendar, ChevronDown,
-  ArrowRight, FileText, X, CheckIcon, AlertTriangle, Check, Loader2,
+  ArrowRight, FileText, X, CheckIcon, AlertTriangle, Check, Loader2, Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
