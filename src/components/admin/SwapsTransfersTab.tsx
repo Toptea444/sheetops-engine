@@ -261,7 +261,7 @@ function TransfersSection({ adminSecret }: Props) {
   // Auto-generate reason
   const generateReason = useCallback(() => {
     const src = sourceId.trim() ? `GHAS${sourceId.trim()}` : '';
-    const tgt = targetId.trim() ? `GHAS${targetId.trim()}` : '';
+    const tgt = targetId.trim() ? `NGDS${targetId.trim()}` : '';
     const validDates = transferDates.filter(d => d);
     if (!src || !tgt || validDates.length === 0) return '';
     const dateStr = validDates.map(d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })).join(', ');
@@ -339,7 +339,7 @@ function TransfersSection({ adminSecret }: Props) {
       for (const sheet of selectedSheets) {
         const res = await adminRequest(adminSecret, 'create_transfer', {
           source_worker_id: `GHAS${sourceId.trim()}`,
-          target_worker_id: `GHAS${targetId.trim()}`,
+          target_worker_id: `NGDS${targetId.trim()}`,
           transfer_date: date,
           sheet_name: sheet,
           amount: Number(amount),
@@ -450,7 +450,7 @@ function TransfersSection({ adminSecret }: Props) {
               <div className="space-y-1.5">
                 <Label className="text-xs">Target ID (credit to)</Label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">GHAS</span>
+                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">NGDS</span>
                   <Input placeholder="1001" value={targetId}
                     onChange={e => setTargetId(e.target.value)}
                     className="text-sm font-mono rounded-l-none" />
