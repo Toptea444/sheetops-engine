@@ -459,13 +459,13 @@ const Index = () => {
     if (userId) {
       const { data: swapRows } = await supabase
         .from('id_swaps')
-        .select('old_worker_id, new_worker_id')
+        .select('id, old_worker_id, new_worker_id')
         .eq('old_worker_id', userId.toUpperCase())
         .order('created_at', { ascending: false })
         .limit(1);
 
       if (swapRows && swapRows.length > 0) {
-        setSwapDetected({ oldId: swapRows[0].old_worker_id, newId: swapRows[0].new_worker_id });
+        setSwapDetected({ oldId: swapRows[0].old_worker_id, newId: swapRows[0].new_worker_id, swapId: swapRows[0].id });
         return; // Don't grant access
       }
     }
