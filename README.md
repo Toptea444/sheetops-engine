@@ -47,7 +47,7 @@ You can edit files locally in your preferred IDE, commit, and push changes. Alte
 ## Deployment
 
 Deploy using your preferred platform (Vercel, Netlify, Cloudflare Pages, etc.). Configure build command and publish directory according to your chosen host (for example: build with `npm run build` and publish the `dist` folder for Vite).
-Hey
+
 
 ## Contributing
 
