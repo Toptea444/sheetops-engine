@@ -145,9 +145,26 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
   const avgPerCycle = totalCycles > 0 ? (data?.grand_total || 0) / totalCycles : 0;
   const bestCycle = data?.earnings_by_cycle?.reduce((best: any, c: any) => (!best || c.total > best.total) ? c : best, null);
 
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
+  const handleForceLogout = async () => {
+    if (!workerId) return;
+    setLogoutLoading(true);
+    const res = await adminRequest(adminSecret, 'force_logout', { worker_id: workerId });
+    if (res?.success) {
+      toast.success(`Force logged out ${workerId}`);
+      // Refresh data to update session info
+      const refreshed = await adminRequest(adminSecret, 'get_worker_detail', { worker_id: workerId });
+      if (refreshed) setData(refreshed);
+    } else {
+      toast.error(res?.error || 'Failed to force logout');
+    }
+    setLogoutLoading(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-sm font-bold shrink-0">
@@ -163,156 +180,168 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
         {loading ? (
           <div className="flex items-center justify-center py-12"><RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : data ? (
-          <ScrollArea className="flex-1 -mx-6 px-6">
-            <div className="space-y-4 pb-4">
-              {/* Grand Total - Big display */}
-              <div className="rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 p-4 text-center">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Balance</p>
-                <p className="text-3xl font-bold text-foreground">{formatNaira(data.grand_total)}</p>
-                <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
-                  <span>{totalCycles} cycle{totalCycles !== 1 ? 's' : ''}</span>
-                  <span className="h-3 w-px bg-border" />
-                  <span>{totalSheets} sheet record{totalSheets !== 1 ? 's' : ''}</span>
-                </div>
+          <div className="space-y-4 pb-4">
+            {/* Grand Total - Big display */}
+            <div className="rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 p-4 text-center">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Balance</p>
+              <p className="text-3xl font-bold text-foreground">{formatNaira(data.grand_total)}</p>
+              <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
+                <span>{totalCycles} cycle{totalCycles !== 1 ? 's' : ''}</span>
+                <span className="h-3 w-px bg-border" />
+                <span>{totalSheets} sheet record{totalSheets !== 1 ? 's' : ''}</span>
               </div>
+            </div>
 
-              {/* Quick Stats Row */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-lg border bg-card p-2.5 text-center">
-                  <p className="text-[10px] text-muted-foreground">Avg/Cycle</p>
-                  <p className="text-sm font-semibold font-mono">{formatNaira(avgPerCycle)}</p>
-                </div>
-                <div className="rounded-lg border bg-card p-2.5 text-center">
-                  <p className="text-[10px] text-muted-foreground">Best Cycle</p>
-                  <p className="text-sm font-semibold font-mono">{bestCycle ? formatNaira(bestCycle.total) : '-'}</p>
-                </div>
-                <div className="rounded-lg border bg-card p-2.5 text-center">
-                  <p className="text-[10px] text-muted-foreground">Sessions</p>
-                  <p className="text-sm font-semibold">{data.total_sessions}</p>
-                </div>
+            {/* Quick Stats Row */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-lg border bg-card p-2.5 text-center">
+                <p className="text-[10px] text-muted-foreground">Avg/Cycle</p>
+                <p className="text-sm font-semibold font-mono">{formatNaira(avgPerCycle)}</p>
               </div>
+              <div className="rounded-lg border bg-card p-2.5 text-center">
+                <p className="text-[10px] text-muted-foreground">Best Cycle</p>
+                <p className="text-sm font-semibold font-mono">{bestCycle ? formatNaira(bestCycle.total) : '-'}</p>
+              </div>
+              <div className="rounded-lg border bg-card p-2.5 text-center">
+                <p className="text-[10px] text-muted-foreground">Sessions</p>
+                <p className="text-sm font-semibold">{data.total_sessions}</p>
+              </div>
+            </div>
 
-              {/* Account Status */}
-              <Card>
-                <CardHeader className="py-2.5 px-3">
-                  <CardTitle className="text-xs flex items-center gap-1.5"><Shield className="h-3.5 w-3.5" />Account Status</CardTitle>
-                </CardHeader>
-                <CardContent className="px-3 pb-3 space-y-2">
-                  <div className="flex flex-wrap gap-1.5">
-                    {data.has_pin ? (
-                      <Badge variant="secondary" className="text-[10px] gap-0.5"><Lock className="h-2.5 w-2.5" />PIN Set {data.pin_created ? `- ${new Date(data.pin_created).toLocaleDateString()}` : ''}</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px] gap-0.5"><Unlock className="h-2.5 w-2.5" />No PIN</Badge>
-                    )}
-                    {data.identity_confirmed ? (
-                      <Badge variant="secondary" className="text-[10px] gap-0.5 bg-green-500/10 text-green-700 dark:text-green-400"><UserCheck className="h-2.5 w-2.5" />Confirmed {data.identity_confirmed_at ? `- ${new Date(data.identity_confirmed_at).toLocaleDateString()}` : ''}</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px] gap-0.5 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"><AlertTriangle className="h-2.5 w-2.5" />Not Confirmed</Badge>
+            {/* Account Status + Force Logout */}
+            <Card>
+              <CardHeader className="py-2.5 px-3">
+                <CardTitle className="text-xs flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5" />Account Status</span>
+                  {data.total_sessions > 0 && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 gap-1"
+                      onClick={handleForceLogout}
+                      disabled={logoutLoading}
+                    >
+                      {logoutLoading ? <RefreshCw className="h-2.5 w-2.5 animate-spin" /> : <WifiOff className="h-2.5 w-2.5" />}
+                      Force Logout
+                    </Button>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {data.has_pin ? (
+                    <Badge variant="secondary" className="text-[10px] gap-0.5"><Lock className="h-2.5 w-2.5" />PIN Set {data.pin_created ? `- ${new Date(data.pin_created).toLocaleDateString()}` : ''}</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] gap-0.5"><Unlock className="h-2.5 w-2.5" />No PIN</Badge>
+                  )}
+                  {data.identity_confirmed ? (
+                    <Badge variant="secondary" className="text-[10px] gap-0.5 bg-green-500/10 text-green-700 dark:text-green-400"><UserCheck className="h-2.5 w-2.5" />Confirmed {data.identity_confirmed_at ? `- ${new Date(data.identity_confirmed_at).toLocaleDateString()}` : ''}</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] gap-0.5 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"><AlertTriangle className="h-2.5 w-2.5" />Not Confirmed</Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Earnings Breakdown by Cycle */}
+            <Card>
+              <CardHeader className="py-2.5 px-3">
+                <CardTitle className="text-xs flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" />Earnings Breakdown ({totalCycles} cycles)</CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-3">
+                {data.earnings_by_cycle?.length > 0 ? (
+                  <div className="space-y-2">
+                    {data.earnings_by_cycle.map((c: any) => {
+                      const isExpanded = expandedCycle === c.cycle_key;
+                      const cyclePercent = data.grand_total > 0 ? ((c.total / data.grand_total) * 100).toFixed(1) : '0';
+                      return (
+                        <div key={c.cycle_key} className="border rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => setExpandedCycle(isExpanded ? null : c.cycle_key)}
+                            className="w-full flex items-center justify-between p-2.5 hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="flex flex-col items-start gap-0.5">
+                              <span className="text-xs font-medium">{formatCycleLabel(c.cycle_key)}</span>
+                              <span className="text-[10px] text-muted-foreground">{c.sheets.length} sheet{c.sheets.length !== 1 ? 's' : ''} - {cyclePercent}% of total</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold font-mono">{formatNaira(c.total)}</span>
+                              <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                            </div>
+                          </button>
+                          {isExpanded && (
+                            <div className="border-t bg-muted/20 px-3 py-2 space-y-1.5">
+                              {c.sheets.map((s: any, i: number) => (
+                                <div key={i}>
+                                  <div className="flex justify-between items-center text-xs py-1">
+                                    <span className="truncate max-w-[200px] font-medium">{s.sheet}</span>
+                                    <span className="font-mono font-semibold">{formatNaira(s.amount)}</span>
+                                  </div>
+                                  {/* Progress bar for sheet contribution */}
+                                  <div className="h-1 rounded-full bg-muted overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full bg-primary/60"
+                                      style={{ width: `${c.total > 0 ? Math.max(2, (s.amount / c.total) * 100) : 0}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-4">No cached earnings data</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Login History */}
+            <Card>
+              <CardHeader className="py-2.5 px-3">
+                <CardTitle className="text-xs flex items-center gap-1.5"><History className="h-3.5 w-3.5" />Login History ({data.total_sessions})</CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-3">
+                {data.sessions?.length > 0 ? (
+                  <div className="space-y-0.5">
+                    {data.sessions.slice(0, 15).map((s: any, i: number) => {
+                      const isActive = (Date.now() - new Date(s.last_heartbeat).getTime()) < 15 * 60 * 1000;
+                      const sessionDuration = new Date(s.last_heartbeat).getTime() - new Date(s.created_at).getTime();
+                      const durationStr = sessionDuration > 3600000
+                        ? `${Math.floor(sessionDuration / 3600000)}h ${Math.floor((sessionDuration % 3600000) / 60000)}m`
+                        : sessionDuration > 60000
+                        ? `${Math.floor(sessionDuration / 60000)}m`
+                        : '<1m';
+                      return (
+                        <div key={i} className="flex items-center justify-between text-[11px] py-2 px-2 rounded hover:bg-muted/50 border-b border-border/30 last:border-0">
+                          <div className="flex items-center gap-2">
+                            {isActive ? <Wifi className="h-2.5 w-2.5 text-emerald-500" /> : <WifiOff className="h-2.5 w-2.5 text-muted-foreground" />}
+                            <div className="flex flex-col">
+                              <span className="font-mono text-muted-foreground">{s.device_fingerprint?.substring(0, 12)}...</span>
+                              <span className="text-[10px] text-muted-foreground/70">Duration: {durationStr}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className="text-muted-foreground">{formatTime(s.created_at)}</span>
+                            {isActive && <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">ONLINE</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {data.sessions.length > 15 && (
+                      <p className="text-[10px] text-muted-foreground text-center pt-2">
+                        +{data.sessions.length - 15} more sessions
+                      </p>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Earnings Breakdown by Cycle */}
-              <Card>
-                <CardHeader className="py-2.5 px-3">
-                  <CardTitle className="text-xs flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" />Earnings Breakdown ({totalCycles} cycles)</CardTitle>
-                </CardHeader>
-                <CardContent className="px-3 pb-3">
-                  {data.earnings_by_cycle?.length > 0 ? (
-                    <div className="space-y-2">
-                      {data.earnings_by_cycle.map((c: any) => {
-                        const isExpanded = expandedCycle === c.cycle_key;
-                        const cyclePercent = data.grand_total > 0 ? ((c.total / data.grand_total) * 100).toFixed(1) : '0';
-                        return (
-                          <div key={c.cycle_key} className="border rounded-lg overflow-hidden">
-                            <button
-                              onClick={() => setExpandedCycle(isExpanded ? null : c.cycle_key)}
-                              className="w-full flex items-center justify-between p-2.5 hover:bg-muted/50 transition-colors"
-                            >
-                              <div className="flex flex-col items-start gap-0.5">
-                                <span className="text-xs font-medium">{formatCycleLabel(c.cycle_key)}</span>
-                                <span className="text-[10px] text-muted-foreground">{c.sheets.length} sheet{c.sheets.length !== 1 ? 's' : ''} - {cyclePercent}% of total</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold font-mono">{formatNaira(c.total)}</span>
-                                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                              </div>
-                            </button>
-                            {isExpanded && (
-                              <div className="border-t bg-muted/20 px-3 py-2 space-y-1.5">
-                                {c.sheets.map((s: any, i: number) => (
-                                  <div key={i}>
-                                    <div className="flex justify-between items-center text-xs py-1">
-                                      <span className="truncate max-w-[200px] font-medium">{s.sheet}</span>
-                                      <span className="font-mono font-semibold">{formatNaira(s.amount)}</span>
-                                    </div>
-                                    {/* Progress bar for sheet contribution */}
-                                    <div className="h-1 rounded-full bg-muted overflow-hidden">
-                                      <div
-                                        className="h-full rounded-full bg-primary/60"
-                                        style={{ width: `${c.total > 0 ? Math.max(2, (s.amount / c.total) * 100) : 0}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground text-center py-4">No cached earnings data</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Login History */}
-              <Card>
-                <CardHeader className="py-2.5 px-3">
-                  <CardTitle className="text-xs flex items-center gap-1.5"><History className="h-3.5 w-3.5" />Login History ({data.total_sessions})</CardTitle>
-                </CardHeader>
-                <CardContent className="px-3 pb-3">
-                  {data.sessions?.length > 0 ? (
-                    <div className="space-y-0.5">
-                      {data.sessions.slice(0, 15).map((s: any, i: number) => {
-                        const isActive = (Date.now() - new Date(s.last_heartbeat).getTime()) < 15 * 60 * 1000;
-                        const sessionDuration = new Date(s.last_heartbeat).getTime() - new Date(s.created_at).getTime();
-                        const durationStr = sessionDuration > 3600000
-                          ? `${Math.floor(sessionDuration / 3600000)}h ${Math.floor((sessionDuration % 3600000) / 60000)}m`
-                          : sessionDuration > 60000
-                          ? `${Math.floor(sessionDuration / 60000)}m`
-                          : '<1m';
-                        return (
-                          <div key={i} className="flex items-center justify-between text-[11px] py-2 px-2 rounded hover:bg-muted/50 border-b border-border/30 last:border-0">
-                            <div className="flex items-center gap-2">
-                              {isActive ? <Wifi className="h-2.5 w-2.5 text-emerald-500" /> : <WifiOff className="h-2.5 w-2.5 text-muted-foreground" />}
-                              <div className="flex flex-col">
-                                <span className="font-mono text-muted-foreground">{s.device_fingerprint?.substring(0, 12)}...</span>
-                                <span className="text-[10px] text-muted-foreground/70">Duration: {durationStr}</span>
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className="text-muted-foreground">{formatTime(s.created_at)}</span>
-                              {isActive && <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">ONLINE</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {data.sessions.length > 15 && (
-                        <p className="text-[10px] text-muted-foreground text-center pt-2">
-                          +{data.sessions.length - 15} more sessions
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground text-center py-4">No session history</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </ScrollArea>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-4">No session history</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center py-8">Failed to load worker data</p>
         )}

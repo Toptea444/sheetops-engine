@@ -539,6 +539,26 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'force_logout': {
+        const workerId = params?.worker_id as string;
+        if (!workerId) {
+          result = { error: 'Missing worker_id' };
+          break;
+        }
+
+        const { error: delError } = await supabase
+          .from('worker_sessions')
+          .delete()
+          .eq('worker_id', workerId.toUpperCase());
+
+        if (delError) {
+          result = { error: 'Failed to delete sessions' };
+        } else {
+          result = { success: true, message: `All sessions cleared for ${workerId.toUpperCase()}` };
+        }
+        break;
+      }
+
       default:
         result = { error: 'Unknown action' };
     }
