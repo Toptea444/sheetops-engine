@@ -311,39 +311,45 @@ const Index = () => {
   useEffect(() => {
     if (!userId || !identityConfirmed || !pinVerifiedThisSession) return;
 
+    const SWAP_ACK_PREFIX = 'performanceTracker_swapAck_';
+
     const checkSwap = async () => {
       const uid = userId.toUpperCase();
-      // Check if user's ID appears as old_worker_id OR new_worker_id in any swap
-      const [oldRes, newRes] = await Promise.all([
-        supabase.from('id_swaps').select('old_worker_id, new_worker_id')
-          .eq('old_worker_id', uid).order('created_at', { ascending: false }).limit(1),
-        supabase.from('id_swaps').select('old_worker_id, new_worker_id')
-          .eq('new_worker_id', uid).order('created_at', { ascending: false }).limit(1),
-      ]);
+      
+      // Check if user's ID appears as old_worker_id in any swap
+      const { data: oldRes } = await supabase.from('id_swaps').select('id, old_worker_id, new_worker_id')
+        .eq('old_worker_id', uid).order('created_at', { ascending: false }).limit(1);
 
-      // If this user's ID is the OLD id in a swap → they need to switch to the new ID
-      if (oldRes.data && oldRes.data.length > 0) {
-        setSwapDetected({ oldId: oldRes.data[0].old_worker_id, newId: oldRes.data[0].new_worker_id });
+      if (oldRes && oldRes.length > 0) {
+        const swapId = oldRes[0].id;
+        // Only show if not already acknowledged
+        if (!localStorage.getItem(SWAP_ACK_PREFIX + swapId)) {
+          setSwapDetected({ oldId: oldRes[0].old_worker_id, newId: oldRes[0].new_worker_id });
+        }
         return;
       }
-      // If this user's ID is the NEW id in a swap → they also need to re-login (PIN was cleared)
-      if (newRes.data && newRes.data.length > 0) {
-        // For the new-id worker, force re-auth by triggering logout (their PIN was cleared)
-        // Only if they haven't already re-authenticated since the swap
+
+      // Check if user's ID is the NEW id in a swap → force re-auth if PIN was cleared
+      const { data: newRes } = await supabase.from('id_swaps').select('id, old_worker_id, new_worker_id')
+        .eq('new_worker_id', uid).order('created_at', { ascending: false }).limit(1);
+
+      if (newRes && newRes.length > 0) {
+        const swapId = newRes[0].id;
+        if (localStorage.getItem(SWAP_ACK_PREFIX + swapId)) return; // Already handled
         try {
           const { data: pinExists } = await supabase.from('worker_pins').select('id').eq('worker_id', uid).limit(1);
           if (!pinExists || pinExists.length === 0) {
-            // PIN was cleared by the swap — force re-login
+            localStorage.setItem(SWAP_ACK_PREFIX + swapId, 'true');
             handleSwapLogout();
+          } else {
+            // PIN exists = user already re-set it, mark as handled
+            localStorage.setItem(SWAP_ACK_PREFIX + swapId, 'true');
           }
         } catch { /* ignore */ }
       }
     };
 
-    // Check immediately on mount
     checkSwap();
-
-    // Then poll every 30 seconds
     const interval = setInterval(checkSwap, 30_000);
     return () => clearInterval(interval);
   }, [userId, identityConfirmed, pinVerifiedThisSession]);
@@ -389,6 +395,20 @@ const Index = () => {
   const handleIdValidation = async (newUserId: string): Promise<{ valid: boolean; userName?: string }> => {
     setIsValidating(true);
     setValidationError(null);
+
+    // Check if this ID was swapped to a new ID — block login with old ID
+    const { data: swapRows } = await supabase
+      .from('id_swaps')
+      .select('old_worker_id, new_worker_id')
+      .eq('old_worker_id', newUserId.toUpperCase())
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (swapRows && swapRows.length > 0) {
+      setIsValidating(false);
+      setValidationError(`This ID has been changed to ${swapRows[0].new_worker_id}. Please log in with your new ID.`);
+      return { valid: false };
+    }
 
     let foundUser = false;
     let foundUserName = '';
