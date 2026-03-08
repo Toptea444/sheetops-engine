@@ -100,14 +100,10 @@ export default function InstallPage() {
           ) : isIOS ? (
             <>
               <div className="space-y-3">
-                <StepItem
+              <StepItem
                   step={1}
-                  title="Tap the 3 dots"
-                  description={
-                    <span className="flex items-center gap-1.5">
-                      Look for the <MoreHorizontal className="h-4 w-4 inline text-foreground" /> <span className="font-medium text-foreground">Share</span> icon at the bottom right, beside the address bar
-                    </span>
-                  }
+                  title='Tap the "•••" icon'
+                  description='Look for the three dots at the bottom right of the screen, beside the address bar. This opens the Share menu.'
                 />
                 <StepItem
                   step={2}
