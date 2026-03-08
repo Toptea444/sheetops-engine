@@ -231,7 +231,6 @@ function SwapsSection({ adminSecret }: Props) {
                     <ArrowRight className="h-3 w-3 text-muted-foreground" />
                     <Badge variant="secondary" className="text-[10px] font-mono">{s.new_worker_id}</Badge>
                   </div>
-                  <p className="text-sm font-medium">{s.worker_name}</p>
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />Effective: {new Date(s.effective_date).toLocaleDateString()}</span>
                     <span>Recorded: {new Date(s.created_at).toLocaleString()}</span>
