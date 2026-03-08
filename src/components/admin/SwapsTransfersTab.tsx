@@ -324,10 +324,9 @@ function TransfersSection({ adminSecret }: Props) {
   }, [sourceId, transferDates, selectedSheets, fetchSheetData, searchWorker, calculateBonus]);
 
   const resetForm = () => {
-    setSourceId(''); setTargetId(''); setTransferDates(['']); 
-    setSelectedSheets(availableSheets.map(s => s.name));
-    setSheetTotals({});
-    setReason(''); setEarningsFetched(false);
+    setSourcePrefix('GHAS'); setSourceId(''); setTargetPrefix('NGDS'); setTargetId(''); 
+    setTransferDates(['']); setSelectedSheets(availableSheets.map(s => s.name));
+    setSheetTotals({}); setReason(''); setEarningsFetched(false);
   };
 
   // Grand total across all sheets
