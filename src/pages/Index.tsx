@@ -795,13 +795,23 @@ const Index = () => {
 
             {/* Daily Earnings Table - Detailed breakdown */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto">
+              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6">
                 <DailyEarningsTable
                   results={adjustedResults}
                   sheetNames={selectedSheets}
                   cycle={selectedCycle}
                   isLoading={isLoading}
+                  getTransferInfo={getTransferInfoForDate}
+                  currentUserId={userId}
                 />
+                {/* Adjustments info — collapsed inside the daily view */}
+                {adjustmentNotes.length > 0 && (
+                  <AdjustmentsPanel
+                    notes={adjustmentNotes}
+                    netAdjustment={netAdjustment}
+                    isLoading={adjustmentsLoading}
+                  />
+                )}
               </div>
             </div>
 
