@@ -261,7 +261,7 @@ function TransfersSection({ adminSecret }: Props) {
   // Auto-generate reason
   const generateReason = useCallback(() => {
     const src = sourceId.trim() ? `GHAS${sourceId.trim()}` : '';
-    const tgt = targetId.trim() ? `GHAS${targetId.trim()}` : '';
+    const tgt = targetId.trim() ? `NGDS${targetId.trim()}` : '';
     const validDates = transferDates.filter(d => d);
     if (!src || !tgt || validDates.length === 0) return '';
     const dateStr = validDates.map(d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })).join(', ');
