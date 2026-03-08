@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { useAdminData } from '@/hooks/useAdminData';
 import { useSiteRestrictionAdmin } from '@/hooks/useSiteRestriction';
+import { SwapsTransfersTab } from '@/components/admin/SwapsTransfersTab';
 import { toast } from 'sonner';
 import { formatNaira } from '@/utils/currencyUtils';
 import { getCycleOptions, getCycleKey } from '@/lib/cycleUtils';
