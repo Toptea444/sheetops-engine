@@ -53,7 +53,6 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     if (!userId) return;
     setIsLoading(true);
     try {
-      // Fetch all swaps and transfers (not just current cycle — need chain history)
       const [swapRes, transferRes] = await Promise.all([
         supabase.from('id_swaps').select('*').order('effective_date', { ascending: true }),
         supabase.from('day_transfers').select('*').eq('cycle_key', cycleKey),
@@ -69,7 +68,6 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       const notes: AdjustmentNote[] = [];
       const uid = userId.toUpperCase();
 
-      // Swaps affecting this user
       allSwaps.forEach(s => {
         if (s.old_worker_id === uid) {
           notes.push({
@@ -91,7 +89,6 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
         }
       });
 
-      // Transfers affecting this user
       allTransfers.forEach(t => {
         if (t.source_worker_id === uid) {
           notes.push({
@@ -127,7 +124,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
   /**
    * Apply corrections to results:
    * 1. ID Swaps: filter daily data based on date ownership
-   * 2. Day Transfers: debit/credit amounts for specific dates
+   * 2. Day Transfers: debit/credit the full transfer amount on the correct date
    * Returns adjusted results + net adjustment amount.
    */
   const applyAdjustments = useCallback((results: BonusResult[]): {
@@ -139,27 +136,26 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     const uid = userId.toUpperCase();
     let netAdjustment = 0;
 
-    // Find swap chains involving this user for the current cycle
+    // Find swap chains involving this user
     const relevantSwaps = swaps.filter(s =>
       s.old_worker_id === uid || s.new_worker_id === uid
     );
 
-    // Build a set of IDs this user has been associated with, and date ranges
-    // The user's "ownership" of an ID: 
-    // - If they were swapped FROM old_id TO new_id on effective_date,
-    //   they own old_id BEFORE effective_date, and new_id FROM effective_date onwards
-    
+    // Find transfers involving this user
+    const userTransfers = transfers.filter(t =>
+      t.source_worker_id === uid || t.target_worker_id === uid
+    );
+
     const adjustedResults = results.map(result => {
       const resultId = result.workerId.toUpperCase();
       const adjusted = { ...result };
       
-      // Check if there are swaps affecting this result's worker ID
+      // ── Swaps: filter daily breakdown based on ownership periods ──
       const swapsForThisId = relevantSwaps.filter(s => 
         s.old_worker_id === resultId || s.new_worker_id === resultId
       );
       
       if (swapsForThisId.length > 0) {
-        // Filter daily breakdown based on ownership periods
         adjusted.dailyBreakdown = result.dailyBreakdown.filter(day => {
           if (!day.fullDate) return true;
           const dayDate = new Date(day.fullDate);
@@ -169,78 +165,84 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
             const effectiveStr = swap.effective_date;
             
             if (swap.old_worker_id === resultId && swap.old_worker_id === uid) {
-              // User's old ID — only show data BEFORE effective date
               if (dayStr >= effectiveStr) return false;
             }
             if (swap.old_worker_id === resultId && swap.new_worker_id === uid) {
-              // Someone else's old ID that user took over — only show FROM effective date
               if (dayStr < effectiveStr) return false;
             }
             if (swap.new_worker_id === resultId && swap.new_worker_id === uid) {
-              // User's new ID — only show FROM effective date
               if (dayStr < effectiveStr) return false;
             }
             if (swap.new_worker_id === resultId && swap.old_worker_id === uid) {
-              // User's old ID they left — only show BEFORE effective date
               if (dayStr >= effectiveStr) return false;
             }
           }
           return true;
         });
         
-        // Recalculate total
         adjusted.totalBonus = adjusted.dailyBreakdown.reduce((sum, d) => sum + d.value, 0);
       }
       
-      // Apply day transfers
-      const transfersForThisSheet = transfers.filter(t =>
-        t.sheet_name === result.sheetName
-      );
-      
-      transfersForThisSheet.forEach(t => {
-        const transferDateStr = t.transfer_date;
+      // ── Transfers: apply debit/credit on the transfer_date ──
+      // A transfer's sheet_name can now be a comma-separated list of sheets.
+      // We match if any of the transfer's sheets overlap with this result's sheetName.
+      userTransfers.forEach(t => {
+        const transferSheets = t.sheet_name.split(',').map(s => s.trim());
+        const resultSheet = result.sheetName || '';
+        const sheetMatches = transferSheets.some(ts => ts === resultSheet);
         
+        // For source: zero out the day's value on the matching date
+        // Only apply once — match against the FIRST sheet in the list to avoid doubling
         if (t.source_worker_id === uid && resultId === uid) {
-          // Debit: zero out the day for this user
-          adjusted.dailyBreakdown = adjusted.dailyBreakdown.map(day => {
-            if (!day.fullDate) return day;
-            const dayStr = new Date(day.fullDate).toISOString().split('T')[0];
-            if (dayStr === transferDateStr) {
-              netAdjustment -= day.value;
-              return { ...day, value: 0, bonus: 0, rankingBonus: 0, total: 0 };
-            }
-            return day;
-          });
-        }
-        
-        if (t.target_worker_id === uid) {
-          // Credit: add an entry or increase existing
-          const transferDate = new Date(transferDateStr + 'T12:00:00');
-          const existing = adjusted.dailyBreakdown.find(day => {
-            if (!day.fullDate) return false;
-            return new Date(day.fullDate).toISOString().split('T')[0] === transferDateStr;
-          });
-          
-          if (existing) {
-            existing.value += t.amount;
-            if (existing.bonus !== undefined) existing.bonus += (t.bonus_amount || 0);
-            if (existing.rankingBonus !== undefined) existing.rankingBonus += (t.ranking_bonus_amount || 0);
-            if (existing.total !== undefined) existing.total += t.amount;
-          } else {
-            adjusted.dailyBreakdown.push({
-              date: transferDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-              fullDate: transferDate.getTime(),
-              value: t.amount,
-              bonus: t.bonus_amount || 0,
-              rankingBonus: t.ranking_bonus_amount || 0,
-              total: t.amount,
+          // Only debit from the first matching sheet to avoid double-counting
+          if (resultSheet === transferSheets[0] || (!sheetMatches && transferSheets[0] === transferSheets.join(', '))) {
+            const transferDateStr = t.transfer_date;
+            adjusted.dailyBreakdown = adjusted.dailyBreakdown.map(day => {
+              if (!day.fullDate) return day;
+              const dayStr = new Date(day.fullDate).toISOString().split('T')[0];
+              if (dayStr === transferDateStr) {
+                netAdjustment -= day.value;
+                return { ...day, value: 0, bonus: 0, rankingBonus: 0, total: 0 };
+              }
+              return day;
             });
           }
-          netAdjustment += t.amount;
+        }
+        
+        // For target: add the transfer amount on the correct date
+        // Only credit once — on the first matching sheet
+        if (t.target_worker_id === uid) {
+          // Find the first result's sheet that matches so we only add once
+          const isFirstMatchingSheet = resultSheet === transferSheets[0] || 
+            (!transferSheets.includes(resultSheet) && results.indexOf(result) === 0);
+          
+          if (isFirstMatchingSheet) {
+            const transferDateStr = t.transfer_date;
+            const transferDate = new Date(transferDateStr + 'T12:00:00');
+            const existing = adjusted.dailyBreakdown.find(day => {
+              if (!day.fullDate) return false;
+              return new Date(day.fullDate).toISOString().split('T')[0] === transferDateStr;
+            });
+            
+            if (existing) {
+              existing.value += t.amount;
+              if (existing.total !== undefined) existing.total += t.amount;
+            } else {
+              adjusted.dailyBreakdown.push({
+                date: transferDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                fullDate: transferDate.getTime(),
+                value: t.amount,
+                bonus: 0,
+                rankingBonus: 0,
+                total: t.amount,
+              });
+            }
+            netAdjustment += t.amount;
+          }
         }
       });
       
-      // Recalculate total after transfers
+      // Recalculate total after all adjustments
       adjusted.totalBonus = adjusted.dailyBreakdown.reduce((sum, d) => sum + d.value, 0);
       
       return adjusted;
@@ -248,6 +250,29 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
 
     return { adjustedResults, netAdjustment };
   }, [userId, swaps, transfers]);
+
+  /**
+   * Get transfer info for a specific worker and date, for showing +/- indicators
+   */
+  const getTransferInfoForDate = useCallback((workerId: string, dateStr: string): { 
+    type: 'credit' | 'debit'; 
+    amount: number 
+  } | null => {
+    if (!workerId) return null;
+    const uid = workerId.toUpperCase();
+    
+    for (const t of transfers) {
+      if (t.transfer_date === dateStr) {
+        if (t.target_worker_id === uid) {
+          return { type: 'credit', amount: t.amount };
+        }
+        if (t.source_worker_id === uid) {
+          return { type: 'debit', amount: t.amount };
+        }
+      }
+    }
+    return null;
+  }, [transfers]);
 
   /**
    * For swap scenarios: get the list of ALL worker IDs this user
@@ -258,7 +283,6 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     const uid = userId.toUpperCase();
     const ids = new Set<string>([uid]);
 
-    // If user was swapped FROM an old ID, they need data from that old ID too
     swaps.forEach(s => {
       if (s.new_worker_id === uid) {
         ids.add(s.old_worker_id);
@@ -278,6 +302,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     isLoading,
     applyAdjustments,
     getWorkerIdsToFetch,
+    getTransferInfoForDate,
     reload: load,
   };
 }
