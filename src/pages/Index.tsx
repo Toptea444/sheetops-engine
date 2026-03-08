@@ -428,19 +428,30 @@ const Index = () => {
 
   const handleWelcomeComplete = async (newUserId: string, newUserName: string | null, pinVerified: boolean) => {
     if (pinVerified) {
-      // Check for ID swap before granting access
-      const { data: swapRows } = await supabase
-        .from('id_swaps')
-        .select('id, old_worker_id, new_worker_id')
-        .eq('old_worker_id', newUserId.toUpperCase())
-        .order('created_at', { ascending: false })
-        .limit(1);
+    // Check for ID swap before granting access
+    const { data: swapRows } = await supabase
+      .from('id_swaps')
+      .select('id, old_worker_id, new_worker_id')
+      .or(`old_worker_id.eq.${newUserId.toUpperCase()},new_worker_id.eq.${newUserId.toUpperCase()}`)
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-      if (swapRows && swapRows.length > 0) {
-        setSwapDetected({ oldId: swapRows[0].old_worker_id, newId: swapRows[0].new_worker_id, swapId: swapRows[0].id });
+    if (swapRows && swapRows.length > 0) {
+      const swap = swapRows[0];
+      const pair = [swap.old_worker_id, swap.new_worker_id].sort().join('_');
+      const ackKey = 'performanceTracker_swapAckPair_' + pair;
+      if (!localStorage.getItem(ackKey)) {
+        const isOldSide = swap.old_worker_id === newUserId.toUpperCase();
+        setSwapDetected({
+          oldId: swap.old_worker_id,
+          newId: swap.new_worker_id,
+          reassigned: !isOldSide,
+          swapId: swap.id,
+        });
         setShowWelcome(false);
         return; // Don't grant access
       }
+    }
 
       setUserId(newUserId, newUserName || undefined);
       localStorage.setItem(PIN_VERIFIED_KEY, 'true');
