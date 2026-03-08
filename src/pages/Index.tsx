@@ -548,7 +548,7 @@ const Index = () => {
     });
 
     return { totalEarnings, daysActive: activeDays.size };
-  }, [results, selectedCycle, selectedSheets]);
+  }, [adjustedResults, selectedCycle, selectedSheets]);
 
   // Compute yesterday's earnings for the reveal animation
   const previousDayEarnings = useMemo(() => {
