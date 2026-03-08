@@ -368,19 +368,11 @@ const Index = () => {
 
   const handleWelcomeComplete = async (newUserId: string, newUserName: string | null, pinVerified: boolean) => {
     if (pinVerified) {
-      // Now set the userId (after full flow completes)
       setUserId(newUserId, newUserName || undefined);
       localStorage.setItem(PIN_VERIFIED_KEY, 'true');
       setPinVerifiedThisSession(true);
       setShowWelcome(false);
-      
-      // Always confirm identity when PIN is verified
       confirmIdentity(newUserId);
-      
-      // Claim session and start heartbeat for online presence
-      await claimSession(newUserId);
-      startHeartbeat(newUserId);
-      
       toast.success(`Welcome, ${newUserName || newUserId}! Your account is secured.`);
     }
   };
