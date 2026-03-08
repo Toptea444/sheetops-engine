@@ -61,7 +61,6 @@ export function GlobalSessionMonitor() {
 
         // Dispatch event for any mounted components to react
         window.dispatchEvent(new CustomEvent('force-logout', { detail: { workerId: normalizedId } }));
-        toast.error('You have been logged out by an administrator.');
         return;
       }
 
