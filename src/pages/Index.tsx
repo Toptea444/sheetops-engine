@@ -381,22 +381,12 @@ const Index = () => {
     localStorage.setItem(PIN_VERIFIED_KEY, 'true');
     setPinVerifiedThisSession(true);
     setShowPinGate(false);
-    
-    // Always confirm identity when PIN is verified (PIN is proof of identity)
     confirmIdentity(userId || undefined);
-    
-    // Claim session and start heartbeat for online presence
-    if (userId) {
-      await claimSession(userId);
-      startHeartbeat(userId);
-    }
-  }, [confirmIdentity, userId, claimSession, startHeartbeat]);
+  }, [confirmIdentity, userId]);
 
   const handlePinGateSwitchUser = useCallback(async () => {
-    // Stop heartbeat and release session before switching
     stopHeartbeat();
     if (userId) await releaseSession(userId);
-    
     localStorage.removeItem(PIN_VERIFIED_KEY);
     setPinVerifiedThisSession(false);
     clearIdentity();
