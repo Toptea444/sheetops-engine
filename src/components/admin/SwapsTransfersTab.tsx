@@ -46,7 +46,7 @@ function SwapsSection({ adminSecret }: Props) {
   const { adminRequest, isLoading } = useAdminData();
   const [swaps, setSwaps] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ worker_name: '', old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
+  const [form, setForm] = useState({ old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -77,18 +77,19 @@ function SwapsSection({ adminSecret }: Props) {
   useEffect(() => { load(); }, [load]);
 
   const handleCreate = async () => {
-    if (!form.worker_name.trim() || !form.old_worker_id.trim() || !form.new_worker_id.trim() || !form.effective_date) {
-      toast.error('Worker name, old ID, new ID, and effective date are required');
+    if (!form.old_worker_id.trim() || !form.new_worker_id.trim() || !form.effective_date) {
+      toast.error('Old ID, new ID, and effective date are required');
       return;
     }
     setCreating(true);
     const res = await adminRequest(adminSecret, 'create_swap', {
       ...form,
+      worker_name: `${form.old_worker_id.trim().toUpperCase()} → ${form.new_worker_id.trim().toUpperCase()}`,
       cycle_key: selectedCycleKey,
     });
     if (res?.success) {
-      toast.success('ID Swap recorded');
-      setForm({ worker_name: '', old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
+      toast.success('ID Swap recorded — PINs cleared for both workers');
+      setForm({ old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
       setShowForm(false);
       load();
     } else {
@@ -173,11 +174,6 @@ function SwapsSection({ adminSecret }: Props) {
             <CardDescription className="text-xs">Record when a worker is permanently moved to a different ID</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Worker Name</Label>
-              <Input placeholder="e.g. Adelaja" value={form.worker_name}
-                onChange={e => setForm({ ...form, worker_name: e.target.value })} className="text-sm h-9" />
-            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Old Worker ID</Label>
@@ -235,7 +231,6 @@ function SwapsSection({ adminSecret }: Props) {
                     <ArrowRight className="h-3 w-3 text-muted-foreground" />
                     <Badge variant="secondary" className="text-[10px] font-mono">{s.new_worker_id}</Badge>
                   </div>
-                  <p className="text-sm font-medium">{s.worker_name}</p>
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />Effective: {new Date(s.effective_date).toLocaleDateString()}</span>
                     <span>Recorded: {new Date(s.created_at).toLocaleString()}</span>
@@ -261,7 +256,11 @@ function SwapsSection({ adminSecret }: Props) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this swap?</AlertDialogTitle>
-            <AlertDialogDescription>This action cannot be undone. The swap record will be permanently removed.</AlertDialogDescription>
+            <AlertDialogDescription>
+              This action cannot be undone. The swap record will be permanently removed.
+              <br /><br />
+              <strong>Note:</strong> Both workers' PINs were already cleared when this swap was created. They will need to set new PINs on their next login regardless.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
