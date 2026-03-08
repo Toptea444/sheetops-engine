@@ -450,7 +450,7 @@ function TransfersSection({ adminSecret }: Props) {
               <div className="space-y-1.5">
                 <Label className="text-xs">Target ID (credit to)</Label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">GHAS</span>
+                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">NGDS</span>
                   <Input placeholder="1001" value={targetId}
                     onChange={e => setTargetId(e.target.value)}
                     className="text-sm font-mono rounded-l-none" />
