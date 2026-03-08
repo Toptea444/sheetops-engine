@@ -542,7 +542,7 @@ function TransfersSection({ adminSecret }: Props) {
                 {transferDates.map((d, idx) => (
                   <div key={idx} className="flex gap-2">
                     <Input type="date" value={d} onChange={e => updateDate(idx, e.target.value)}
-                      className="text-sm h-9 flex-1" />
+                      className="text-sm h-9 flex-1 min-w-0 [&::-webkit-calendar-picker-indicator]:opacity-50" />
                     {transferDates.length > 1 && (
                       <Button variant="ghost" size="sm" className="h-9 px-2 text-destructive hover:text-destructive"
                         onClick={() => removeDate(idx)}>
