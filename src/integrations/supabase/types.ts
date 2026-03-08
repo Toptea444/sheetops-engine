@@ -149,6 +149,87 @@ export type Database = {
         }
         Relationships: []
       }
+      day_transfers: {
+        Row: {
+          amount: number
+          bonus_amount: number | null
+          created_at: string
+          created_by: string | null
+          cycle_key: string
+          id: string
+          ranking_bonus_amount: number | null
+          reason: string | null
+          sheet_name: string
+          source_worker_id: string
+          target_worker_id: string
+          transfer_date: string
+        }
+        Insert: {
+          amount?: number
+          bonus_amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          cycle_key: string
+          id?: string
+          ranking_bonus_amount?: number | null
+          reason?: string | null
+          sheet_name: string
+          source_worker_id: string
+          target_worker_id: string
+          transfer_date: string
+        }
+        Update: {
+          amount?: number
+          bonus_amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          cycle_key?: string
+          id?: string
+          ranking_bonus_amount?: number | null
+          reason?: string | null
+          sheet_name?: string
+          source_worker_id?: string
+          target_worker_id?: string
+          transfer_date?: string
+        }
+        Relationships: []
+      }
+      id_swaps: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          cycle_key: string
+          effective_date: string
+          id: string
+          new_worker_id: string
+          notes: string | null
+          old_worker_id: string
+          worker_name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          cycle_key: string
+          effective_date: string
+          id?: string
+          new_worker_id: string
+          notes?: string | null
+          old_worker_id: string
+          worker_name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          cycle_key?: string
+          effective_date?: string
+          id?: string
+          new_worker_id?: string
+          notes?: string | null
+          old_worker_id?: string
+          worker_name?: string
+        }
+        Relationships: []
+      }
       pin_reset_requests: {
         Row: {
           id: string
