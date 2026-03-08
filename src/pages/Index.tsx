@@ -139,6 +139,7 @@ const Index = () => {
     adjustmentNotes,
     applyAdjustments,
     getWorkerIdsToFetch,
+    getTransferInfoForDate,
     isLoading: adjustmentsLoading,
   } = useEarningsAdjustments(userId, selectedCycle);
 
