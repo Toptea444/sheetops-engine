@@ -11,6 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAdminData } from '@/hooks/useAdminData';
 import { getCycleOptions, getCycleKey } from '@/lib/cycleUtils';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
@@ -45,6 +49,7 @@ function SwapsSection({ adminSecret }: Props) {
   const [form, setForm] = useState({ worker_name: '', old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycleIdx, setSelectedCycleIdx] = useState(0);
@@ -100,6 +105,7 @@ function SwapsSection({ adminSecret }: Props) {
     } else {
       toast.error('Failed to delete');
     }
+    setDeleteId(null);
   };
 
   // Filter swaps by search
@@ -237,7 +243,7 @@ function SwapsSection({ adminSecret }: Props) {
                   {s.notes && <p className="text-[11px] text-muted-foreground italic">{s.notes}</p>}
                 </div>
                 <Button variant="ghost" size="sm" className="h-7 text-destructive hover:text-destructive shrink-0"
-                  onClick={() => handleDelete(s.id)}>
+                  onClick={() => setDeleteId(s.id)}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
@@ -249,6 +255,20 @@ function SwapsSection({ adminSecret }: Props) {
       <Button variant="outline" size="sm" onClick={load} disabled={isLoading}>
         <RefreshCw className={`h-3 w-3 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />Refresh
       </Button>
+
+      {/* Confirm delete dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this swap?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone. The swap record will be permanently removed.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && handleDelete(deleteId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -270,9 +290,10 @@ function TransfersSection({ adminSecret }: Props) {
   const [fetchingEarnings, setFetchingEarnings] = useState(false);
   const [earningsFetched, setEarningsFetched] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Per-sheet fetched totals (editable)
-  const [sheetTotals, setSheetTotals] = useState<Record<string, number>>({});
+  // Per-date per-sheet fetched amounts (editable): { "2026-02-26": { "Daily Sheet": 500, ... }, ... }
+  const [perDateSheetTotals, setPerDateSheetTotals] = useState<Record<string, Record<string, number>>>({});
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycleIdx, setSelectedCycleIdx] = useState(0);
@@ -330,7 +351,7 @@ function TransfersSection({ adminSecret }: Props) {
     if (autoReason) setReason(autoReason);
   }, [generateReason]);
 
-  // Fetch earnings for source ID on selected dates/sheets — returns total per sheet
+  // Fetch earnings for source ID — returns per-date per-sheet amounts
   const fetchEarnings = useCallback(async () => {
     const validDates = transferDates.filter(d => d);
     if (!sourceId.trim() || validDates.length === 0 || selectedSheets.length === 0) {
@@ -338,32 +359,31 @@ function TransfersSection({ adminSecret }: Props) {
       return;
     }
     setFetchingEarnings(true);
-    const totals: Record<string, number> = {};
+    const perDate: Record<string, Record<string, number>> = {};
 
     try {
-      for (const sheetName of selectedSheets) {
-        const data = await fetchSheetData(sheetName);
-        if (!data) continue;
-        const worker = searchWorker(data, fullSourceId);
-        if (!worker) continue;
-
-        let sheetTotal = 0;
-        for (const dateStr of validDates) {
-          const dateObj = new Date(dateStr + 'T12:00:00');
+      for (const dateStr of validDates) {
+        perDate[dateStr] = {};
+        const dateObj = new Date(dateStr + 'T12:00:00');
+        for (const sheetName of selectedSheets) {
+          const data = await fetchSheetData(sheetName);
+          if (!data) continue;
+          const worker = searchWorker(data, fullSourceId);
+          if (!worker) continue;
           const result = calculateBonus(worker, dateObj, dateObj);
+          let dayAmount = 0;
           if (result && result.dailyBreakdown.length > 0) {
-            result.dailyBreakdown.forEach(day => {
-              sheetTotal += day.value || 0;
-            });
+            result.dailyBreakdown.forEach(day => { dayAmount += day.value || 0; });
           }
+          if (dayAmount > 0) perDate[dateStr][sheetName] = dayAmount;
         }
-        totals[sheetName] = sheetTotal;
       }
 
-      setSheetTotals(totals);
+      setPerDateSheetTotals(perDate);
       setEarningsFetched(true);
       
-      const grandTotal = Object.values(totals).reduce((s, v) => s + v, 0);
+      const grandTotal = Object.values(perDate).reduce((sum, sheets) => 
+        sum + Object.values(sheets).reduce((s, v) => s + v, 0), 0);
       if (grandTotal > 0) {
         toast.success(`Found total earnings: ₦${grandTotal.toLocaleString()}`);
       } else {
@@ -373,16 +393,19 @@ function TransfersSection({ adminSecret }: Props) {
       toast.error('Failed to fetch earnings');
     }
     setFetchingEarnings(false);
-  }, [sourceId, transferDates, selectedSheets, fetchSheetData, searchWorker, calculateBonus]);
+  }, [sourceId, transferDates, selectedSheets, fetchSheetData, searchWorker, calculateBonus, fullSourceId]);
 
   const resetForm = () => {
     setSourcePrefix('GHAS'); setSourceId(''); setTargetPrefix('NGDS'); setTargetId(''); 
     setTransferDates(['']); setSelectedSheets(availableSheets.map(s => s.name));
-    setSheetTotals({}); setReason(''); setEarningsFetched(false);
+    setPerDateSheetTotals({}); setReason(''); setEarningsFetched(false);
   };
 
-  // Grand total across all sheets
-  const grandTotal = useMemo(() => Object.values(sheetTotals).reduce((s, v) => s + v, 0), [sheetTotals]);
+  // Grand total across all dates and sheets
+  const grandTotal = useMemo(() => 
+    Object.values(perDateSheetTotals).reduce((sum, sheets) => 
+      sum + Object.values(sheets).reduce((s, v) => s + v, 0), 0), 
+    [perDateSheetTotals]);
 
   const handleCreate = async () => {
     const validDates = transferDates.filter(d => d);
@@ -392,28 +415,25 @@ function TransfersSection({ adminSecret }: Props) {
     }
     setCreating(true);
 
-    // Create ONE transfer record per date with sheet_amounts JSON for per-sheet breakdown
+    // Create ONE transfer record per date with per-date per-sheet amounts
     let successCount = 0;
 
     for (const date of validDates) {
-      // Build sheet_amounts JSON: { "Sheet Name": amount, ... }
-      const sheetAmountsObj: Record<string, number> = {};
-      for (const sheetName of selectedSheets) {
-        const amt = sheetTotals[sheetName] || 0;
-        if (amt > 0) sheetAmountsObj[sheetName] = amt;
-      }
+      const dateSheetAmounts = perDateSheetTotals[date] || {};
+      const dateTotal = Object.values(dateSheetAmounts).reduce((s, v) => s + v, 0);
+      if (dateTotal <= 0) continue;
 
       const res = await adminRequest(adminSecret, 'create_transfer', {
         source_worker_id: fullSourceId,
         target_worker_id: fullTargetId,
         transfer_date: date,
         sheet_name: selectedSheets.join(', '),
-        amount: grandTotal,
+        amount: dateTotal,
         bonus_amount: 0,
         ranking_bonus_amount: 0,
         reason,
         cycle_key: selectedCycleKey,
-        sheet_amounts: sheetAmountsObj,
+        sheet_amounts: dateSheetAmounts,
       });
       if (res?.success) successCount++;
     }
@@ -433,6 +453,7 @@ function TransfersSection({ adminSecret }: Props) {
     const res = await adminRequest(adminSecret, 'delete_transfer', { transfer_id: id });
     if (res?.success) { toast.success('Transfer deleted'); load(); }
     else toast.error('Failed to delete');
+    setDeleteId(null);
   };
 
   const toggleSheet = (name: string) => {
@@ -440,11 +461,6 @@ function TransfersSection({ adminSecret }: Props) {
       prev.includes(name) ? prev.filter(s => s !== name) : [...prev, name]
     );
     setEarningsFetched(false);
-    setSheetTotals(prev => {
-      const copy = { ...prev };
-      delete copy[name];
-      return copy;
-    });
   };
 
   const addDate = () => setTransferDates(prev => [...prev, '']);
@@ -582,24 +598,40 @@ function TransfersSection({ adminSecret }: Props) {
               {earningsFetched ? 'Re-fetch Earnings' : 'Fetch Earnings from Sheet'}
             </Button>
 
-            {/* Per-sheet totals (editable) */}
+            {/* Per-date per-sheet earnings (editable) */}
             {earningsFetched && (
-              <div className="space-y-2">
-                <Label className="text-xs">Earnings per Sheet (editable)</Label>
-                {selectedSheets.map(name => (
-                  <div key={name} className="flex items-center gap-2">
-                    <span className="text-xs truncate flex-1 min-w-0 text-muted-foreground">{name.split(' ')[0]}</span>
-                    <div className="flex items-center">
-                      <span className="text-xs text-muted-foreground mr-1">₦</span>
-                      <Input
-                        type="number"
-                        value={sheetTotals[name] || 0}
-                        onChange={e => setSheetTotals(prev => ({ ...prev, [name]: Number(e.target.value) || 0 }))}
-                        className="text-sm h-8 w-28 font-mono"
-                      />
+              <div className="space-y-3">
+                <Label className="text-xs">Earnings per Date & Sheet (editable)</Label>
+                {transferDates.filter(d => d).map(dateStr => {
+                  const dateLabel = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  const dateSheets = perDateSheetTotals[dateStr] || {};
+                  const dateTotal = Object.values(dateSheets).reduce((s, v) => s + v, 0);
+                  return (
+                    <div key={dateStr} className="space-y-1 p-2 rounded-md border border-border/50 bg-muted/20">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium">{dateLabel}</span>
+                        <span className="text-xs font-mono text-muted-foreground">₦{dateTotal.toLocaleString()}</span>
+                      </div>
+                      {selectedSheets.map(name => (
+                        <div key={name} className="flex items-center gap-2">
+                          <span className="text-[11px] truncate flex-1 min-w-0 text-muted-foreground">{name.split(' ')[0]}</span>
+                          <div className="flex items-center">
+                            <span className="text-[11px] text-muted-foreground mr-1">₦</span>
+                            <Input
+                              type="number"
+                              value={dateSheets[name] || 0}
+                              onChange={e => setPerDateSheetTotals(prev => ({
+                                ...prev,
+                                [dateStr]: { ...(prev[dateStr] || {}), [name]: Number(e.target.value) || 0 }
+                              }))}
+                              className="text-xs h-7 w-24 font-mono"
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div className="flex items-center justify-between pt-1 border-t">
                   <span className="text-xs font-medium">Grand Total</span>
                   <span className="text-sm font-bold">₦{grandTotal.toLocaleString()}</span>
@@ -668,7 +700,7 @@ function TransfersSection({ adminSecret }: Props) {
                     {t.reason && <p className="text-[11px] text-muted-foreground italic">{t.reason}</p>}
                   </div>
                   <Button variant="ghost" size="sm" className="h-7 text-destructive hover:text-destructive shrink-0"
-                    onClick={() => handleDelete(t.id)}>
+                    onClick={() => setDeleteId(t.id)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
@@ -681,6 +713,20 @@ function TransfersSection({ adminSecret }: Props) {
       <Button variant="outline" size="sm" onClick={load} disabled={isLoading}>
         <RefreshCw className={`h-3 w-3 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />Refresh
       </Button>
+
+      {/* Confirm delete dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this transfer?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone. The transfer record will be permanently removed.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && handleDelete(deleteId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
