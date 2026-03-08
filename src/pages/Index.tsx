@@ -84,8 +84,18 @@ const Index = () => {
     return localStorage.getItem(PIN_VERIFIED_KEY) === 'true';
   });
 
-  // Session lock & heartbeat
+  // Session heartbeat for online presence (no device locking)
   const { claimSession, startHeartbeat, stopHeartbeat, releaseSession } = useSessionLock();
+
+  // Start heartbeat whenever we have a userId (even before PIN verification)
+  useEffect(() => {
+    if (userId) {
+      claimSession(userId).then(() => startHeartbeat(userId));
+    }
+    return () => {
+      stopHeartbeat();
+    };
+  }, [userId, claimSession, startHeartbeat, stopHeartbeat]);
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
@@ -358,19 +368,11 @@ const Index = () => {
 
   const handleWelcomeComplete = async (newUserId: string, newUserName: string | null, pinVerified: boolean) => {
     if (pinVerified) {
-      // Now set the userId (after full flow completes)
       setUserId(newUserId, newUserName || undefined);
       localStorage.setItem(PIN_VERIFIED_KEY, 'true');
       setPinVerifiedThisSession(true);
       setShowWelcome(false);
-      
-      // Always confirm identity when PIN is verified
       confirmIdentity(newUserId);
-      
-      // Claim session and start heartbeat for online presence
-      await claimSession(newUserId);
-      startHeartbeat(newUserId);
-      
       toast.success(`Welcome, ${newUserName || newUserId}! Your account is secured.`);
     }
   };
@@ -379,22 +381,12 @@ const Index = () => {
     localStorage.setItem(PIN_VERIFIED_KEY, 'true');
     setPinVerifiedThisSession(true);
     setShowPinGate(false);
-    
-    // Always confirm identity when PIN is verified (PIN is proof of identity)
     confirmIdentity(userId || undefined);
-    
-    // Claim session and start heartbeat for online presence
-    if (userId) {
-      await claimSession(userId);
-      startHeartbeat(userId);
-    }
-  }, [confirmIdentity, userId, claimSession, startHeartbeat]);
+  }, [confirmIdentity, userId]);
 
   const handlePinGateSwitchUser = useCallback(async () => {
-    // Stop heartbeat and release session before switching
     stopHeartbeat();
     if (userId) await releaseSession(userId);
-    
     localStorage.removeItem(PIN_VERIFIED_KEY);
     setPinVerifiedThisSession(false);
     clearIdentity();

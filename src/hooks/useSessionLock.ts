@@ -148,49 +148,30 @@ export function useSessionLock(): UseSessionLockResult {
   }, []);
 
   /**
-   * Attempt to claim a session for a worker ID
+   * Register a session for online presence (no device locking)
    */
   const claimSession = useCallback(async (workerId: string): Promise<boolean> => {
-    setIsChecking(true);
-    setLockError(null);
-
     try {
       const normalizedId = workerId.toUpperCase();
 
-      // First check if this device is permanently bound to a DIFFERENT worker
-      const binding = await checkDeviceBinding();
-      if (binding.isBound && binding.boundWorkerId !== normalizedId) {
-        setLockError(`This browser is permanently linked to ID "${binding.boundWorkerId}". You cannot log in as a different user from this browser.`);
-        setIsLocked(true);
-        setIsChecking(false);
-        return false;
-      }
-      
-      // Check if locked by another device
-      const { isLocked, isOwnDevice } = await checkSessionLock(workerId);
-      
-      if (isLocked) {
-        setLockError('This ID is currently active on another device. Please try again in 15 minutes or use your own ID.');
-        setIsLocked(true);
-        setIsChecking(false);
-        return false;
-      }
+      // Check if this device already has a session for this worker
+      const { data: existing } = await supabase
+        .from('worker_sessions')
+        .select('id, device_fingerprint')
+        .eq('worker_id', normalizedId)
+        .eq('device_fingerprint', deviceFingerprint.current)
+        .maybeSingle();
 
-      if (isOwnDevice) {
-        // Already own this session, just update heartbeat
+      if (existing) {
+        // Already have a session, just update heartbeat
         await supabase
           .from('worker_sessions')
           .update({ last_heartbeat: new Date().toISOString() })
-          .eq('worker_id', normalizedId)
-          .eq('device_fingerprint', deviceFingerprint.current);
-        
-        setIsLocked(false);
-        setIsChecking(false);
+          .eq('id', existing.id);
         return true;
       }
 
-      // If a stale session exists, delete it first (then do a clean insert).
-      // This avoids updating stale rows, which the backend disallows for safety.
+      // Delete any stale sessions for this worker (from any device)
       const staleCutoffIso = new Date(Date.now() - SESSION_TIMEOUT_MS).toISOString();
       await supabase
         .from('worker_sessions')
@@ -198,6 +179,7 @@ export function useSessionLock(): UseSessionLockResult {
         .eq('worker_id', normalizedId)
         .lt('last_heartbeat', staleCutoffIso);
 
+      // Insert new session
       const { error: insertError } = await supabase
         .from('worker_sessions')
         .insert({
@@ -207,23 +189,16 @@ export function useSessionLock(): UseSessionLockResult {
         });
 
       if (insertError) {
-        console.error('Failed to claim session:', insertError);
-        setLockError('This ID is currently active on another device. Please try again in 15 minutes or use your own ID.');
-        setIsLocked(true);
-        setIsChecking(false);
+        console.error('Failed to create session:', insertError);
         return false;
       }
 
-      setIsLocked(false);
-      setIsChecking(false);
       return true;
     } catch (err) {
       console.error('Session claim error:', err);
-      setLockError('Failed to verify session. Please try again.');
-      setIsChecking(false);
       return false;
     }
-  }, [checkSessionLock, checkDeviceBinding]);
+  }, []);
 
   /**
    * Release a session (when logging out)
