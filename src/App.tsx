@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { RestrictedRoute } from "@/components/RestrictedRoute";
+import { GlobalSessionMonitor } from "@/components/GlobalSessionMonitor";
 import Index from "./pages/Index";
 import TL from "./pages/TL";
 import AdminPinReset from "./pages/AdminPinReset";
@@ -16,6 +17,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <GlobalSessionMonitor />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<RestrictedRoute><Index /></RestrictedRoute>} />
