@@ -44,6 +44,7 @@ export function WelcomeModal({
   validationError = null,
   onIdValidated,
   onForgotPin,
+  forgotPinSubmitted = false,
 }: WelcomeModalProps) {
   const [userId, setUserId] = useState('');
   const [error, setError] = useState<string | null>(null);
