@@ -696,7 +696,14 @@ const Index = () => {
         onDeny={handleIdentityDeny}
       />
 
-      {/* Daily Earnings Reveal Animation */}
+      <SwapDetectionModal
+        open={!!swapDetected}
+        oldWorkerId={swapDetected?.oldId || ''}
+        newWorkerId={swapDetected?.newId || ''}
+        onLogout={handleSwapLogout}
+      />
+
+
       <EarningsReveal
         totalEarnings={cycleStats.totalEarnings}
         daysActive={cycleStats.daysActive}
