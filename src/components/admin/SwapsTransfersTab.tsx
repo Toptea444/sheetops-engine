@@ -260,8 +260,8 @@ function TransfersSection({ adminSecret }: Props) {
 
   // Auto-generate reason
   const generateReason = useCallback(() => {
-    const src = sourceId.trim() ? `NGDS${sourceId.trim()}` : '';
-    const tgt = targetId.trim() ? `NGDS${targetId.trim()}` : '';
+    const src = sourceId.trim() ? `GHAS${sourceId.trim()}` : '';
+    const tgt = targetId.trim() ? `GHAS${targetId.trim()}` : '';
     const validDates = transferDates.filter(d => d);
     if (!src || !tgt || validDates.length === 0) return '';
     const dateStr = validDates.map(d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })).join(', ');
@@ -289,7 +289,7 @@ function TransfersSection({ adminSecret }: Props) {
       for (const sheetName of selectedSheets) {
         const data = await fetchSheetData(sheetName);
         if (!data) continue;
-        const worker = searchWorker(data, `NGDS${sourceId.trim()}`);
+        const worker = searchWorker(data, `GHAS${sourceId.trim()}`);
         if (!worker) continue;
 
         for (const dateStr of validDates) {
@@ -338,8 +338,8 @@ function TransfersSection({ adminSecret }: Props) {
     for (const date of validDates) {
       for (const sheet of selectedSheets) {
         const res = await adminRequest(adminSecret, 'create_transfer', {
-          source_worker_id: `NGDS${sourceId.trim()}`,
-          target_worker_id: `NGDS${targetId.trim()}`,
+          source_worker_id: `GHAS${sourceId.trim()}`,
+          target_worker_id: `GHAS${targetId.trim()}`,
           transfer_date: date,
           sheet_name: sheet,
           amount: Number(amount),
@@ -436,12 +436,12 @@ function TransfersSection({ adminSecret }: Props) {
             <CardDescription className="text-xs">Transfer earnings from one ID to the person who actually worked</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-3">
-            {/* Source & Target IDs with NGDS prefix */}
+            {/* Source & Target IDs with GHAS prefix */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Source ID (debit from)</Label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">NGDS</span>
+                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">GHAS</span>
                   <Input placeholder="2002" value={sourceId}
                     onChange={e => { setSourceId(e.target.value); setEarningsFetched(false); }}
                     className="text-sm font-mono rounded-l-none" />
@@ -450,7 +450,7 @@ function TransfersSection({ adminSecret }: Props) {
               <div className="space-y-1.5">
                 <Label className="text-xs">Target ID (credit to)</Label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">NGDS</span>
+                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">GHAS</span>
                   <Input placeholder="1001" value={targetId}
                     onChange={e => setTargetId(e.target.value)}
                     className="text-sm font-mono rounded-l-none" />
