@@ -145,24 +145,24 @@ function SwapsSection({ adminSecret }: Props) {
             <div className="space-y-1.5">
               <Label className="text-xs">Worker Name</Label>
               <Input placeholder="e.g. John Doe" value={form.worker_name}
-                onChange={e => setForm({ ...form, worker_name: e.target.value })} className="text-sm" />
+                onChange={e => setForm({ ...form, worker_name: e.target.value })} className="text-sm h-9" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Old Worker ID</Label>
                 <Input placeholder="e.g. NGDS2002" value={form.old_worker_id}
-                  onChange={e => setForm({ ...form, old_worker_id: e.target.value })} className="text-sm font-mono" />
+                  onChange={e => setForm({ ...form, old_worker_id: e.target.value })} className="text-sm font-mono h-9" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">New Worker ID</Label>
                 <Input placeholder="e.g. NGDS1001" value={form.new_worker_id}
-                  onChange={e => setForm({ ...form, new_worker_id: e.target.value })} className="text-sm font-mono" />
+                  onChange={e => setForm({ ...form, new_worker_id: e.target.value })} className="text-sm font-mono h-9" />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Effective Date (swap happened on this date)</Label>
               <Input type="date" value={form.effective_date}
-                onChange={e => setForm({ ...form, effective_date: e.target.value })} className="text-sm" />
+                onChange={e => setForm({ ...form, effective_date: e.target.value })} className="text-sm h-9" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Notes (optional)</Label>
@@ -221,7 +221,9 @@ function TransfersSection({ adminSecret }: Props) {
   const { sheets: allSheets, fetchSheets, fetchSheetData, searchWorker, calculateBonus } = useGoogleSheets();
   const [transfers, setTransfers] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [sourcePrefix, setSourcePrefix] = useState('GHAS');
   const [sourceId, setSourceId] = useState('');
+  const [targetPrefix, setTargetPrefix] = useState('NGDS');
   const [targetId, setTargetId] = useState('');
   const [transferDates, setTransferDates] = useState<string[]>(['']);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
@@ -259,15 +261,16 @@ function TransfersSection({ adminSecret }: Props) {
   useEffect(() => { load(); }, [load]);
 
   // Auto-generate reason
+  const fullSourceId = `${sourcePrefix}${sourceId.trim()}`;
+  const fullTargetId = `${targetPrefix}${targetId.trim()}`;
+
   const generateReason = useCallback(() => {
-    const src = sourceId.trim() ? `GHAS${sourceId.trim()}` : '';
-    const tgt = targetId.trim() ? `NGDS${targetId.trim()}` : '';
+    if (!sourceId.trim() || !targetId.trim()) return '';
     const validDates = transferDates.filter(d => d);
-    if (!src || !tgt || validDates.length === 0) return '';
+    if (validDates.length === 0) return '';
     const dateStr = validDates.map(d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })).join(', ');
-    const sheetStr = selectedSheets.length > 0 ? ` (${selectedSheets.join(', ')})` : '';
-    return `${tgt} covered ${src}'s account on ${dateStr}${sheetStr}. Earnings transferred from ${src} to ${tgt}.`;
-  }, [sourceId, targetId, transferDates, selectedSheets]);
+    return `${fullTargetId} covered for ${fullSourceId} on ${dateStr}. Earnings transferred accordingly.`;
+  }, [sourceId, targetId, transferDates, fullSourceId, fullTargetId]);
 
   // Update reason when inputs change
   useEffect(() => {
@@ -289,7 +292,7 @@ function TransfersSection({ adminSecret }: Props) {
       for (const sheetName of selectedSheets) {
         const data = await fetchSheetData(sheetName);
         if (!data) continue;
-        const worker = searchWorker(data, `GHAS${sourceId.trim()}`);
+        const worker = searchWorker(data, fullSourceId);
         if (!worker) continue;
 
         let sheetTotal = 0;
@@ -321,10 +324,9 @@ function TransfersSection({ adminSecret }: Props) {
   }, [sourceId, transferDates, selectedSheets, fetchSheetData, searchWorker, calculateBonus]);
 
   const resetForm = () => {
-    setSourceId(''); setTargetId(''); setTransferDates(['']); 
-    setSelectedSheets(availableSheets.map(s => s.name));
-    setSheetTotals({});
-    setReason(''); setEarningsFetched(false);
+    setSourcePrefix('GHAS'); setSourceId(''); setTargetPrefix('NGDS'); setTargetId(''); 
+    setTransferDates(['']); setSelectedSheets(availableSheets.map(s => s.name));
+    setSheetTotals({}); setReason(''); setEarningsFetched(false);
   };
 
   // Grand total across all sheets
@@ -332,7 +334,7 @@ function TransfersSection({ adminSecret }: Props) {
 
   const handleCreate = async () => {
     const validDates = transferDates.filter(d => d);
-    if (!sourceId.trim() || !targetId.trim() || validDates.length === 0 || selectedSheets.length === 0 || grandTotal <= 0) {
+    if (!sourceId.trim() || !targetId.trim() || !sourcePrefix.trim() || !targetPrefix.trim() || validDates.length === 0 || selectedSheets.length === 0 || grandTotal <= 0) {
       toast.error('Source ID, target ID, at least one date, sheets, and a positive amount are required');
       return;
     }
@@ -350,8 +352,8 @@ function TransfersSection({ adminSecret }: Props) {
       }
 
       const res = await adminRequest(adminSecret, 'create_transfer', {
-        source_worker_id: `GHAS${sourceId.trim()}`,
-        target_worker_id: `NGDS${targetId.trim()}`,
+        source_worker_id: fullSourceId,
+        target_worker_id: fullTargetId,
         transfer_date: date,
         sheet_name: selectedSheets.join(', '),
         amount: grandTotal,
@@ -459,19 +461,24 @@ function TransfersSection({ adminSecret }: Props) {
               <div className="space-y-1.5">
                 <Label className="text-xs">Source ID (debit from)</Label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">GHAS</span>
+                  <Input placeholder="GHAS" value={sourcePrefix}
+                    onChange={e => { setSourcePrefix(e.target.value.toUpperCase()); setEarningsFetched(false); }}
+                    className="text-xs font-mono w-16 rounded-r-none border-r-0 bg-muted/50 px-1.5 h-9" />
                   <Input placeholder="2002" value={sourceId}
                     onChange={e => { setSourceId(e.target.value); setEarningsFetched(false); }}
-                    className="text-sm font-mono rounded-l-none" />
+                    className="text-sm font-mono rounded-l-none h-9" />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Target ID (credit to)</Label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">NGDS</span>
+                  <Input placeholder="NGDS" value={targetPrefix}
+                    onChange={e => setTargetPrefix(e.target.value.toUpperCase())
+                    }
+                    className="text-xs font-mono w-16 rounded-r-none border-r-0 bg-muted/50 px-1.5 h-9" />
                   <Input placeholder="1001" value={targetId}
                     onChange={e => setTargetId(e.target.value)}
-                    className="text-sm font-mono rounded-l-none" />
+                    className="text-sm font-mono rounded-l-none h-9" />
                 </div>
               </div>
             </div>
