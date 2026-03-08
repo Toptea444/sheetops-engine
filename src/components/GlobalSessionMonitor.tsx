@@ -123,16 +123,22 @@ export function GlobalSessionMonitor() {
   }, []);
 
   useEffect(() => {
-    // Initial claim
-    claimSession();
+    // Claim session first, THEN start periodic checks
+    // This prevents the race condition where heartbeat check runs before session exists
+    let cancelled = false;
 
-    // Start periodic heartbeat + force-logout check
-    intervalRef.current = setInterval(sendHeartbeatAndCheck, CHECK_INTERVAL);
+    const init = async () => {
+      await claimSession();
+      if (cancelled) return;
 
-    // Also send immediate heartbeat
-    sendHeartbeatAndCheck();
+      // Only start checking AFTER session is claimed
+      intervalRef.current = setInterval(sendHeartbeatAndCheck, CHECK_INTERVAL);
+    };
+
+    init();
 
     return () => {
+      cancelled = true;
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
