@@ -34,42 +34,11 @@ export function GlobalSessionMonitor() {
     }
   }, []);
 
-  const sendHeartbeatAndCheck = useCallback(async () => {
+  const sendHeartbeat = useCallback(async () => {
     const userId = trackedUserId.current;
     if (!userId) return;
 
     try {
-      const { data: sessionExists } = await supabase
-        .from('worker_sessions')
-        .select('id')
-        .eq('worker_id', userId)
-        .eq('device_fingerprint', deviceFingerprint.current)
-        .maybeSingle();
-
-      // Re-check that we're still tracking the same user after the async call.
-      // If the user switched accounts while we were awaiting, abort.
-      if (trackedUserId.current !== userId) return;
-
-      if (!sessionExists) {
-        // Session was deleted (force logout by admin)
-        console.warn('Session deleted by admin, forcing client logout');
-        clearHeartbeat();
-        trackedUserId.current = null;
-
-        // Clear all identity data from localStorage
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(PIN_VERIFIED_KEY);
-        localStorage.removeItem('performanceTracker_userName');
-        localStorage.removeItem('performanceTracker_dailyTarget');
-        localStorage.removeItem('performanceTracker_cycleTargets');
-        localStorage.removeItem('performanceTracker_identityConfirmed');
-        localStorage.removeItem('performanceTracker_confirmedWorkerId');
-
-        window.dispatchEvent(new CustomEvent('force-logout', { detail: { workerId: userId } }));
-        return;
-      }
-
-      // Session exists, send heartbeat
       await supabase
         .from('worker_sessions')
         .update({ last_heartbeat: new Date().toISOString() })
@@ -78,7 +47,7 @@ export function GlobalSessionMonitor() {
     } catch {
       console.error('Session monitor: heartbeat failed');
     }
-  }, [clearHeartbeat]);
+  }, []);
 
   const claimAndStartHeartbeat = useCallback(async (normalizedId: string) => {
     if (isClaimingRef.current) return;
@@ -121,13 +90,13 @@ export function GlobalSessionMonitor() {
       // Track this user and start heartbeat
       trackedUserId.current = normalizedId;
       clearHeartbeat();
-      heartbeatRef.current = setInterval(sendHeartbeatAndCheck, CHECK_INTERVAL);
+      heartbeatRef.current = setInterval(sendHeartbeat, CHECK_INTERVAL);
     } catch (err) {
       console.error('Session claim error:', err);
     } finally {
       isClaimingRef.current = false;
     }
-  }, [clearHeartbeat, sendHeartbeatAndCheck]);
+  }, [clearHeartbeat, sendHeartbeat]);
 
   // Poll localStorage for userId changes (handles login, logout, re-login)
   useEffect(() => {
