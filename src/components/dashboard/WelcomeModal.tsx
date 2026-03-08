@@ -34,6 +34,7 @@ interface WelcomeModalProps {
   validationError?: string | null;
   onIdValidated?: (userId: string) => Promise<{ valid: boolean; userName?: string }>;
   onForgotPin?: (workerId: string) => void;
+  forgotPinSubmitted?: boolean;
 }
 
 export function WelcomeModal({ 
@@ -43,6 +44,7 @@ export function WelcomeModal({
   validationError = null,
   onIdValidated,
   onForgotPin,
+  forgotPinSubmitted = false,
 }: WelcomeModalProps) {
   const [userId, setUserId] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -291,6 +293,7 @@ export function WelcomeModal({
             onForgotPin={handleForgotPin}
             isLoading={pinLoading}
             error={pinError}
+            forgotPinSubmitted={forgotPinSubmitted}
           />
         )}
       </DialogContent>

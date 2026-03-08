@@ -644,6 +644,7 @@ const Index = () => {
         validationError={validationError}
         onIdValidated={handleIdValidation}
         onForgotPin={handleForgotPin}
+        forgotPinSubmitted={forgotPinSubmitted}
       />
 
       <SessionPinGate
