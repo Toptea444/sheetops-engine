@@ -1,11 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Download, CheckCircle2, Share, MoreVertical, Smartphone } from 'lucide-react';
+import { Download, CheckCircle2, MoreHorizontal, MoreVertical, Smartphone, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+function StepItem({ step, title, description, icon }: { step: number; title: string; description: React.ReactNode; icon?: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/50 border border-border/60">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm shadow-sm">
+        {step}
+      </div>
+      <div className="pt-0.5">
+        <p className="font-semibold text-foreground leading-snug">{title}</p>
+        <div className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{description}</div>
+      </div>
+    </div>
+  );
 }
 
 export default function InstallPage() {
@@ -14,12 +27,10 @@ export default function InstallPage() {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
     }
 
-    // Detect iOS
     const ua = navigator.userAgent;
     setIsIOS(/iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream);
 
@@ -44,113 +55,110 @@ export default function InstallPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardContent className="pt-6 text-center space-y-6">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10">
+      {/* Decorative background glow */}
+      <div
+        className="fixed top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full pointer-events-none opacity-[0.07]"
+        style={{
+          background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)',
+          filter: 'blur(80px)',
+        }}
+      />
+
+      <div className="relative w-full max-w-md">
+        {/* Header area */}
+        <div className="text-center mb-8">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 shadow-sm mb-5">
             <Smartphone className="h-10 w-10 text-primary" />
           </div>
 
           {isInstalled ? (
             <>
-              <div className="space-y-2">
-                <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
-                <h1 className="text-2xl font-bold text-foreground">Already Installed!</h1>
-                <p className="text-muted-foreground">
-                  The app is installed on your device. Open it from your home screen.
-                </p>
-              </div>
-              <Button onClick={() => window.location.href = '/'} className="w-full">
-                Open App
-              </Button>
-            </>
-          ) : isIOS ? (
-            <>
-              <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-foreground">Install Bonus Calculator</h1>
-                <p className="text-muted-foreground">
-                  Install this app on your iPhone for the best experience.
-                </p>
-              </div>
-              <div className="space-y-4 text-left">
-                <div className="flex items-start gap-3 rounded-lg border border-border p-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">1</div>
-                  <div>
-                    <p className="font-medium text-foreground">Tap the Share button</p>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      Look for the <Share className="h-4 w-4 inline" /> icon at the bottom of Safari
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 rounded-lg border border-border p-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">2</div>
-                  <div>
-                    <p className="font-medium text-foreground">Scroll down and tap "Add to Home Screen"</p>
-                    <p className="text-sm text-muted-foreground">It will appear in the share menu options</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 rounded-lg border border-border p-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">3</div>
-                  <div>
-                    <p className="font-medium text-foreground">Tap "Add"</p>
-                    <p className="text-sm text-muted-foreground">The app icon will appear on your home screen</p>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : deferredPrompt ? (
-            <>
-              <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-foreground">Install Bonus Calculator</h1>
-                <p className="text-muted-foreground">
-                  Install this app for faster access, offline support, and a better experience.
-                </p>
-              </div>
-              <Button onClick={handleInstall} className="w-full gap-2" size="lg">
-                <Download className="h-5 w-5" />
-                Install App
-              </Button>
+              <CheckCircle2 className="h-14 w-14 text-green-500 mx-auto mb-3" />
+              <h1 className="text-2xl font-bold text-foreground">Already Installed</h1>
+              <p className="text-muted-foreground mt-2 max-w-[280px] mx-auto leading-relaxed">
+                The app is installed on your device. Open it from your home screen for the best experience.
+              </p>
             </>
           ) : (
             <>
-              <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-foreground">Install Bonus Calculator</h1>
-                <p className="text-muted-foreground">
-                  Install this app on your Android phone for the best experience.
-                </p>
-              </div>
-              <div className="space-y-4 text-left">
-                <div className="flex items-start gap-3 rounded-lg border border-border p-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">1</div>
-                  <div>
-                    <p className="font-medium text-foreground">Open in Chrome browser</p>
-                    <p className="text-sm text-muted-foreground">Make sure you're using Chrome, not an in-app browser</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 rounded-lg border border-border p-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">2</div>
-                  <div>
-                    <p className="font-medium text-foreground">Tap the menu</p>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      Look for <MoreVertical className="h-4 w-4 inline" /> at the top right of Chrome
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 rounded-lg border border-border p-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">3</div>
-                  <div>
-                    <p className="font-medium text-foreground">Tap "Add to Home screen" or "Install app"</p>
-                    <p className="text-sm text-muted-foreground">The app will install like a real app</p>
-                  </div>
-                </div>
-              </div>
+              <h1 className="text-2xl font-bold text-foreground">Install Bonus Calculator</h1>
+              <p className="text-muted-foreground mt-2 max-w-[280px] mx-auto leading-relaxed">
+                {isIOS
+                  ? 'Add this app to your iPhone home screen for a faster, app-like experience.'
+                  : 'Install this app on your phone for faster access and a better experience.'}
+              </p>
             </>
           )}
+        </div>
 
-          <Button variant="ghost" onClick={() => window.location.href = '/'} className="w-full text-muted-foreground">
+        {/* Content card */}
+        <div className="bg-card border border-border rounded-2xl p-5 shadow-sm space-y-5">
+          {isInstalled ? (
+            <Button onClick={() => window.location.href = '/'} className="w-full h-12 rounded-xl font-semibold">
+              Open App
+            </Button>
+          ) : isIOS ? (
+            <>
+              <div className="space-y-3">
+                <StepItem
+                  step={1}
+                  title="Tap the 3 dots"
+                  description={
+                    <span className="flex items-center gap-1.5">
+                      Look for the <MoreHorizontal className="h-4 w-4 inline text-foreground" /> <span className="font-medium text-foreground">Share</span> icon at the bottom right, beside the address bar
+                    </span>
+                  }
+                />
+                <StepItem
+                  step={2}
+                  title='Tap "Add to Home Screen"'
+                  description="Scroll down in the share menu and select this option"
+                />
+                <StepItem
+                  step={3}
+                  title='Tap "Add"'
+                  description="The app icon will appear on your home screen — open it from there"
+                />
+              </div>
+            </>
+          ) : deferredPrompt ? (
+            <Button onClick={handleInstall} className="w-full h-12 rounded-xl font-semibold gap-2" size="lg">
+              <Download className="h-5 w-5" />
+              Install App
+            </Button>
+          ) : (
+            <div className="space-y-3">
+              <StepItem
+                step={1}
+                title="Open in Chrome"
+                description="Make sure you're using the Chrome browser, not an in-app browser"
+              />
+              <StepItem
+                step={2}
+                title="Tap the menu"
+                description={
+                  <span className="flex items-center gap-1.5">
+                    Look for the <MoreVertical className="h-4 w-4 inline text-foreground" /> icon at the top right of Chrome
+                  </span>
+                }
+              />
+              <StepItem
+                step={3}
+                title='Tap "Install app" or "Add to Home screen"'
+                description="The app will install on your device like a regular app"
+              />
+            </div>
+          )}
+
+          <Button
+            variant="ghost"
+            onClick={() => window.location.href = '/'}
+            className="w-full text-muted-foreground hover:text-foreground rounded-xl"
+          >
             Continue in browser instead
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
