@@ -261,15 +261,16 @@ function TransfersSection({ adminSecret }: Props) {
   useEffect(() => { load(); }, [load]);
 
   // Auto-generate reason
+  const fullSourceId = `${sourcePrefix}${sourceId.trim()}`;
+  const fullTargetId = `${targetPrefix}${targetId.trim()}`;
+
   const generateReason = useCallback(() => {
-    const src = sourceId.trim() ? `GHAS${sourceId.trim()}` : '';
-    const tgt = targetId.trim() ? `NGDS${targetId.trim()}` : '';
+    if (!sourceId.trim() || !targetId.trim()) return '';
     const validDates = transferDates.filter(d => d);
-    if (!src || !tgt || validDates.length === 0) return '';
+    if (validDates.length === 0) return '';
     const dateStr = validDates.map(d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })).join(', ');
-    const sheetStr = selectedSheets.length > 0 ? ` (${selectedSheets.join(', ')})` : '';
-    return `${tgt} covered ${src}'s account on ${dateStr}${sheetStr}. Earnings transferred from ${src} to ${tgt}.`;
-  }, [sourceId, targetId, transferDates, selectedSheets]);
+    return `${fullTargetId} covered for ${fullSourceId} on ${dateStr}. Earnings transferred accordingly.`;
+  }, [sourceId, targetId, transferDates, fullSourceId, fullTargetId]);
 
   // Update reason when inputs change
   useEffect(() => {
