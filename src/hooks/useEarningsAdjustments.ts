@@ -97,24 +97,27 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       const uid = userId.toUpperCase();
 
       allSwaps.forEach(s => {
+        // Determine direction for THIS user
+        let userPrevId: string, userNewId: string;
         if (s.old_worker_id === uid) {
-          notes.push({
-            type: 'swap_out',
-            date: s.effective_date,
-            amount: 0,
-            description: `Your ID was changed from ${s.old_worker_id} to ${s.new_worker_id}. Earnings before ${new Date(s.effective_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} belong to your old ID.${s.notes ? ` Note: ${s.notes}` : ''}`,
-            created_at: s.created_at,
-          });
+          // Direct: user was old_worker_id, now is new_worker_id
+          userPrevId = s.old_worker_id;
+          userNewId = s.new_worker_id;
+        } else if (s.new_worker_id === uid) {
+          // Reverse (bidirectional swap): user was new_worker_id, now is old_worker_id
+          userPrevId = s.new_worker_id;
+          userNewId = s.old_worker_id;
+        } else {
+          return;
         }
-        if (s.new_worker_id === uid) {
-          notes.push({
-            type: 'swap_in',
-            date: s.effective_date,
-            amount: 0,
-            description: `Your ID was changed from ${s.old_worker_id} to ${s.new_worker_id}. Earnings from ${new Date(s.effective_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} onward are under your new ID.${s.notes ? ` Note: ${s.notes}` : ''}`,
-            created_at: s.created_at,
-          });
-        }
+        const dateLabel = new Date(s.effective_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        notes.push({
+          type: 'swap_in',
+          date: s.effective_date,
+          amount: 0,
+          description: `Your ID was changed from ${userPrevId} to ${userNewId} on ${dateLabel}. Earnings before ${dateLabel} are from your old ID (${userPrevId}), and earnings from ${dateLabel} onward are under your new ID (${userNewId}).${s.notes ? ` Note: ${s.notes}` : ''}`,
+          created_at: s.created_at,
+        });
       });
 
       allTransfers.forEach(t => {
