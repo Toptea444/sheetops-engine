@@ -598,24 +598,40 @@ function TransfersSection({ adminSecret }: Props) {
               {earningsFetched ? 'Re-fetch Earnings' : 'Fetch Earnings from Sheet'}
             </Button>
 
-            {/* Per-sheet totals (editable) */}
+            {/* Per-date per-sheet earnings (editable) */}
             {earningsFetched && (
-              <div className="space-y-2">
-                <Label className="text-xs">Earnings per Sheet (editable)</Label>
-                {selectedSheets.map(name => (
-                  <div key={name} className="flex items-center gap-2">
-                    <span className="text-xs truncate flex-1 min-w-0 text-muted-foreground">{name.split(' ')[0]}</span>
-                    <div className="flex items-center">
-                      <span className="text-xs text-muted-foreground mr-1">₦</span>
-                      <Input
-                        type="number"
-                        value={sheetTotals[name] || 0}
-                        onChange={e => setSheetTotals(prev => ({ ...prev, [name]: Number(e.target.value) || 0 }))}
-                        className="text-sm h-8 w-28 font-mono"
-                      />
+              <div className="space-y-3">
+                <Label className="text-xs">Earnings per Date & Sheet (editable)</Label>
+                {transferDates.filter(d => d).map(dateStr => {
+                  const dateLabel = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  const dateSheets = perDateSheetTotals[dateStr] || {};
+                  const dateTotal = Object.values(dateSheets).reduce((s, v) => s + v, 0);
+                  return (
+                    <div key={dateStr} className="space-y-1 p-2 rounded-md border border-border/50 bg-muted/20">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium">{dateLabel}</span>
+                        <span className="text-xs font-mono text-muted-foreground">₦{dateTotal.toLocaleString()}</span>
+                      </div>
+                      {selectedSheets.map(name => (
+                        <div key={name} className="flex items-center gap-2">
+                          <span className="text-[11px] truncate flex-1 min-w-0 text-muted-foreground">{name.split(' ')[0]}</span>
+                          <div className="flex items-center">
+                            <span className="text-[11px] text-muted-foreground mr-1">₦</span>
+                            <Input
+                              type="number"
+                              value={dateSheets[name] || 0}
+                              onChange={e => setPerDateSheetTotals(prev => ({
+                                ...prev,
+                                [dateStr]: { ...(prev[dateStr] || {}), [name]: Number(e.target.value) || 0 }
+                              }))}
+                              className="text-xs h-7 w-24 font-mono"
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div className="flex items-center justify-between pt-1 border-t">
                   <span className="text-xs font-medium">Grand Total</span>
                   <span className="text-sm font-bold">₦{grandTotal.toLocaleString()}</span>
