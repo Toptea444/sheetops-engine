@@ -461,19 +461,24 @@ function TransfersSection({ adminSecret }: Props) {
               <div className="space-y-1.5">
                 <Label className="text-xs">Source ID (debit from)</Label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">GHAS</span>
+                  <Input placeholder="GHAS" value={sourcePrefix}
+                    onChange={e => { setSourcePrefix(e.target.value.toUpperCase()); setEarningsFetched(false); }}
+                    className="text-xs font-mono w-16 rounded-r-none border-r-0 bg-muted/50 px-1.5 h-9" />
                   <Input placeholder="2002" value={sourceId}
                     onChange={e => { setSourceId(e.target.value); setEarningsFetched(false); }}
-                    className="text-sm font-mono rounded-l-none" />
+                    className="text-sm font-mono rounded-l-none h-9" />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Target ID (credit to)</Label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 border-input bg-muted text-xs text-muted-foreground font-mono">NGDS</span>
+                  <Input placeholder="NGDS" value={targetPrefix}
+                    onChange={e => setTargetPrefix(e.target.value.toUpperCase())
+                    }
+                    className="text-xs font-mono w-16 rounded-r-none border-r-0 bg-muted/50 px-1.5 h-9" />
                   <Input placeholder="1001" value={targetId}
                     onChange={e => setTargetId(e.target.value)}
-                    className="text-sm font-mono rounded-l-none" />
+                    className="text-sm font-mono rounded-l-none h-9" />
                 </div>
               </div>
             </div>
