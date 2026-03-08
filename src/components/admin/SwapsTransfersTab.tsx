@@ -105,6 +105,7 @@ function SwapsSection({ adminSecret }: Props) {
     } else {
       toast.error('Failed to delete');
     }
+    setDeleteId(null);
   };
 
   // Filter swaps by search
