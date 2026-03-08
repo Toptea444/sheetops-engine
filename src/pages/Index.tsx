@@ -410,9 +410,9 @@ const Index = () => {
       });
       if (error) throw error;
       setForgotPinSubmitted(true);
-      toast.success('PIN reset request sent! Please contact your admin to approve.');
     } catch (err) {
-      toast.error('Failed to submit request. Please try again.');
+      // Show error inline — don't use toast since it appears behind the modal
+      setForgotPinSubmitted(false);
     }
   }, []);
 
