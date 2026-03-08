@@ -269,6 +269,7 @@ function TransfersSection({ adminSecret }: Props) {
   const [creating, setCreating] = useState(false);
   const [fetchingEarnings, setFetchingEarnings] = useState(false);
   const [earningsFetched, setEarningsFetched] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Per-sheet fetched totals (editable)
   const [sheetTotals, setSheetTotals] = useState<Record<string, number>>({});
@@ -277,6 +278,19 @@ function TransfersSection({ adminSecret }: Props) {
   const [selectedCycleIdx, setSelectedCycleIdx] = useState(0);
   const selectedCycleKey = getCycleKey(cycleOptions[selectedCycleIdx]);
   const [showCycleDropdown, setShowCycleDropdown] = useState(false);
+  const cycleDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!showCycleDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (cycleDropdownRef.current && !cycleDropdownRef.current.contains(e.target as Node)) {
+        setShowCycleDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showCycleDropdown]);
 
   // Available (non-disabled) sheets
   const availableSheets = useMemo(() => allSheets.filter(s => !s.disabled), [allSheets]);
