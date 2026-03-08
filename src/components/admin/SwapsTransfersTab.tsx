@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ArrowLeftRight, Plus, Trash2, RefreshCw, Calendar, ChevronDown,
-  ArrowRight, FileText, X, CheckIcon, AlertTriangle, Check, Loader2,
+  ArrowRight, FileText, X, CheckIcon, AlertTriangle, Check, Loader2, Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,11 +44,25 @@ function SwapsSection({ adminSecret }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ worker_name: '', old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
   const [creating, setCreating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycleIdx, setSelectedCycleIdx] = useState(0);
   const selectedCycleKey = getCycleKey(cycleOptions[selectedCycleIdx]);
   const [showCycleDropdown, setShowCycleDropdown] = useState(false);
+  const cycleDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!showCycleDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (cycleDropdownRef.current && !cycleDropdownRef.current.contains(e.target as Node)) {
+        setShowCycleDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showCycleDropdown]);
 
   const load = useCallback(async () => {
     const res = await adminRequest(adminSecret, 'get_swaps', { cycle_key: selectedCycleKey });
@@ -88,6 +102,17 @@ function SwapsSection({ adminSecret }: Props) {
     }
   };
 
+  // Filter swaps by search
+  const filteredSwaps = useMemo(() => {
+    if (!searchQuery.trim()) return swaps;
+    const q = searchQuery.trim().toUpperCase();
+    return swaps.filter(s =>
+      s.old_worker_id?.toUpperCase().includes(q) ||
+      s.new_worker_id?.toUpperCase().includes(q) ||
+      s.worker_name?.toUpperCase().includes(q)
+    );
+  }, [swaps, searchQuery]);
+
   return (
     <div className="space-y-4">
       {/* Info */}
@@ -104,7 +129,7 @@ function SwapsSection({ adminSecret }: Props) {
       </Card>
 
       {/* Cycle filter */}
-      <div className="relative">
+      <div className="relative" ref={cycleDropdownRef}>
         <Button variant="outline" size="sm" className="w-full justify-between text-xs"
           onClick={() => setShowCycleDropdown(!showCycleDropdown)}>
           <div className="flex items-center gap-1.5">
@@ -144,7 +169,7 @@ function SwapsSection({ adminSecret }: Props) {
           <CardContent className="px-4 pb-4 space-y-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Worker Name</Label>
-              <Input placeholder="e.g. John Doe" value={form.worker_name}
+              <Input placeholder="e.g. Adelaja" value={form.worker_name}
                 onChange={e => setForm({ ...form, worker_name: e.target.value })} className="text-sm h-9" />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -162,7 +187,7 @@ function SwapsSection({ adminSecret }: Props) {
             <div className="space-y-1.5">
               <Label className="text-xs">Effective Date (swap happened on this date)</Label>
               <Input type="date" value={form.effective_date}
-                onChange={e => setForm({ ...form, effective_date: e.target.value })} className="text-sm h-9" />
+                onChange={e => setForm({ ...form, effective_date: e.target.value })} className="text-sm h-9 w-full [&::-webkit-calendar-picker-indicator]:opacity-50" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Notes (optional)</Label>
@@ -177,12 +202,25 @@ function SwapsSection({ adminSecret }: Props) {
         </Card>
       )}
 
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          placeholder="Search by ID – e.g. NGDS2002"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="text-xs h-8 pl-8 font-mono"
+        />
+      </div>
+
       {/* Swaps list */}
       <ScrollArea className="h-[350px]">
         <div className="space-y-2">
-          {swaps.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No ID swaps recorded for this cycle</p>
-          ) : swaps.map(s => (
+          {filteredSwaps.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              {searchQuery.trim() ? 'No swaps found for this search' : 'No ID swaps recorded for this cycle'}
+            </p>
+          ) : filteredSwaps.map(s => (
             <Card key={s.id} className="p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1.5 min-w-0">
@@ -231,6 +269,7 @@ function TransfersSection({ adminSecret }: Props) {
   const [creating, setCreating] = useState(false);
   const [fetchingEarnings, setFetchingEarnings] = useState(false);
   const [earningsFetched, setEarningsFetched] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Per-sheet fetched totals (editable)
   const [sheetTotals, setSheetTotals] = useState<Record<string, number>>({});
@@ -239,6 +278,19 @@ function TransfersSection({ adminSecret }: Props) {
   const [selectedCycleIdx, setSelectedCycleIdx] = useState(0);
   const selectedCycleKey = getCycleKey(cycleOptions[selectedCycleIdx]);
   const [showCycleDropdown, setShowCycleDropdown] = useState(false);
+  const cycleDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!showCycleDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (cycleDropdownRef.current && !cycleDropdownRef.current.contains(e.target as Node)) {
+        setShowCycleDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showCycleDropdown]);
 
   // Available (non-disabled) sheets
   const availableSheets = useMemo(() => allSheets.filter(s => !s.disabled), [allSheets]);
@@ -269,7 +321,7 @@ function TransfersSection({ adminSecret }: Props) {
     const validDates = transferDates.filter(d => d);
     if (validDates.length === 0) return '';
     const dateStr = validDates.map(d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })).join(', ');
-    return `${fullTargetId} covered for ${fullSourceId} on ${dateStr}. Earnings transferred accordingly.`;
+    return `${fullTargetId} worked for ${fullSourceId} on ${dateStr}. Earnings transferred accordingly.`;
   }, [sourceId, targetId, transferDates, fullSourceId, fullTargetId]);
 
   // Update reason when inputs change
@@ -418,7 +470,7 @@ function TransfersSection({ adminSecret }: Props) {
       </Card>
 
       {/* Cycle filter */}
-      <div className="relative">
+      <div className="relative" ref={cycleDropdownRef}>
         <Button variant="outline" size="sm" className="w-full justify-between text-xs"
           onClick={() => setShowCycleDropdown(!showCycleDropdown)}>
           <div className="flex items-center gap-1.5">
@@ -490,7 +542,7 @@ function TransfersSection({ adminSecret }: Props) {
                 {transferDates.map((d, idx) => (
                   <div key={idx} className="flex gap-2">
                     <Input type="date" value={d} onChange={e => updateDate(idx, e.target.value)}
-                      className="text-sm h-9 flex-1" />
+                      className="text-sm h-9 flex-1 min-w-0 [&::-webkit-calendar-picker-indicator]:opacity-50" />
                     {transferDates.length > 1 && (
                       <Button variant="ghost" size="sm" className="h-9 px-2 text-destructive hover:text-destructive"
                         onClick={() => removeDate(idx)}>
@@ -570,37 +622,59 @@ function TransfersSection({ adminSecret }: Props) {
         </Card>
       )}
 
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          placeholder="Search by ID – e.g. NGDS2002"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="text-xs h-8 pl-8 font-mono"
+        />
+      </div>
+
       {/* Transfers list */}
       <ScrollArea className="h-[350px]">
         <div className="space-y-2">
-          {transfers.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No day transfers recorded for this cycle</p>
-          ) : transfers.map(t => (
-            <Card key={t.id} className="p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="space-y-1.5 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <Badge variant="outline" className="text-[10px] font-mono text-red-600 dark:text-red-400 border-red-300">{t.source_worker_id}</Badge>
-                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                    <Badge variant="outline" className="text-[10px] font-mono text-green-600 dark:text-green-400 border-green-300">{t.target_worker_id}</Badge>
+          {(() => {
+            const filtered = searchQuery.trim()
+              ? transfers.filter(t => {
+                  const q = searchQuery.trim().toUpperCase();
+                  return t.source_worker_id?.toUpperCase().includes(q) || t.target_worker_id?.toUpperCase().includes(q);
+                })
+              : transfers;
+            if (filtered.length === 0) return (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {searchQuery.trim() ? 'No transfers found for this search' : 'No day transfers recorded for this cycle'}
+              </p>
+            );
+            return filtered.map(t => (
+              <Card key={t.id} className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="outline" className="text-[10px] font-mono text-red-600 dark:text-red-400 border-red-300">{t.source_worker_id}</Badge>
+                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                      <Badge variant="outline" className="text-[10px] font-mono text-green-600 dark:text-green-400 border-green-300">{t.target_worker_id}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="secondary" className="text-[10px]">₦{Number(t.amount).toLocaleString()}</Badge>
+                      <span className="text-[10px] text-muted-foreground">{t.sheet_name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />Date: {new Date(t.transfer_date).toLocaleDateString()}</span>
+                      <span>Recorded: {new Date(t.created_at).toLocaleString()}</span>
+                    </div>
+                    {t.reason && <p className="text-[11px] text-muted-foreground italic">{t.reason}</p>}
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="secondary" className="text-[10px]">₦{Number(t.amount).toLocaleString()}</Badge>
-                    <span className="text-[10px] text-muted-foreground">{t.sheet_name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />Date: {new Date(t.transfer_date).toLocaleDateString()}</span>
-                    <span>Recorded: {new Date(t.created_at).toLocaleString()}</span>
-                  </div>
-                  {t.reason && <p className="text-[11px] text-muted-foreground italic">{t.reason}</p>}
+                  <Button variant="ghost" size="sm" className="h-7 text-destructive hover:text-destructive shrink-0"
+                    onClick={() => handleDelete(t.id)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
-                <Button variant="ghost" size="sm" className="h-7 text-destructive hover:text-destructive shrink-0"
-                  onClick={() => handleDelete(t.id)}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ));
+          })()}
         </div>
       </ScrollArea>
 
