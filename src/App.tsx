@@ -8,6 +8,7 @@ import { RestrictedRoute } from "@/components/RestrictedRoute";
 import Index from "./pages/Index";
 import TL from "./pages/TL";
 import AdminPinReset from "./pages/AdminPinReset";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<RestrictedRoute><Index /></RestrictedRoute>} />
           <Route path="/tl" element={<RestrictedRoute><TL /></RestrictedRoute>} />
+          <Route path="/install" element={<Install />} />
           <Route path="/admin/pin-reset" element={<AdminPinReset />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<RestrictedRoute><NotFound /></RestrictedRoute>} />
