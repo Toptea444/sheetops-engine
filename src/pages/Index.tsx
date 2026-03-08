@@ -767,10 +767,23 @@ const Index = () => {
               </div>
             </div>
 
+            {/* Earnings Adjustments Panel - Show when there are adjustments */}
+            {adjustmentNotes.length > 0 && (
+              <div className="mb-8">
+                <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+                  <AdjustmentsPanel
+                    notes={adjustmentNotes}
+                    netAdjustment={netAdjustment}
+                    isLoading={adjustmentsLoading}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
             <div className="mb-8">
               <SheetBreakdownCards
-                results={results}
+                results={adjustedResults}
                 sheetNames={selectedSheets}
                 cycle={selectedCycle}
                 isLoading={isLoading}
@@ -782,7 +795,7 @@ const Index = () => {
             <div className="mb-8">
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
                 <WeeklyBreakdown 
-                  results={results} 
+                  results={adjustedResults} 
                   cycle={selectedCycle}
                   isLoading={isLoading}
                   displayMode={earningsDisplay}
@@ -794,7 +807,7 @@ const Index = () => {
             <div className="mb-8">
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto">
                 <DailyEarningsTable
-                  results={results}
+                  results={adjustedResults}
                   sheetNames={selectedSheets}
                   cycle={selectedCycle}
                   isLoading={isLoading}
@@ -820,7 +833,7 @@ const Index = () => {
               {/* Goals Panel */}
               <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
                 <GoalsPanel
-                  results={results}
+                  results={adjustedResults}
                   cycle={selectedCycle}
                   cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
                   onUpdateCycleTarget={setCycleTarget}
@@ -840,7 +853,7 @@ const Index = () => {
               {/* Earnings Projection */}
               <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
                 <EarningsProjection
-                  results={results}
+                  results={adjustedResults}
                   cycle={selectedCycle}
                   cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
                   isLoading={isLoading}
