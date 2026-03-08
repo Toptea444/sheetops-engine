@@ -97,6 +97,7 @@ const Index = () => {
       setResults([]);
       setDataError(null);
       setShowPinGate(false);
+      setForceLoggedOut(true);
       setShowWelcome(true);
     };
 
