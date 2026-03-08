@@ -338,8 +338,8 @@ function TransfersSection({ adminSecret }: Props) {
     for (const date of validDates) {
       for (const sheet of selectedSheets) {
         const res = await adminRequest(adminSecret, 'create_transfer', {
-          source_worker_id: `NGDS${sourceId.trim()}`,
-          target_worker_id: `NGDS${targetId.trim()}`,
+          source_worker_id: `GHAS${sourceId.trim()}`,
+          target_worker_id: `GHAS${targetId.trim()}`,
           transfer_date: date,
           sheet_name: sheet,
           amount: Number(amount),
