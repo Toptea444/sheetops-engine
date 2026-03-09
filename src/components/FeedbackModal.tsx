@@ -7,9 +7,10 @@ const FEEDBACK_DISMISSED_KEY = 'performanceTracker_feedbackAnswered';
 interface FeedbackModalProps {
   userId: string | null;
   identityConfirmed: boolean;
+  autoShow?: boolean;
 }
 
-export function FeedbackModal({ userId, identityConfirmed }: FeedbackModalProps) {
+export function FeedbackModal({ userId, identityConfirmed, autoShow = true }: FeedbackModalProps) {
   const [visible, setVisible] = useState(false);
   const [phase, setPhase] = useState<'question' | 'thankyou' | 'hidden'>('question');
   const [fadeIn, setFadeIn] = useState(false);
@@ -17,6 +18,7 @@ export function FeedbackModal({ userId, identityConfirmed }: FeedbackModalProps)
 
   // Check if user already answered
   useEffect(() => {
+    if (!autoShow) return;
     if (!userId || !identityConfirmed) return;
 
     const alreadyAnswered = localStorage.getItem(FEEDBACK_DISMISSED_KEY);
@@ -31,7 +33,7 @@ export function FeedbackModal({ userId, identityConfirmed }: FeedbackModalProps)
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [userId, identityConfirmed]);
+  }, [userId, identityConfirmed, autoShow]);
 
   const handleAnswer = useCallback(async (answer: 'yes' | 'no') => {
     if (submitting || !userId) return;

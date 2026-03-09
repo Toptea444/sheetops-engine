@@ -20,7 +20,7 @@ import { LeaderboardWelcome } from '@/components/dashboard/LeaderboardWelcome';
 import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
 import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { FeedbackModal } from '@/components/FeedbackModal';
-import { DownloadAppModal, shouldShowDownloadBanner } from '@/components/DownloadAppModal';
+import { DownloadAppModal } from '@/components/DownloadAppModal';
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
@@ -209,7 +209,7 @@ const Index = () => {
   }, [identityLoading, hasIdentity, isInitializing, pinVerifiedThisSession]);
 
   // Download app banner
-  const [showDownloadBanner, setShowDownloadBanner] = useState(() => shouldShowDownloadBanner());
+  const showDownloadBanner = true;
   const [downloadModalRequestId, setDownloadModalRequestId] = useState(0);
 
 
@@ -735,14 +735,12 @@ const Index = () => {
     <div className="min-h-screen bg-background flex flex-col relative">
 
       {/* Feedback Modal */}
-      <FeedbackModal userId={userId} identityConfirmed={identityConfirmed} />
+      <FeedbackModal userId={userId} identityConfirmed={identityConfirmed} autoShow={false} />
 
       {/* Download App Modal */}
       <DownloadAppModal
-        userId={userId}
         identityConfirmed={identityConfirmed}
         openRequestId={downloadModalRequestId}
-        onShowBanner={() => setShowDownloadBanner(true)}
       />
 
       {/* Admin Alerts Display */}
