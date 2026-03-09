@@ -1540,14 +1540,14 @@ export default function AdminPinReset() {
         <Tabs defaultValue="workers" className="space-y-4" onValueChange={(val) => {
           if (dots[val]) markViewed(val);
         }}>
-          <TabsList className="grid w-full h-9 gap-0.5" style={{ gridTemplateColumns: 'repeat(9, 1fr)' }}>
+          <TabsList className="grid w-full h-9 gap-0.5" style={{ gridTemplateColumns: 'repeat(12, 1fr)' }}>
             <TabsTrigger value="workers" className="text-xs gap-0.5 px-0.5">
               <Users className="h-3 w-3" />
               <span className="hidden sm:inline">Workers</span>
             </TabsTrigger>
             <TabsTrigger value="pin-requests" className="text-xs gap-0.5 px-0.5 relative">
               <KeyRound className="h-3 w-3" />
-              <span className="hidden sm:inline">PIN Reqs</span>
+              <span className="hidden sm:inline">PINs</span>
               {dots['pin-requests'] && (
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
               )}
@@ -1556,9 +1556,17 @@ export default function AdminPinReset() {
               <TrendingUp className="h-3 w-3" />
               <span className="hidden sm:inline">Earnings</span>
             </TabsTrigger>
+            <TabsTrigger value="reports" className="text-xs gap-0.5 px-0.5">
+              <ClipboardList className="h-3 w-3" />
+              <span className="hidden sm:inline">Reports</span>
+            </TabsTrigger>
             <TabsTrigger value="swaps" className="text-xs gap-0.5 px-0.5">
               <ArrowLeftRight className="h-3 w-3" />
               <span className="hidden sm:inline">Swaps</span>
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="text-xs gap-0.5 px-0.5">
+              <StickyNote className="h-3 w-3" />
+              <span className="hidden sm:inline">Notes</span>
             </TabsTrigger>
             <TabsTrigger value="cache" className="text-xs gap-0.5 px-0.5">
               <Database className="h-3 w-3" />
@@ -1570,6 +1578,10 @@ export default function AdminPinReset() {
               {dots['activity'] && (
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
               )}
+            </TabsTrigger>
+            <TabsTrigger value="audit" className="text-xs gap-0.5 px-0.5">
+              <FileText className="h-3 w-3" />
+              <span className="hidden sm:inline">Audit</span>
             </TabsTrigger>
             <TabsTrigger value="feedback" className="text-xs gap-0.5 px-0.5 relative">
               <MessageSquare className="h-3 w-3" />
