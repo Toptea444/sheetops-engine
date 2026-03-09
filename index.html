@@ -9,6 +9,29 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Bonus Calc" />
     <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
+    <script>
+      (function () {
+        var adminRoute =
+          location.pathname.startsWith('/tl') ||
+          location.pathname.startsWith('/admin');
+        var manifestPath = adminRoute
+          ? '/manifest-admin.webmanifest'
+          : '/manifest.webmanifest';
+
+        var manifestLink = document.querySelector('link[rel="manifest"]');
+        if (!manifestLink) {
+          manifestLink = document.createElement('link');
+          manifestLink.setAttribute('rel', 'manifest');
+          document.head.appendChild(manifestLink);
+        }
+        manifestLink.setAttribute('href', manifestPath);
+
+        var appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        if (appleTitle) {
+          appleTitle.setAttribute('content', adminRoute ? 'Bonus Admin' : 'Bonus Calc');
+        }
+      })();
+    </script>
     <title>Bonus Calculator</title>
     <meta name="description" content="Bonus Calculator — compute bonus amounts quickly from base salary and bonus percentage." />
     <meta name="author" content="Toptea444" />
