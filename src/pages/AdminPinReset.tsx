@@ -1540,7 +1540,7 @@ export default function AdminPinReset() {
         <Tabs defaultValue="workers" className="space-y-4" onValueChange={(val) => {
           if (dots[val]) markViewed(val);
         }}>
-          <TabsList className="grid w-full h-9 gap-0.5" style={{ gridTemplateColumns: 'repeat(12, 1fr)' }}>
+          <TabsList className="flex w-full h-9 gap-0.5 overflow-x-auto overflow-y-hidden scrollbar-none">
             <TabsTrigger value="workers" className="text-xs gap-0.5 px-0.5">
               <Users className="h-3 w-3" />
               <span className="hidden sm:inline">Workers</span>
