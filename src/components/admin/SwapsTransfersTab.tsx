@@ -46,7 +46,9 @@ function SwapsSection({ adminSecret }: Props) {
   const { adminRequest, isLoading } = useAdminData();
   const [swaps, setSwaps] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [showBulkForm, setShowBulkForm] = useState(false);
   const [form, setForm] = useState({ old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
+  const [bulkRows, setBulkRows] = useState([{ old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' }]);
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
