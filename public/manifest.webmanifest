@@ -1,14 +1,14 @@
 {
-  "id": "/admin/pin-reset",
-  "name": "Bonus Calculator Admin",
-  "short_name": "Bonus Admin",
-  "description": "Manage team leader dashboards, reports, and admin tools.",
+  "id": "/",
+  "name": "Bonus Calculator",
+  "short_name": "Bonus Calc",
+  "description": "Track your daily earnings and performance bonuses",
   "theme_color": "#09090b",
   "background_color": "#09090b",
   "display": "standalone",
   "orientation": "portrait",
-  "start_url": "/admin/pin-reset",
-  "scope": "/admin/",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "pwa-icon-192.png",
