@@ -122,7 +122,7 @@ function SwapsSection({ adminSecret }: Props) {
     setCreating(false);
   };
 
-
+  const handleDelete = async (id: string) => {
     const res = await adminRequest(adminSecret, 'delete_swap', { swap_id: id });
     if (res?.success) {
       toast.success('Swap deleted');
