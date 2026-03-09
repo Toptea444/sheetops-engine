@@ -2,18 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Keys for localStorage
-const APP_MODAL_SHOWN_KEY = 'performanceTracker_appModalShown';
-const APP_MODAL_DOWNLOADED_KEY = 'performanceTracker_appModalDownloaded'; // user clicked download in modal
-const APP_MODAL_DISMISSED_KEY = 'performanceTracker_appModalDismissed'; // user clicked "later" in modal
-const APP_BANNER_CLICKED_AT_KEY = 'performanceTracker_appBannerClickedAt'; // timestamp when banner was clicked
-
-const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
 interface DownloadAppModalProps {
-  userId: string | null;
   identityConfirmed: boolean;
-  onShowBanner: (source: 'downloaded' | 'dismissed') => void;
   openRequestId?: number;
 }
 
@@ -78,33 +68,13 @@ function ApkIcon({ className }: { className?: string }) {
 }
 
 export function DownloadAppModal({
-  userId,
   identityConfirmed,
-  onShowBanner,
   openRequestId,
 }: DownloadAppModalProps) {
   const [visible, setVisible] = useState(false);
   const [fadeIn, setFadeIn] = useState(false);
 
   const [openedFromBanner, setOpenedFromBanner] = useState(false);
-
-  useEffect(() => {
-    if (!userId || !identityConfirmed) return;
-
-    // Don't show modal again if it was already shown (either downloaded or dismissed)
-    const alreadyShown = localStorage.getItem(APP_MODAL_SHOWN_KEY);
-    if (alreadyShown) return;
-
-    const timer = setTimeout(() => {
-      setVisible(true);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setFadeIn(true));
-      });
-    }, 2500);
-
-    return () => clearTimeout(timer);
-  }, [userId, identityConfirmed]);
-
 
   useEffect(() => {
     if (!openRequestId || !identityConfirmed) return;
@@ -120,15 +90,9 @@ export function DownloadAppModal({
     setFadeIn(false);
     setTimeout(() => {
       setVisible(false);
-      localStorage.setItem(APP_MODAL_SHOWN_KEY, 'true');
-      localStorage.setItem(APP_MODAL_DISMISSED_KEY, 'true');
-      if (openedFromBanner) {
-        localStorage.setItem(APP_BANNER_CLICKED_AT_KEY, String(Date.now()));
-      }
       setOpenedFromBanner(false);
-      onShowBanner('dismissed');
     }, 350);
-  }, [onShowBanner, openedFromBanner]);
+  }, [openedFromBanner]);
 
   const handleDownload = useCallback(() => {
     const link = document.createElement('a');
@@ -140,16 +104,12 @@ export function DownloadAppModal({
 
     toast('Download starting now', { duration: 3000 });
 
-    localStorage.setItem(APP_MODAL_SHOWN_KEY, 'true');
-    localStorage.setItem(APP_MODAL_DOWNLOADED_KEY, 'true');
-
     setFadeIn(false);
     setTimeout(() => {
       setVisible(false);
       setOpenedFromBanner(false);
-      onShowBanner('downloaded');
     }, 350);
-  }, [onShowBanner]);
+  }, []);
 
   if (!visible) return null;
 
@@ -222,32 +182,3 @@ export function DownloadAppModal({
     </div>
   );
 }
-
-/** Determine if the download banner should be visible based on localStorage state */
-export function shouldShowDownloadBanner(): boolean {
-  const modalShown = localStorage.getItem(APP_MODAL_SHOWN_KEY);
-  if (!modalShown) return false; // modal hasn't been shown yet
-
-  const downloadedFromModal = localStorage.getItem(APP_MODAL_DOWNLOADED_KEY);
-  const dismissedFromModal = localStorage.getItem(APP_MODAL_DISMISSED_KEY);
-
-  // Case 1: User downloaded from modal -> always show banner
-  if (downloadedFromModal) return true;
-
-  // Case 2: User dismissed modal -> show banner, but hide for 1 week after clicking banner
-  if (dismissedFromModal) {
-    const bannerClickedAt = localStorage.getItem(APP_BANNER_CLICKED_AT_KEY);
-    if (bannerClickedAt) {
-      const elapsed = Date.now() - Number(bannerClickedAt);
-      if (elapsed < ONE_WEEK_MS) return false; // hidden for 1 week
-      // After 1 week, show again
-      localStorage.removeItem(APP_BANNER_CLICKED_AT_KEY);
-      return true;
-    }
-    return true;
-  }
-
-  return false;
-}
-
-export { APP_BANNER_CLICKED_AT_KEY };
