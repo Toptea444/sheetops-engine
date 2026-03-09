@@ -100,7 +100,29 @@ function SwapsSection({ adminSecret }: Props) {
     setCreating(false);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleBulkCreate = async () => {
+    const validRows = bulkRows.filter(r => r.old_worker_id.trim() && r.new_worker_id.trim() && r.effective_date);
+    if (validRows.length === 0) {
+      toast.error('At least one complete swap row is required');
+      return;
+    }
+    setCreating(true);
+    const res = await adminRequest(adminSecret, 'bulk_create_swaps', {
+      swaps: validRows,
+      cycle_key: selectedCycleKey,
+    });
+    if (res?.created_count > 0) {
+      toast.success(`${res.created_count} swap(s) created${res.error_count ? `, ${res.error_count} failed` : ''}`);
+      setBulkRows([{ old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' }]);
+      setShowBulkForm(false);
+      load();
+    } else {
+      toast.error(res?.errors?.join('; ') || 'Failed to create swaps');
+    }
+    setCreating(false);
+  };
+
+
     const res = await adminRequest(adminSecret, 'delete_swap', { swap_id: id });
     if (res?.success) {
       toast.success('Swap deleted');
