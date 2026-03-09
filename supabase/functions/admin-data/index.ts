@@ -7,6 +7,27 @@ const corsHeaders = {
 
 const ADMIN_SECRET = (Deno.env.get('ADMIN_PIN_RESET_SECRET') || 'default-admin-secret-change-me').trim();
 
+// ─── Audit Logger ────────────────────────────────────────────
+async function logAudit(
+  supabase: ReturnType<typeof createClient>,
+  action: string,
+  details?: Record<string, unknown>,
+  targetType?: string,
+  targetId?: string,
+) {
+  try {
+    await supabase.from('audit_logs').insert({
+      action,
+      actor: 'admin',
+      details: details || {},
+      target_type: targetType || null,
+      target_id: targetId || null,
+    });
+  } catch (e) {
+    console.error('Audit log failed:', e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -31,7 +52,6 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case 'get_workers': {
-        // Get all workers with PIN status and session info
         const { data: pins } = await supabase.from('worker_pins').select('worker_id, created_at');
         const { data: sessions } = await supabase.from('worker_sessions').select('worker_id, last_heartbeat, device_fingerprint, created_at');
         const { data: identities } = await supabase.from('confirmed_identities').select('worker_id, confirmed_at, device_fingerprint');
@@ -121,6 +141,7 @@ Deno.serve(async (req) => {
         if (cycleKey) {
           await supabase.from('cycle_sheet_cache').delete().eq('cycle_key', cycleKey);
           await supabase.from('cycle_worker_cache').delete().eq('cycle_key', cycleKey);
+          await logAudit(supabase, 'clear_cache', { cycle_key: cycleKey }, 'cache', cycleKey);
           result = { cleared: true, cycle_key: cycleKey };
         } else {
           result = { cleared: false, error: 'No cycle_key provided' };
@@ -129,7 +150,6 @@ Deno.serve(async (req) => {
       }
 
       case 'get_earnings_overview': {
-        // Filter by cycle_key if provided
         const filterCycle = params?.cycle_key;
         let query = supabase
           .from('cycle_worker_cache')
@@ -141,7 +161,6 @@ Deno.serve(async (req) => {
 
         const { data: workerCache } = await query;
 
-        // Also get available cycles for the dropdown
         const { data: allCycles } = await supabase
           .from('cycle_worker_cache')
           .select('cycle_key');
@@ -187,13 +206,11 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Get all cached earnings for this worker
         const { data: workerEarnings } = await supabase
           .from('cycle_worker_cache')
           .select('sheet_name, cycle_key, result_data, updated_at')
           .eq('worker_id', workerId);
 
-        // Get sessions (login history)
         const { data: sessions } = await supabase
           .from('worker_sessions')
           .select('created_at, last_heartbeat, device_fingerprint')
@@ -201,21 +218,18 @@ Deno.serve(async (req) => {
           .order('created_at', { ascending: false })
           .limit(50);
 
-        // Get PIN info
         const { data: pinData } = await supabase
           .from('worker_pins')
           .select('created_at')
           .eq('worker_id', workerId)
           .maybeSingle();
 
-        // Get identity confirmation
         const { data: identity } = await supabase
           .from('confirmed_identities')
           .select('confirmed_at, device_fingerprint')
           .eq('worker_id', workerId)
           .maybeSingle();
 
-        // Group earnings by cycle
         const earningsByCycle = new Map<string, { total: number; sheets: { sheet: string; amount: number }[] }>();
         
         workerEarnings?.forEach(e => {
@@ -273,6 +287,7 @@ Deno.serve(async (req) => {
         if (deleteError) {
           result = { success: false, error: 'Failed to reset PIN' };
         } else {
+          await logAudit(supabase, 'reset_pin', { worker_id: workerId.toUpperCase() }, 'worker', workerId.toUpperCase());
           result = { success: true, message: `PIN reset for ${workerId.toUpperCase()}` };
         }
         break;
@@ -306,7 +321,6 @@ Deno.serve(async (req) => {
       }
 
       case 'get_site_settings': {
-        // Read from key-value JSONB schema
         const { data: restrictedRow } = await supabase
           .from('admin_settings')
           .select('setting_value')
@@ -358,12 +372,12 @@ Deno.serve(async (req) => {
           });
         }
 
+        await logAudit(supabase, 'toggle_site_restriction', { is_restricted: isRestricted }, 'settings', 'site_restricted');
         result = { success: true, is_restricted: isRestricted };
         break;
       }
 
       case 'get_alerts': {
-        // Admin sees ALL alerts (active and inactive)
         const { data: alerts } = await supabase
           .from('admin_alerts')
           .select('*')
@@ -398,6 +412,7 @@ Deno.serve(async (req) => {
         if (error) {
           result = { success: false, error: error.message };
         } else {
+          await logAudit(supabase, 'create_alert', { title, type: type || 'info' }, 'alert', data?.id);
           result = { success: true, alert: data };
         }
         break;
@@ -419,6 +434,7 @@ Deno.serve(async (req) => {
         if (error) {
           result = { success: false, error: error.message };
         } else {
+          await logAudit(supabase, 'delete_alert', { alert_id: alertId }, 'alert', alertId);
           result = { success: true };
         }
         break;
@@ -441,6 +457,7 @@ Deno.serve(async (req) => {
         if (toggleErr) {
           result = { success: false, error: toggleErr.message };
         } else {
+          await logAudit(supabase, 'toggle_alert', { alert_id: toggleAlertId, is_active: newActive }, 'alert', toggleAlertId);
           result = { success: true };
         }
         break;
@@ -486,7 +503,7 @@ Deno.serve(async (req) => {
 
       case 'resolve_pin_reset_request': {
         const requestId = params?.request_id;
-        const action_type = params?.action_type; // 'approve' or 'deny'
+        const action_type = params?.action_type;
 
         if (!requestId || !action_type) {
           result = { success: false, error: 'Request ID and action type required' };
@@ -494,7 +511,6 @@ Deno.serve(async (req) => {
         }
 
         if (action_type === 'approve') {
-          // Get the request to find worker_id
           const { data: request } = await supabase
             .from('pin_reset_requests')
             .select('worker_id')
@@ -506,13 +522,11 @@ Deno.serve(async (req) => {
             break;
           }
 
-          // Delete the worker's PIN
           await supabase
             .from('worker_pins')
             .delete()
             .eq('worker_id', request.worker_id.toUpperCase());
 
-          // Update request status
           await supabase
             .from('pin_reset_requests')
             .update({ 
@@ -522,9 +536,9 @@ Deno.serve(async (req) => {
             })
             .eq('id', requestId);
 
+          await logAudit(supabase, 'approve_pin_reset', { worker_id: request.worker_id, request_id: requestId }, 'pin_reset_request', requestId);
           result = { success: true, message: `PIN reset approved for ${request.worker_id}` };
         } else {
-          // Deny the request
           await supabase
             .from('pin_reset_requests')
             .update({ 
@@ -534,6 +548,7 @@ Deno.serve(async (req) => {
             })
             .eq('id', requestId);
 
+          await logAudit(supabase, 'deny_pin_reset', { request_id: requestId }, 'pin_reset_request', requestId);
           result = { success: true, message: 'Request denied' };
         }
         break;
@@ -554,6 +569,7 @@ Deno.serve(async (req) => {
         if (delError) {
           result = { error: 'Failed to delete sessions' };
         } else {
+          await logAudit(supabase, 'force_logout', { worker_id: workerId.toUpperCase() }, 'worker', workerId.toUpperCase());
           result = { success: true, message: `All sessions cleared for ${workerId.toUpperCase()}` };
         }
         break;
@@ -589,11 +605,55 @@ Deno.serve(async (req) => {
         if (error) {
           result = { success: false, error: error.message };
         } else {
-          // Clear PINs for BOTH old and new worker IDs so they must re-authenticate
           await supabase.from('worker_pins').delete().eq('worker_id', oldId);
           await supabase.from('worker_pins').delete().eq('worker_id', newId);
+          await logAudit(supabase, 'create_swap', { old_worker_id: oldId, new_worker_id: newId, effective_date, cycle_key }, 'swap', data?.id);
           result = { success: true, swap: data, pins_cleared: [oldId, newId] };
         }
+        break;
+      }
+
+      case 'bulk_create_swaps': {
+        const swaps = params?.swaps as Array<{ old_worker_id: string; new_worker_id: string; effective_date: string; notes?: string }>;
+        const bulkCycleKey = params?.cycle_key;
+
+        if (!swaps || !Array.isArray(swaps) || swaps.length === 0 || !bulkCycleKey) {
+          result = { success: false, error: 'swaps array and cycle_key are required' };
+          break;
+        }
+
+        const created: any[] = [];
+        const errors: string[] = [];
+
+        for (const swap of swaps) {
+          const oldId = swap.old_worker_id?.trim().toUpperCase();
+          const newId = swap.new_worker_id?.trim().toUpperCase();
+          if (!oldId || !newId || !swap.effective_date) {
+            errors.push(`Invalid swap: ${oldId} → ${newId}`);
+            continue;
+          }
+
+          const workerName = `${oldId} → ${newId}`;
+          const { data, error } = await supabase.from('id_swaps').insert({
+            worker_name: workerName,
+            old_worker_id: oldId,
+            new_worker_id: newId,
+            effective_date: swap.effective_date,
+            cycle_key: bulkCycleKey,
+            notes: swap.notes || null,
+          }).select().maybeSingle();
+
+          if (error) {
+            errors.push(`${oldId} → ${newId}: ${error.message}`);
+          } else {
+            await supabase.from('worker_pins').delete().eq('worker_id', oldId);
+            await supabase.from('worker_pins').delete().eq('worker_id', newId);
+            created.push(data);
+            await logAudit(supabase, 'create_swap', { old_worker_id: oldId, new_worker_id: newId, effective_date: swap.effective_date, bulk: true }, 'swap', data?.id);
+          }
+        }
+
+        result = { success: true, created_count: created.length, error_count: errors.length, errors: errors.length > 0 ? errors : undefined };
         break;
       }
 
@@ -601,7 +661,12 @@ Deno.serve(async (req) => {
         const swapId = params?.swap_id;
         if (!swapId) { result = { success: false, error: 'swap_id required' }; break; }
         const { error } = await supabase.from('id_swaps').delete().eq('id', swapId);
-        result = error ? { success: false, error: error.message } : { success: true };
+        if (error) {
+          result = { success: false, error: error.message };
+        } else {
+          await logAudit(supabase, 'delete_swap', { swap_id: swapId }, 'swap', swapId);
+          result = { success: true };
+        }
         break;
       }
 
@@ -636,6 +701,7 @@ Deno.serve(async (req) => {
         if (error) {
           result = { success: false, error: error.message };
         } else {
+          await logAudit(supabase, 'create_transfer', { source: source_worker_id, target: target_worker_id, amount, transfer_date }, 'transfer', data?.id);
           result = { success: true, transfer: data };
         }
         break;
@@ -645,7 +711,164 @@ Deno.serve(async (req) => {
         const transferId = params?.transfer_id;
         if (!transferId) { result = { success: false, error: 'transfer_id required' }; break; }
         const { error } = await supabase.from('day_transfers').delete().eq('id', transferId);
-        result = error ? { success: false, error: error.message } : { success: true };
+        if (error) {
+          result = { success: false, error: error.message };
+        } else {
+          await logAudit(supabase, 'delete_transfer', { transfer_id: transferId }, 'transfer', transferId);
+          result = { success: true };
+        }
+        break;
+      }
+
+      // ─── Audit Log ────────────────────────────────────────
+      case 'get_audit_logs': {
+        const limit = params?.limit || 100;
+        const offset = params?.offset || 0;
+        const { data: logs, count } = await supabase
+          .from('audit_logs')
+          .select('*', { count: 'exact' })
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        result = { logs: logs || [], total: count || 0 };
+        break;
+      }
+
+      // ─── Cycle Report ─────────────────────────────────────
+      case 'get_cycle_report': {
+        const reportCycleKey = params?.cycle_key;
+        if (!reportCycleKey) {
+          result = { success: false, error: 'cycle_key is required' };
+          break;
+        }
+
+        const { data: workerCache } = await supabase
+          .from('cycle_worker_cache')
+          .select('worker_id, sheet_name, result_data')
+          .eq('cycle_key', reportCycleKey);
+
+        // Available cycles
+        const { data: allCycles } = await supabase
+          .from('cycle_worker_cache')
+          .select('cycle_key');
+        const uniqueCycles = [...new Set(allCycles?.map(c => c.cycle_key) || [])].sort().reverse();
+
+        const earningsByWorker = new Map<string, { total: number; sheets: Record<string, number> }>();
+        const sheetTotals = new Map<string, { total: number; workerCount: number }>();
+        let grandTotal = 0;
+
+        workerCache?.forEach(w => {
+          const data = w.result_data as any;
+          const amount = data?.totalBonus || data?.total || 0;
+          grandTotal += amount;
+
+          const entry = earningsByWorker.get(w.worker_id) || { total: 0, sheets: {} };
+          entry.total += amount;
+          entry.sheets[w.sheet_name] = (entry.sheets[w.sheet_name] || 0) + amount;
+          earningsByWorker.set(w.worker_id, entry);
+
+          const sheetEntry = sheetTotals.get(w.sheet_name) || { total: 0, workerCount: 0 };
+          sheetEntry.total += amount;
+          sheetEntry.workerCount++;
+          sheetTotals.set(w.sheet_name, sheetEntry);
+        });
+
+        const allWorkers = Array.from(earningsByWorker.entries())
+          .map(([id, val]) => ({ worker_id: id, total: val.total, sheets: val.sheets }))
+          .sort((a, b) => b.total - a.total);
+
+        const totalWorkers = allWorkers.length;
+        const avgEarning = totalWorkers > 0 ? grandTotal / totalWorkers : 0;
+
+        // Transfers & swaps for this cycle
+        const { data: transfers } = await supabase
+          .from('day_transfers')
+          .select('id')
+          .eq('cycle_key', reportCycleKey);
+        const { data: swaps } = await supabase
+          .from('id_swaps')
+          .select('id')
+          .eq('cycle_key', reportCycleKey);
+
+        result = {
+          cycle_key: reportCycleKey,
+          available_cycles: uniqueCycles,
+          grand_total: grandTotal,
+          total_workers: totalWorkers,
+          avg_earning: avgEarning,
+          top_earners: allWorkers.slice(0, 10),
+          bottom_earners: allWorkers.slice(-5).reverse(),
+          by_sheet: Array.from(sheetTotals.entries()).map(([name, val]) => ({
+            sheet: name,
+            total: val.total,
+            worker_count: val.workerCount,
+          })).sort((a, b) => b.total - a.total),
+          total_transfers: transfers?.length || 0,
+          total_swaps: swaps?.length || 0,
+        };
+        break;
+      }
+
+      // ─── Worker Notes ─────────────────────────────────────
+      case 'get_worker_notes': {
+        const noteWorkerId = params?.worker_id;
+        let notesQuery = supabase.from('worker_notes').select('*').order('created_at', { ascending: false });
+        if (noteWorkerId) {
+          notesQuery = notesQuery.eq('worker_id', noteWorkerId.toUpperCase());
+        }
+        const { data: notes } = await notesQuery.limit(200);
+        result = { notes: notes || [] };
+        break;
+      }
+
+      case 'create_worker_note': {
+        const { worker_id: nwId, note: noteText } = params || {};
+        if (!nwId || !noteText) {
+          result = { success: false, error: 'worker_id and note are required' };
+          break;
+        }
+        const { data, error } = await supabase.from('worker_notes').insert({
+          worker_id: nwId.trim().toUpperCase(),
+          note: noteText.trim(),
+          created_by: 'admin',
+        }).select().maybeSingle();
+        if (error) {
+          result = { success: false, error: error.message };
+        } else {
+          await logAudit(supabase, 'create_worker_note', { worker_id: nwId.trim().toUpperCase() }, 'worker_note', data?.id);
+          result = { success: true, note: data };
+        }
+        break;
+      }
+
+      case 'update_worker_note': {
+        const { note_id, note: updatedText } = params || {};
+        if (!note_id || !updatedText) {
+          result = { success: false, error: 'note_id and note are required' };
+          break;
+        }
+        const { error } = await supabase.from('worker_notes')
+          .update({ note: updatedText.trim(), updated_at: new Date().toISOString() })
+          .eq('id', note_id);
+        if (error) {
+          result = { success: false, error: error.message };
+        } else {
+          await logAudit(supabase, 'update_worker_note', { note_id }, 'worker_note', note_id);
+          result = { success: true };
+        }
+        break;
+      }
+
+      case 'delete_worker_note': {
+        const delNoteId = params?.note_id;
+        if (!delNoteId) { result = { success: false, error: 'note_id required' }; break; }
+        const { error } = await supabase.from('worker_notes').delete().eq('id', delNoteId);
+        if (error) {
+          result = { success: false, error: error.message };
+        } else {
+          await logAudit(supabase, 'delete_worker_note', { note_id: delNoteId }, 'worker_note', delNoteId);
+          result = { success: true };
+        }
         break;
       }
 

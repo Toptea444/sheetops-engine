@@ -77,6 +77,36 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor: string
+          created_at: string
+          details: Json | null
+          id: string
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          actor?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: []
+      }
       confirmed_identities: {
         Row: {
           confirmed_at: string
@@ -256,6 +286,33 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           status?: string
+          worker_id?: string
+        }
+        Relationships: []
+      }
+      worker_notes: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          note: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          note: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          note?: string
+          updated_at?: string
           worker_id?: string
         }
         Relationships: []

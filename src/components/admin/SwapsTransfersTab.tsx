@@ -46,7 +46,9 @@ function SwapsSection({ adminSecret }: Props) {
   const { adminRequest, isLoading } = useAdminData();
   const [swaps, setSwaps] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [showBulkForm, setShowBulkForm] = useState(false);
   const [form, setForm] = useState({ old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
+  const [bulkRows, setBulkRows] = useState([{ old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' }]);
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -98,7 +100,29 @@ function SwapsSection({ adminSecret }: Props) {
     setCreating(false);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleBulkCreate = async () => {
+    const validRows = bulkRows.filter(r => r.old_worker_id.trim() && r.new_worker_id.trim() && r.effective_date);
+    if (validRows.length === 0) {
+      toast.error('At least one complete swap row is required');
+      return;
+    }
+    setCreating(true);
+    const res = await adminRequest(adminSecret, 'bulk_create_swaps', {
+      swaps: validRows,
+      cycle_key: selectedCycleKey,
+    });
+    if (res?.created_count > 0) {
+      toast.success(`${res.created_count} swap(s) created${res.error_count ? `, ${res.error_count} failed` : ''}`);
+      setBulkRows([{ old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' }]);
+      setShowBulkForm(false);
+      load();
+    } else {
+      toast.error(res?.errors?.join('; ') || 'Failed to create swaps');
+    }
+    setCreating(false);
+  };
+
+
     const res = await adminRequest(adminSecret, 'delete_swap', { swap_id: id });
     if (res?.success) {
       toast.success('Swap deleted');
@@ -159,12 +183,17 @@ function SwapsSection({ adminSecret }: Props) {
         )}
       </div>
 
-      {/* Create form */}
-      {!showForm ? (
-        <Button onClick={() => setShowForm(true)} className="w-full">
-          <Plus className="h-4 w-4 mr-2" />Record ID Swap
-        </Button>
-      ) : (
+      {/* Create form - Single or Bulk */}
+      {!showForm && !showBulkForm ? (
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={() => setShowForm(true)} className="w-full">
+            <Plus className="h-4 w-4 mr-2" />Single Swap
+          </Button>
+          <Button onClick={() => setShowBulkForm(true)} variant="outline" className="w-full">
+            <Plus className="h-4 w-4 mr-2" />Bulk Swaps
+          </Button>
+        </div>
+      ) : showForm ? (
         <Card className="bg-muted/30">
           <CardHeader className="py-3 px-4">
             <CardTitle className="text-sm flex items-center justify-between">
@@ -199,6 +228,49 @@ function SwapsSection({ adminSecret }: Props) {
             <Button onClick={handleCreate} disabled={creating} className="w-full">
               {creating ? <RefreshCw className="h-3 w-3 mr-2 animate-spin" /> : <CheckIcon className="h-3 w-3 mr-2" />}
               Record Swap
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="bg-muted/30">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm flex items-center justify-between">
+              <span>Bulk ID Swaps</span>
+              <button onClick={() => setShowBulkForm(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            </CardTitle>
+            <CardDescription className="text-xs">Record multiple ID swaps at once for team restructuring</CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-3">
+            {bulkRows.map((row, idx) => (
+              <div key={idx} className="border rounded-lg p-3 space-y-2 relative">
+                {bulkRows.length > 1 && (
+                  <button onClick={() => setBulkRows(prev => prev.filter((_, i) => i !== idx))}
+                    className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
+                )}
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-medium">Swap #{idx + 1}</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="Old ID" value={row.old_worker_id}
+                    onChange={e => setBulkRows(prev => prev.map((r, i) => i === idx ? { ...r, old_worker_id: e.target.value.toUpperCase() } : r))}
+                    className="text-xs font-mono h-8 uppercase" />
+                  <Input placeholder="New ID" value={row.new_worker_id}
+                    onChange={e => setBulkRows(prev => prev.map((r, i) => i === idx ? { ...r, new_worker_id: e.target.value.toUpperCase() } : r))}
+                    className="text-xs font-mono h-8 uppercase" />
+                </div>
+                <Input type="date" value={row.effective_date}
+                  onChange={e => setBulkRows(prev => prev.map((r, i) => i === idx ? { ...r, effective_date: e.target.value } : r))}
+                  className="text-xs h-8 [&::-webkit-calendar-picker-indicator]:opacity-50" />
+                <Input placeholder="Notes (optional)" value={row.notes}
+                  onChange={e => setBulkRows(prev => prev.map((r, i) => i === idx ? { ...r, notes: e.target.value } : r))}
+                  className="text-xs h-8" />
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="w-full text-xs"
+              onClick={() => setBulkRows(prev => [...prev, { old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' }])}>
+              <Plus className="h-3 w-3 mr-1" />Add Another Swap
+            </Button>
+            <Button onClick={handleBulkCreate} disabled={creating} className="w-full">
+              {creating ? <RefreshCw className="h-3 w-3 mr-2 animate-spin" /> : <CheckIcon className="h-3 w-3 mr-2" />}
+              Record {bulkRows.filter(r => r.old_worker_id && r.new_worker_id && r.effective_date).length} Swap(s)
             </Button>
           </CardContent>
         </Card>
