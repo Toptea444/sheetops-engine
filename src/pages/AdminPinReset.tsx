@@ -23,6 +23,9 @@ import {
 import { useAdminData } from '@/hooks/useAdminData';
 import { useSiteRestrictionAdmin } from '@/hooks/useSiteRestriction';
 import { SwapsTransfersTab } from '@/components/admin/SwapsTransfersTab';
+import { AuditLogTab } from '@/components/admin/AuditLogTab';
+import { CycleReportTab } from '@/components/admin/CycleReportTab';
+import { WorkerNotesTab } from '@/components/admin/WorkerNotesTab';
 import { toast } from 'sonner';
 import { formatNaira } from '@/utils/currencyUtils';
 import { getCycleOptions, getCycleKey } from '@/lib/cycleUtils';
