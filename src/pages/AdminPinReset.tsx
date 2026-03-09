@@ -1540,61 +1540,61 @@ export default function AdminPinReset() {
         <Tabs defaultValue="workers" className="space-y-4" onValueChange={(val) => {
           if (dots[val]) markViewed(val);
         }}>
-          <TabsList className="grid w-full h-9 gap-0.5" style={{ gridTemplateColumns: 'repeat(12, 1fr)' }}>
-            <TabsTrigger value="workers" className="text-xs gap-0.5 px-0.5">
+          <TabsList className="flex w-full h-9 gap-0.5 overflow-x-auto overflow-y-hidden scrollbar-none">
+            <TabsTrigger value="workers" className="text-xs gap-0.5 px-2 shrink-0">
               <Users className="h-3 w-3" />
               <span className="hidden sm:inline">Workers</span>
             </TabsTrigger>
-            <TabsTrigger value="pin-requests" className="text-xs gap-0.5 px-0.5 relative">
+            <TabsTrigger value="pin-requests" className="text-xs gap-0.5 px-2 shrink-0 relative">
               <KeyRound className="h-3 w-3" />
               <span className="hidden sm:inline">PINs</span>
               {dots['pin-requests'] && (
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
               )}
             </TabsTrigger>
-            <TabsTrigger value="earnings" className="text-xs gap-0.5 px-0.5">
+            <TabsTrigger value="earnings" className="text-xs gap-0.5 px-2 shrink-0">
               <TrendingUp className="h-3 w-3" />
               <span className="hidden sm:inline">Earnings</span>
             </TabsTrigger>
-            <TabsTrigger value="reports" className="text-xs gap-0.5 px-0.5">
+            <TabsTrigger value="reports" className="text-xs gap-0.5 px-2 shrink-0">
               <ClipboardList className="h-3 w-3" />
               <span className="hidden sm:inline">Reports</span>
             </TabsTrigger>
-            <TabsTrigger value="swaps" className="text-xs gap-0.5 px-0.5">
+            <TabsTrigger value="swaps" className="text-xs gap-0.5 px-2 shrink-0">
               <ArrowLeftRight className="h-3 w-3" />
               <span className="hidden sm:inline">Swaps</span>
             </TabsTrigger>
-            <TabsTrigger value="notes" className="text-xs gap-0.5 px-0.5">
+            <TabsTrigger value="notes" className="text-xs gap-0.5 px-2 shrink-0">
               <StickyNote className="h-3 w-3" />
               <span className="hidden sm:inline">Notes</span>
             </TabsTrigger>
-            <TabsTrigger value="cache" className="text-xs gap-0.5 px-0.5">
+            <TabsTrigger value="cache" className="text-xs gap-0.5 px-2 shrink-0">
               <Database className="h-3 w-3" />
               <span className="hidden sm:inline">Cache</span>
             </TabsTrigger>
-            <TabsTrigger value="activity" className="text-xs gap-0.5 px-0.5 relative">
+            <TabsTrigger value="activity" className="text-xs gap-0.5 px-2 shrink-0 relative">
               <Activity className="h-3 w-3" />
               <span className="hidden sm:inline">Activity</span>
               {dots['activity'] && (
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
               )}
             </TabsTrigger>
-            <TabsTrigger value="audit" className="text-xs gap-0.5 px-0.5">
+            <TabsTrigger value="audit" className="text-xs gap-0.5 px-2 shrink-0">
               <FileText className="h-3 w-3" />
               <span className="hidden sm:inline">Audit</span>
             </TabsTrigger>
-            <TabsTrigger value="feedback" className="text-xs gap-0.5 px-0.5 relative">
+            <TabsTrigger value="feedback" className="text-xs gap-0.5 px-2 shrink-0 relative">
               <MessageSquare className="h-3 w-3" />
               <span className="hidden sm:inline">Feedback</span>
               {dots['feedback'] && (
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
               )}
             </TabsTrigger>
-            <TabsTrigger value="alerts" className="text-xs gap-0.5 px-0.5">
+            <TabsTrigger value="alerts" className="text-xs gap-0.5 px-2 shrink-0">
               <Bell className="h-3 w-3" />
               <span className="hidden sm:inline">Alerts</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="text-xs gap-0.5 px-0.5">
+            <TabsTrigger value="settings" className="text-xs gap-0.5 px-2 shrink-0">
               <Settings className="h-3 w-3" />
               <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>

@@ -753,42 +753,95 @@ Deno.serve(async (req) => {
           .select('cycle_key');
         const uniqueCycles = [...new Set(allCycles?.map(c => c.cycle_key) || [])].sort().reverse();
 
-        const earningsByWorker = new Map<string, { total: number; sheets: Record<string, number> }>();
+        // Helper to normalize stage identifiers (S1, S-1, S 1 → S1)
+        function normalizeStage(stage: string): string {
+          const compact = stage.toUpperCase().replace(/[\s\-_]/g, '');
+          if (compact.startsWith('STAGE')) {
+            const n = compact.replace(/^STAGE/, '');
+            if (n) return `S${n}`;
+          }
+          return compact || 'UNKNOWN';
+        }
+
+        const earningsByWorker = new Map<string, { total: number; stage: string; sheets: Record<string, number> }>();
         const sheetTotals = new Map<string, { total: number; workerCount: number }>();
+        const stageTotals = new Map<string, { total: number; workers: Map<string, number>; sheets: Map<string, number> }>();
         let grandTotal = 0;
 
         workerCache?.forEach(w => {
-          const data = w.result_data as any;
-          const amount = data?.totalBonus || data?.total || 0;
+          const d = w.result_data as any;
+          const amount = d?.totalBonus || d?.total || 0;
+          const rawStage = d?.stage || '';
+          const stage = normalizeStage(rawStage);
           grandTotal += amount;
 
-          const entry = earningsByWorker.get(w.worker_id) || { total: 0, sheets: {} };
+          // Per-worker aggregation
+          const entry = earningsByWorker.get(w.worker_id) || { total: 0, stage, sheets: {} };
           entry.total += amount;
           entry.sheets[w.sheet_name] = (entry.sheets[w.sheet_name] || 0) + amount;
+          if (!entry.stage || entry.stage === 'UNKNOWN') entry.stage = stage;
           earningsByWorker.set(w.worker_id, entry);
 
+          // Per-sheet aggregation
           const sheetEntry = sheetTotals.get(w.sheet_name) || { total: 0, workerCount: 0 };
           sheetEntry.total += amount;
           sheetEntry.workerCount++;
           sheetTotals.set(w.sheet_name, sheetEntry);
+
+          // Per-stage aggregation
+          const stageEntry = stageTotals.get(stage) || { total: 0, workers: new Map(), sheets: new Map() };
+          stageEntry.total += amount;
+          stageEntry.workers.set(w.worker_id, (stageEntry.workers.get(w.worker_id) || 0) + amount);
+          stageEntry.sheets.set(w.sheet_name, (stageEntry.sheets.get(w.sheet_name) || 0) + amount);
+          stageTotals.set(stage, stageEntry);
         });
 
         const allWorkers = Array.from(earningsByWorker.entries())
-          .map(([id, val]) => ({ worker_id: id, total: val.total, sheets: val.sheets }))
+          .map(([id, val]) => ({ worker_id: id, total: val.total, stage: val.stage, sheets: val.sheets }))
           .sort((a, b) => b.total - a.total);
 
         const totalWorkers = allWorkers.length;
         const avgEarning = totalWorkers > 0 ? grandTotal / totalWorkers : 0;
 
+        // Build stage breakdown
+        const byStage = Array.from(stageTotals.entries()).map(([stage, data]) => {
+          const stageWorkers = Array.from(data.workers.entries())
+            .map(([id, total]) => ({ worker_id: id, total }))
+            .sort((a, b) => b.total - a.total);
+          const stageSheets = Array.from(data.sheets.entries())
+            .map(([sheet, total]) => ({ sheet, total }))
+            .sort((a, b) => b.total - a.total);
+          const workerCount = stageWorkers.length;
+          const avgStage = workerCount > 0 ? data.total / workerCount : 0;
+          return {
+            stage,
+            total: data.total,
+            worker_count: workerCount,
+            avg_earning: avgStage,
+            top_earners: stageWorkers.slice(0, 5),
+            bottom_earners: stageWorkers.length > 2 ? stageWorkers.slice(-3).reverse() : [],
+            by_sheet: stageSheets,
+          };
+        }).sort((a, b) => b.total - a.total);
+
         // Transfers & swaps for this cycle
         const { data: transfers } = await supabase
           .from('day_transfers')
-          .select('id')
+          .select('id, amount, source_worker_id, target_worker_id, sheet_name')
           .eq('cycle_key', reportCycleKey);
         const { data: swaps } = await supabase
           .from('id_swaps')
           .select('id')
           .eq('cycle_key', reportCycleKey);
+
+        // Per-sheet transfer totals
+        const transfersBySheet: Record<string, { count: number; total_amount: number }> = {};
+        transfers?.forEach(t => {
+          const entry = transfersBySheet[t.sheet_name] || { count: 0, total_amount: 0 };
+          entry.count++;
+          entry.total_amount += t.amount || 0;
+          transfersBySheet[t.sheet_name] = entry;
+        });
 
         result = {
           cycle_key: reportCycleKey,
@@ -797,13 +850,16 @@ Deno.serve(async (req) => {
           total_workers: totalWorkers,
           avg_earning: avgEarning,
           top_earners: allWorkers.slice(0, 10),
-          bottom_earners: allWorkers.slice(-5).reverse(),
+          bottom_earners: allWorkers.length > 3 ? allWorkers.slice(-5).reverse() : [],
           by_sheet: Array.from(sheetTotals.entries()).map(([name, val]) => ({
             sheet: name,
             total: val.total,
             worker_count: val.workerCount,
           })).sort((a, b) => b.total - a.total),
+          by_stage: byStage,
           total_transfers: transfers?.length || 0,
+          total_transfer_amount: transfers?.reduce((s, t) => s + (t.amount || 0), 0) || 0,
+          transfers_by_sheet: transfersBySheet,
           total_swaps: swaps?.length || 0,
         };
         break;
