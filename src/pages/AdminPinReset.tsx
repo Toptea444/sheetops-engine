@@ -1609,14 +1609,23 @@ export default function AdminPinReset() {
           <TabsContent value="earnings">
             <EarningsTab adminSecret={adminSecret} />
           </TabsContent>
+          <TabsContent value="reports">
+            <CycleReportTab adminSecret={adminSecret} />
+          </TabsContent>
           <TabsContent value="swaps">
             <SwapsTransfersTab adminSecret={adminSecret} />
+          </TabsContent>
+          <TabsContent value="notes">
+            <WorkerNotesTab adminSecret={adminSecret} />
           </TabsContent>
           <TabsContent value="cache">
             <CacheTab adminSecret={adminSecret} />
           </TabsContent>
           <TabsContent value="activity">
             <ActivityTab adminSecret={adminSecret} />
+          </TabsContent>
+          <TabsContent value="audit">
+            <AuditLogTab adminSecret={adminSecret} />
           </TabsContent>
           <TabsContent value="feedback">
             <FeedbackTab adminSecret={adminSecret} />
