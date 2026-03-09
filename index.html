@@ -7,15 +7,21 @@
     <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Bonus Calc" />
-    <link id="app-manifest" rel="manifest" href="/manifest.webmanifest" />
+    <meta id="apple-web-app-title" name="apple-mobile-web-app-title" content="Bonus Calc" />
+    <link id="app-manifest" rel="manifest" />
     <script>
       (function () {
         var isAdminPath = window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/tl');
-        if (!isAdminPath) return;
         var manifestLink = document.getElementById('app-manifest');
+        var appleTitle = document.getElementById('apple-web-app-title');
+        var manifestPath = isAdminPath ? '/manifest-admin.webmanifest?v=admin' : '/manifest.webmanifest?v=home';
+
         if (manifestLink) {
-          manifestLink.setAttribute('href', '/manifest-admin.webmanifest');
+          manifestLink.setAttribute('href', manifestPath);
+        }
+
+        if (isAdminPath && appleTitle) {
+          appleTitle.setAttribute('content', 'Bonus Admin');
         }
       })();
     </script>
