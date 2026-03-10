@@ -7,11 +7,11 @@ A short description of the project — add a one-line summary of what sheetops-e
 Repository: https://github.com/Toptea444/sheetops-engine
 
 ## Getting started
-y
+
 Prerequisites:
 - Node.js (recommended via nvm)
 - npm or yarn
-
+hey
 Install and run locally:
 
 # Clone the repository

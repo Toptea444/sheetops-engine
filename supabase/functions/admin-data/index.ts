@@ -253,10 +253,10 @@ Deno.serve(async (req) => {
 
           const data = e.result_data as any;
           const amount = data?.totalBonus || data?.total || 0;
-          const entry = earningsByCycle.get(effectiveCycleKey) || { total: 0, sheets: [] };
+          const entry = earningsByCycle.get(e.cycle_key) || { total: 0, sheets: [] };
           entry.total += amount;
           entry.sheets.push({ sheet: e.sheet_name, amount });
-          earningsByCycle.set(effectiveCycleKey, entry);
+          earningsByCycle.set(e.cycle_key, entry);
         });
 
         const cycleGroups = Array.from(earningsByCycle.entries()).map(([key, val]) => ({
