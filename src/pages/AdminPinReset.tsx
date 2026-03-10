@@ -125,16 +125,6 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
       .finally(() => setLoading(false));
   }, [open, workerId, adminSecret, adminRequest]);
 
-  useEffect(() => {
-    if (!data?.cycle_groups?.length) {
-      setExpandedCycle(null);
-      return;
-    }
-
-    const currentCycle = data.cycle_groups.find((cycle: any) => cycle.is_current);
-    setExpandedCycle(currentCycle?.cycle_key || null);
-  }, [data]);
-
   const formatTime = (ts: string) => {
     const d = new Date(ts);
     const now = Date.now();
@@ -146,25 +136,19 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
   };
 
   const formatCycleLabel = (key: string) => {
-    const [yearRaw, monthRaw] = key.split('-');
-    const year = Number(yearRaw);
-    const month = Number(monthRaw);
-    if (!year || !month || month < 1 || month > 12) return key;
-
-    const startDate = new Date(year, month - 1, 16);
-    const endDate = new Date(year, month, 15);
-    return `${startDate.toLocaleString('en-US', { month: 'short' })} 16 - ${endDate.toLocaleString('en-US', { month: 'short' })} 15`;
+    const [year, month] = key.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const m = parseInt(month, 10);
+    const nextMonth = m === 12 ? 1 : m + 1;
+    const nextYear = m === 12 ? parseInt(year) + 1 : parseInt(year);
+    return `${months[m - 1]} 16 - ${months[nextMonth - 1]} 15, ${m === 12 ? nextYear : year}`;
   };
 
-  const cycleGroups = data?.cycle_groups || data?.earnings_by_cycle || [];
-
   // Compute stats
-  const totalCycles = cycleGroups.length || 0;
-  const totalSheets = cycleGroups.reduce((sum: number, c: any) => sum + (c.sheets?.length || 0), 0) || 0;
+  const totalCycles = data?.earnings_by_cycle?.length || 0;
+  const totalSheets = data?.earnings_by_cycle?.reduce((sum: number, c: any) => sum + (c.sheets?.length || 0), 0) || 0;
   const avgPerCycle = totalCycles > 0 ? (data?.grand_total || 0) / totalCycles : 0;
-  const bestCycle = cycleGroups.reduce((best: any, c: any) => (!best || c.total > best.total) ? c : best, null);
-  const currentCycle = cycleGroups.find((c: any) => c.is_current);
-  const hasCurrentCycleSheets = (currentCycle?.sheets?.length || 0) > 0;
+  const bestCycle = data?.earnings_by_cycle?.reduce((best: any, c: any) => (!best || c.total > best.total) ? c : best, null);
 
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -205,9 +189,8 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
           <div className="space-y-4 pb-4">
             {/* Grand Total - Big display */}
             <div className="rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 p-4 text-center">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Current Cycle Balance</p>
-              <p className="text-3xl font-bold text-foreground">{formatNaira(data.current_cycle_total || 0)}</p>
-              <p className="text-xs text-muted-foreground mt-1">All-time: {formatNaira(data.grand_total)}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Balance</p>
+              <p className="text-3xl font-bold text-foreground">{formatNaira(data.grand_total)}</p>
               <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
                 <span>{totalCycles} cycle{totalCycles !== 1 ? 's' : ''}</span>
                 <span className="h-3 w-px bg-border" />
@@ -300,9 +283,9 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
                 <CardTitle className="text-xs flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" />Earnings Breakdown ({totalCycles} cycles)</CardTitle>
               </CardHeader>
               <CardContent className="px-3 pb-3">
-                {cycleGroups.length > 0 ? (
+                {data.earnings_by_cycle?.length > 0 ? (
                   <div className="space-y-2">
-                    {cycleGroups.map((c: any) => {
+                    {data.earnings_by_cycle.map((c: any) => {
                       const isExpanded = expandedCycle === c.cycle_key;
                       const cyclePercent = data.grand_total > 0 ? ((c.total / data.grand_total) * 100).toFixed(1) : '0';
                       return (
@@ -312,10 +295,7 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
                             className="w-full flex items-center justify-between p-2.5 hover:bg-muted/50 transition-colors"
                           >
                             <div className="flex flex-col items-start gap-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-medium">{formatCycleLabel(c.cycle_key)}</span>
-                                {c.is_current ? <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Current</Badge> : null}
-                              </div>
+                              <span className="text-xs font-medium">{formatCycleLabel(c.cycle_key)}</span>
                               <span className="text-[10px] text-muted-foreground">{c.sheets.length} sheet{c.sheets.length !== 1 ? 's' : ''} - {cyclePercent}% of total</span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -325,9 +305,6 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
                           </button>
                           {isExpanded && (
                             <div className="border-t bg-muted/20 px-3 py-2 space-y-1.5">
-                              {c.is_current && c.sheets.length === 0 ? (
-                                <p className="text-xs text-muted-foreground">No data uploaded for the current cycle yet.</p>
-                              ) : null}
                               {c.sheets.map((s: any, i: number) => (
                                 <div key={i}>
                                   <div className="flex justify-between items-center text-xs py-1">
@@ -352,9 +329,6 @@ function WorkerDetailModal({ workerId, adminSecret, open, onClose }: { workerId:
                 ) : (
                   <p className="text-xs text-muted-foreground text-center py-4">No cached earnings data</p>
                 )}
-                {cycleGroups.length > 0 && !hasCurrentCycleSheets ? (
-                  <p className="text-xs text-muted-foreground text-center pt-3">No data uploaded for the current cycle yet.</p>
-                ) : null}
               </CardContent>
             </Card>
 
