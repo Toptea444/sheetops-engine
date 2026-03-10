@@ -11,7 +11,7 @@ Repository: https://github.com/Toptea444/sheetops-engine
 Prerequisites:
 - Node.js (recommended via nvm)
 - npm or yarn
-hey
+
 Install and run locally:
 
 # Clone the repository
