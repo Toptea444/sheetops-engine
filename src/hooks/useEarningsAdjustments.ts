@@ -178,7 +178,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       t.source_worker_id === uid || t.target_worker_id === uid
     );
 
-    const adjustedResults = results.map(result => {
+    const perIdAdjustedResults = results.map(result => {
       const resultId = result.workerId.toUpperCase();
       const adjusted = { ...result };
       const resultSheet = result.sheetName || '';
@@ -286,7 +286,55 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       return adjusted;
     });
 
-    return { adjustedResults, netAdjustment };
+    // Merge per-ID results back into one result per sheet for display.
+    // This preserves swap filtering while avoiding duplicate sheet cards/tabs.
+    const mergedBySheet = new Map<string, BonusResult>();
+
+    perIdAdjustedResults.forEach(result => {
+      const sheetKey = result.sheetName || '__unknown_sheet__';
+      const existing = mergedBySheet.get(sheetKey);
+
+      if (!existing) {
+        mergedBySheet.set(sheetKey, {
+          ...result,
+          workerId: uid,
+          dailyBreakdown: result.dailyBreakdown.map(d => ({ ...d })),
+          totalBonus: result.dailyBreakdown.reduce((sum, d) => sum + d.value, 0),
+        });
+        return;
+      }
+
+      const dayMap = new Map<string, typeof existing.dailyBreakdown[number]>();
+      existing.dailyBreakdown.forEach(day => {
+        const key = day.fullDate ? String(day.fullDate) : day.date;
+        dayMap.set(key, { ...day });
+      });
+
+      result.dailyBreakdown.forEach(day => {
+        const key = day.fullDate ? String(day.fullDate) : day.date;
+        const found = dayMap.get(key);
+        if (!found) {
+          dayMap.set(key, { ...day });
+          return;
+        }
+
+        found.value += day.value;
+        if (found.bonus !== undefined || day.bonus !== undefined) found.bonus = (found.bonus ?? 0) + (day.bonus ?? 0);
+        if (found.rankingBonus !== undefined || day.rankingBonus !== undefined) found.rankingBonus = (found.rankingBonus ?? 0) + (day.rankingBonus ?? 0);
+        if (found.total !== undefined || day.total !== undefined) found.total = (found.total ?? 0) + (day.total ?? 0);
+
+        if (found.sourceWorkerId && day.sourceWorkerId && found.sourceWorkerId !== day.sourceWorkerId) {
+          found.sourceWorkerId = undefined;
+        } else if (!found.sourceWorkerId) {
+          found.sourceWorkerId = day.sourceWorkerId;
+        }
+      });
+
+      existing.dailyBreakdown = Array.from(dayMap.values()).sort((a, b) => (a.fullDate ?? 0) - (b.fullDate ?? 0));
+      existing.totalBonus = existing.dailyBreakdown.reduce((sum, d) => sum + d.value, 0);
+    });
+
+    return { adjustedResults: Array.from(mergedBySheet.values()), netAdjustment };
   }, [userId, swaps, transfers]);
 
   /**
