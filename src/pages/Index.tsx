@@ -127,6 +127,11 @@ const Index = () => {
     isLoading: adjustmentsLoading,
   } = useEarningsAdjustments(userId, selectedCycle);
 
+  const getSwapAckKey = useCallback((oldId: string, newId: string, currentId: string) => {
+    const pair = [oldId, newId].sort().join('_');
+    return `performanceTracker_swapAck_${currentId.toUpperCase()}_${pair}`;
+  }, []);
+
   // Apply adjustments to results
   const { adjustedResults, netAdjustment } = useMemo(() => {
     if (results.length === 0) return { adjustedResults: results, netAdjustment: 0 };
@@ -234,6 +239,9 @@ const Index = () => {
     const endDate = new Date();
     const currentCycleKey = getCycleKey(selectedCycle);
 
+    const idsToFetch = getWorkerIdsToFetch();
+    const effectiveIdsToFetch = idsToFetch.length > 0 ? idsToFetch : [userId.toUpperCase()];
+
     for (const sheetName of selectedSheets) {
       let data = forceRefetch ? null : sheetDataCache[sheetName];
       if (!data) {
@@ -246,19 +254,52 @@ const Index = () => {
       }
       
       if (data) {
-        const worker = searchWorker(data, userId);
+        for (const workerIdToFetch of effectiveIdsToFetch) {
+          const worker = searchWorker(data, workerIdToFetch);
           if (worker) {
             foundInAnySheet = true;
-            if (worker.userName && worker.userName !== userId) {
+            if (worker.workerId.toUpperCase() === userId.toUpperCase() && worker.userName && worker.userName !== userId) {
               setUserName(worker.userName);
             }
             const result = calculateBonus(worker, allTimeStart, endDate);
             const resultWithSheet = { ...result, sheetName: sheetName };
             newResults.push(resultWithSheet);
-            // Cache the worker result for this cycle
-            saveWorkerResult(userId, sheetName, selectedCycle, resultWithSheet);
           }
+        }
       }
+    }
+
+    // Cache one merged result per sheet for this user/cycle
+    for (const sheetName of selectedSheets) {
+      const perSheet = newResults.filter(r => r.sheetName === sheetName);
+      if (perSheet.length === 0) continue;
+
+      const dayMap = new Map<string, (typeof perSheet)[number]['dailyBreakdown'][number]>();
+      for (const result of perSheet) {
+        for (const day of result.dailyBreakdown) {
+          const key = day.fullDate ? String(day.fullDate) : day.date;
+          const existing = dayMap.get(key);
+          if (!existing) {
+            dayMap.set(key, { ...day });
+            continue;
+          }
+
+          existing.value += day.value;
+          if (existing.bonus !== undefined || day.bonus !== undefined) existing.bonus = (existing.bonus ?? 0) + (day.bonus ?? 0);
+          if (existing.rankingBonus !== undefined || day.rankingBonus !== undefined) existing.rankingBonus = (existing.rankingBonus ?? 0) + (day.rankingBonus ?? 0);
+          if (existing.total !== undefined || day.total !== undefined) existing.total = (existing.total ?? 0) + (day.total ?? 0);
+        }
+      }
+
+      const mergedDailyBreakdown = Array.from(dayMap.values()).sort((a, b) => (a.fullDate ?? 0) - (b.fullDate ?? 0));
+      const mergedResult = {
+        ...perSheet[0],
+        workerId: userId,
+        totalBonus: mergedDailyBreakdown.reduce((sum, d) => sum + d.value, 0),
+        dailyBreakdown: mergedDailyBreakdown,
+      };
+
+      saveWorkerResult(userId, sheetName, selectedCycle, mergedResult);
     }
 
     setSheetDataCache(newCache);
@@ -288,13 +329,20 @@ const Index = () => {
     if (!foundInAnySheet && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots]);
+  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch]);
 
   useEffect(() => {
     if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
       fetchUserData();
     }
   }, [userId, selectedSheets, isInitializing, identityConfirmed]);
+
+  // Re-fetch when swap context is loaded/changed so both IDs are included immediately
+  useEffect(() => {
+    if (!userId || selectedSheets.length === 0 || isInitializing || !identityConfirmed) return;
+    if (adjustmentsLoading) return;
+    fetchUserData(true);
+  }, [userId, selectedSheets, isInitializing, identityConfirmed, adjustmentsLoading, fetchUserData]);
 
   // Background polling: re-fetch data every 5 minutes when notifications are enabled
   useEffect(() => {
@@ -324,8 +372,7 @@ const Index = () => {
       if (swapRes && swapRes.length > 0) {
         const swap = swapRes[0];
         // Deterministic ack key: sorted pair so both directions produce the same key
-        const pair = [swap.old_worker_id, swap.new_worker_id].sort().join('_');
-        const ackKey = 'performanceTracker_swapAckPair_' + pair;
+        const ackKey = getSwapAckKey(swap.old_worker_id, swap.new_worker_id, uid);
         
         if (!localStorage.getItem(ackKey)) {
           const isOldSide = swap.old_worker_id === uid;
@@ -342,7 +389,7 @@ const Index = () => {
     checkSwap();
     const interval = setInterval(checkSwap, 30_000);
     return () => clearInterval(interval);
-  }, [userId, identityConfirmed, pinVerifiedThisSession]);
+  }, [userId, identityConfirmed, pinVerifiedThisSession, getSwapAckKey]);
 
   // When switching cycles, try to load cached data for past cycles
   useEffect(() => {
@@ -427,8 +474,7 @@ const Index = () => {
 
     if (swapRows && swapRows.length > 0) {
       const swap = swapRows[0];
-      const pair = [swap.old_worker_id, swap.new_worker_id].sort().join('_');
-      const ackKey = 'performanceTracker_swapAckPair_' + pair;
+      const ackKey = getSwapAckKey(swap.old_worker_id, swap.new_worker_id, newUserId.toUpperCase());
       if (!localStorage.getItem(ackKey)) {
         const isOldSide = swap.old_worker_id === newUserId.toUpperCase();
         setSwapDetected({
@@ -464,8 +510,7 @@ const Index = () => {
 
       if (swapRows && swapRows.length > 0) {
         const swap = swapRows[0];
-        const pair = [swap.old_worker_id, swap.new_worker_id].sort().join('_');
-        const ackKey = 'performanceTracker_swapAckPair_' + pair;
+        const ackKey = getSwapAckKey(swap.old_worker_id, swap.new_worker_id, uid);
         if (!localStorage.getItem(ackKey)) {
           const isOldSide = swap.old_worker_id === uid;
           setSwapDetected({
@@ -483,7 +528,7 @@ const Index = () => {
     setPinVerifiedThisSession(true);
     setShowPinGate(false);
     confirmIdentity(userId || undefined);
-  }, [confirmIdentity, userId]);
+  }, [confirmIdentity, userId, getSwapAckKey]);
 
   const handlePinGateSwitchUser = useCallback(async () => {
     if (userId) await releaseSession(userId);
@@ -513,8 +558,11 @@ const Index = () => {
     // Acknowledge the swap so the modal doesn't reappear — use sorted pair key
     // so both directions of a bidirectional swap produce the same ack
     if (swapDetected) {
-      const pair = [swapDetected.oldId, swapDetected.newId].sort().join('_');
-      localStorage.setItem('performanceTracker_swapAckPair_' + pair, 'true');
+      const ackId = (userId || '').toUpperCase();
+      if (ackId) {
+        const ackKey = getSwapAckKey(swapDetected.oldId, swapDetected.newId, ackId);
+        localStorage.setItem(ackKey, 'true');
+      }
     }
     if (userId) await releaseSession(userId);
     localStorage.removeItem(PIN_VERIFIED_KEY);
@@ -525,7 +573,7 @@ const Index = () => {
     setSwapDetected(null);
     setShowPinGate(false);
     setShowWelcome(true);
-  }, [clearIdentity, releaseSession, userId, swapDetected]);
+  }, [clearIdentity, releaseSession, userId, swapDetected, getSwapAckKey]);
 
   const handleRefresh = useCallback(async () => {
     setDataError(null);
