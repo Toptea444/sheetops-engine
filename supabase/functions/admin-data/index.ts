@@ -7,6 +7,58 @@ const corsHeaders = {
 
 const ADMIN_SECRET = (Deno.env.get('ADMIN_PIN_RESET_SECRET') || 'default-admin-secret-change-me').trim();
 
+
+const MONTH_MAP: Record<string, number> = {
+  JAN: 1,
+  FEB: 2,
+  MAR: 3,
+  APR: 4,
+  MAY: 5,
+  JUN: 6,
+  JUL: 7,
+  AUG: 8,
+  SEP: 9,
+  OCT: 10,
+  NOV: 11,
+  DEC: 12,
+};
+
+function normalizeCycleKey(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const match = String(value).trim().match(/^(\d{4})-(\d{1,2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!year || month < 1 || month > 12) return null;
+
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+function deriveCycleKeyFromSheetName(sheetName: string | null | undefined): string | null {
+  if (!sheetName) return null;
+  const upper = sheetName.toUpperCase();
+  const match = upper.match(/(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s*16(?:TH)?[^\d]*(\d{4})/);
+  if (!match) return null;
+
+  const month = MONTH_MAP[match[1]];
+  const year = Number(match[2]);
+  if (!month || !year) return null;
+
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+function getActiveCycleKey(): string {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+  const cycleDate = today.getDate() <= 15
+    ? new Date(currentYear, currentMonth - 1, 1)
+    : new Date(currentYear, currentMonth, 1);
+
+  return `${cycleDate.getFullYear()}-${String(cycleDate.getMonth() + 1).padStart(2, '0')}`;
+}
+
 // ─── Audit Logger ────────────────────────────────────────────
 async function logAudit(
   supabase: ReturnType<typeof createClient>,
@@ -230,18 +282,48 @@ Deno.serve(async (req) => {
           .eq('worker_id', workerId)
           .maybeSingle();
 
+        const activeCycleKey = getActiveCycleKey();
         const earningsByCycle = new Map<string, { total: number; sheets: { sheet: string; amount: number }[] }>();
         
         workerEarnings?.forEach(e => {
+          const normalizedSheetName = (e.sheet_name || '').toUpperCase();
+          const normalizedCycleKey = normalizeCycleKey(e.cycle_key);
+          const derivedCycleKey = deriveCycleKeyFromSheetName(e.sheet_name);
+          const effectiveCycleKey = derivedCycleKey || normalizedCycleKey;
+
+          const isLeakedFebruaryRow = normalizedSheetName.includes('FEB 16TH') && normalizedCycleKey === '2026-01';
+          if (isLeakedFebruaryRow || !effectiveCycleKey) {
+            return;
+          }
+
           const data = e.result_data as any;
           const amount = data?.totalBonus || data?.total || 0;
-          const entry = earningsByCycle.get(e.cycle_key) || { total: 0, sheets: [] };
+          const entry = earningsByCycle.get(effectiveCycleKey) || { total: 0, sheets: [] };
           entry.total += amount;
           entry.sheets.push({ sheet: e.sheet_name, amount });
-          earningsByCycle.set(e.cycle_key, entry);
+          earningsByCycle.set(effectiveCycleKey, entry);
         });
 
-        const grandTotal = Array.from(earningsByCycle.values()).reduce((sum, c) => sum + c.total, 0);
+        const cycleGroups = Array.from(earningsByCycle.entries()).map(([key, val]) => ({
+          cycle_key: key,
+          total: val.total,
+          sheets: val.sheets.sort((a, b) => b.amount - a.amount),
+          is_current: key === activeCycleKey,
+        })).sort((a, b) => b.cycle_key.localeCompare(a.cycle_key));
+
+        if (!cycleGroups.some(group => group.cycle_key === activeCycleKey)) {
+          cycleGroups.unshift({
+            cycle_key: activeCycleKey,
+            total: 0,
+            sheets: [],
+            is_current: true,
+          });
+        }
+
+        const grandTotal = cycleGroups.reduce((sum, c) => sum + c.total, 0);
+        const currentCycleTotal = cycleGroups
+          .filter(c => c.is_current)
+          .reduce((sum, c) => sum + c.total, 0);
 
         result = {
           worker_id: workerId,
@@ -249,12 +331,11 @@ Deno.serve(async (req) => {
           pin_created: pinData?.created_at || null,
           identity_confirmed: !!identity,
           identity_confirmed_at: identity?.confirmed_at || null,
+          current_cycle_key: activeCycleKey,
+          current_cycle_total: currentCycleTotal,
           grand_total: grandTotal,
-          earnings_by_cycle: Array.from(earningsByCycle.entries()).map(([key, val]) => ({
-            cycle_key: key,
-            total: val.total,
-            sheets: val.sheets.sort((a, b) => b.amount - a.amount),
-          })).sort((a, b) => b.cycle_key.localeCompare(a.cycle_key)),
+          cycle_groups: cycleGroups,
+          earnings_by_cycle: cycleGroups,
           sessions: sessions || [],
           total_sessions: sessions?.length || 0,
         };
