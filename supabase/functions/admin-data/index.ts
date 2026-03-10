@@ -7,47 +7,6 @@ const corsHeaders = {
 
 const ADMIN_SECRET = (Deno.env.get('ADMIN_PIN_RESET_SECRET') || 'default-admin-secret-change-me').trim();
 
-
-const MONTH_MAP: Record<string, number> = {
-  JAN: 1,
-  FEB: 2,
-  MAR: 3,
-  APR: 4,
-  MAY: 5,
-  JUN: 6,
-  JUL: 7,
-  AUG: 8,
-  SEP: 9,
-  OCT: 10,
-  NOV: 11,
-  DEC: 12,
-};
-
-function normalizeCycleKey(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const match = String(value).trim().match(/^(\d{4})-(\d{1,2})$/);
-  if (!match) return null;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  if (!year || month < 1 || month > 12) return null;
-
-  return `${year}-${String(month).padStart(2, '0')}`;
-}
-
-function deriveCycleKeyFromSheetName(sheetName: string | null | undefined): string | null {
-  if (!sheetName) return null;
-  const upper = sheetName.toUpperCase();
-  const match = upper.match(/(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s*16(?:TH)?[^\d]*(\d{4})/);
-  if (!match) return null;
-
-  const month = MONTH_MAP[match[1]];
-  const year = Number(match[2]);
-  if (!month || !year) return null;
-
-  return `${year}-${String(month).padStart(2, '0')}`;
-}
-
 function getActiveCycleKey(): string {
   const today = new Date();
   const currentYear = today.getFullYear();
@@ -287,12 +246,8 @@ Deno.serve(async (req) => {
         
         workerEarnings?.forEach(e => {
           const normalizedSheetName = (e.sheet_name || '').toUpperCase();
-          const normalizedCycleKey = normalizeCycleKey(e.cycle_key);
-          const derivedCycleKey = deriveCycleKeyFromSheetName(e.sheet_name);
-          const effectiveCycleKey = derivedCycleKey || normalizedCycleKey;
-
-          const isLeakedFebruaryRow = normalizedSheetName.includes('FEB 16TH') && normalizedCycleKey === '2026-01';
-          if (isLeakedFebruaryRow || !effectiveCycleKey) {
+          const isLeakedFebruaryRow = normalizedSheetName.includes('FEB 16TH') && e.cycle_key === '2026-01';
+          if (isLeakedFebruaryRow) {
             return;
           }
 
@@ -310,15 +265,6 @@ Deno.serve(async (req) => {
           sheets: val.sheets.sort((a, b) => b.amount - a.amount),
           is_current: key === activeCycleKey,
         })).sort((a, b) => b.cycle_key.localeCompare(a.cycle_key));
-
-        if (!cycleGroups.some(group => group.cycle_key === activeCycleKey)) {
-          cycleGroups.unshift({
-            cycle_key: activeCycleKey,
-            total: 0,
-            sheets: [],
-            is_current: true,
-          });
-        }
 
         const grandTotal = cycleGroups.reduce((sum, c) => sum + c.total, 0);
         const currentCycleTotal = cycleGroups
