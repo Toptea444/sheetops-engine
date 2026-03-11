@@ -26,12 +26,26 @@ import { SwapsTransfersTab } from '@/components/admin/SwapsTransfersTab';
 import { AuditLogTab } from '@/components/admin/AuditLogTab';
 import { CycleReportTab } from '@/components/admin/CycleReportTab';
 import { WorkerNotesTab } from '@/components/admin/WorkerNotesTab';
+import { ThemeSwitcher } from '@/components/dashboard/ThemeSwitcher';
+import { useTheme, type Theme, type AccentColor } from '@/hooks/useTheme';
 import { toast } from 'sonner';
 import { formatNaira } from '@/utils/currencyUtils';
 import { getCycleOptions, getCycleKey } from '@/lib/cycleUtils';
 
 // ─── Admin Auth Gate ─────────────────────────────────────────
-function AdminLogin({ onAuth }: { onAuth: (secret: string) => void }) {
+function AdminLogin({
+  onAuth,
+  theme,
+  accentColor,
+  onThemeChange,
+  onAccentChange,
+}: {
+  onAuth: (secret: string) => void;
+  theme: Theme;
+  accentColor: AccentColor;
+  onThemeChange: (theme: Theme) => void;
+  onAccentChange: (accent: AccentColor) => void;
+}) {
   const [secret, setSecret] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -45,29 +59,50 @@ function AdminLogin({ onAuth }: { onAuth: (secret: string) => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 px-4 py-6 sm:py-10">
+      <div className="mx-auto mb-8 flex w-full max-w-5xl items-center justify-between">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Dashboard
+        </Link>
+        <ThemeSwitcher
+          theme={theme}
+          accentColor={accentColor}
+          onThemeChange={onThemeChange}
+          onAccentChange={onAccentChange}
+        />
+      </div>
+
+      <Card className="mx-auto w-full max-w-md border-primary/20 shadow-lg shadow-primary/10">
+        <CardHeader className="space-y-3 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
             <Shield className="h-7 w-7 text-primary" />
           </div>
-          <CardTitle className="text-xl">Admin Access</CardTitle>
-          <CardDescription>Enter admin secret to continue</CardDescription>
+          <Badge variant="secondary" className="mx-auto w-fit">Protected Route</Badge>
+          <CardTitle className="text-2xl">Admin Access</CardTitle>
+          <CardDescription>Enter your admin secret to continue securely.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="relative">
+          <div className="relative space-y-2">
+            <Label htmlFor="admin-secret" className="text-xs uppercase tracking-wide text-muted-foreground">
+              Secret key
+            </Label>
             <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              id="admin-secret"
               type="password"
-              placeholder="Admin secret"
+              placeholder="Enter admin secret"
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && secret && !isLoading && handleLogin()}
-              className="pl-10"
+              className="h-11 pl-10"
               disabled={isLoading}
             />
           </div>
-          <Button className="w-full" disabled={!secret || isLoading} onClick={handleLogin}>
+          <Button className="h-11 w-full" disabled={!secret || isLoading} onClick={handleLogin}>
             {isLoading ? (
               <>
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -77,13 +112,6 @@ function AdminLogin({ onAuth }: { onAuth: (secret: string) => void }) {
               'Unlock'
             )}
           </Button>
-          <Link
-            to="/"
-            className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Link>
         </CardContent>
       </Card>
     </div>
@@ -1495,6 +1523,7 @@ export default function AdminPinReset() {
   const [authError, setAuthError] = useState(false);
   const { adminRequest } = useAdminData();
   const { dots, markViewed } = useTabNotifications(adminSecret);
+  const { theme, accentColor, setTheme, setAccentColor } = useTheme();
 
   const handleAuth = async (secret: string) => {
     setAuthError(false);
@@ -1508,21 +1537,38 @@ export default function AdminPinReset() {
   };
 
   if (!adminSecret) {
-    return <AdminLogin onAuth={handleAuth} />;
+    return (
+      <AdminLogin
+        onAuth={handleAuth}
+        theme={theme}
+        accentColor={accentColor}
+        onThemeChange={setTheme}
+        onAccentChange={setAccentColor}
+      />
+    );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5">
+      <header className="sticky top-0 z-50 border-b bg-background/85 backdrop-blur-md">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center">
               <Shield className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-foreground">Admin Panel</span>
+            <div>
+              <p className="font-semibold text-foreground">Admin Control Center</p>
+              <p className="text-xs text-muted-foreground">Manage workers, security, and operations</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-xs gap-1">
+            <ThemeSwitcher
+              theme={theme}
+              accentColor={accentColor}
+              onThemeChange={setTheme}
+              onAccentChange={setAccentColor}
+            />
+            <Badge variant="secondary" className="hidden text-xs gap-1 sm:flex">
               <Lock className="h-3 w-3" />
               Authenticated
             </Badge>
@@ -1536,11 +1582,13 @@ export default function AdminPinReset() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-4 max-w-2xl">
-        <Tabs defaultValue="workers" className="space-y-4" onValueChange={(val) => {
+      <main className="container mx-auto max-w-5xl px-4 py-5 sm:py-8">
+        <Tabs defaultValue="workers" className="space-y-5" onValueChange={(val) => {
           if (dots[val]) markViewed(val);
         }}>
-          <TabsList className="flex w-full h-9 gap-0.5 overflow-x-auto overflow-y-hidden scrollbar-none">
+          <Card className="border-primary/15 bg-card/80 shadow-sm">
+            <CardContent className="p-2">
+              <TabsList className="flex h-10 w-full gap-1 overflow-x-auto overflow-y-hidden bg-transparent p-0 scrollbar-none">
             <TabsTrigger value="workers" className="text-xs gap-0.5 px-2 shrink-0">
               <Users className="h-3 w-3" />
               <span className="hidden sm:inline">Workers</span>
@@ -1598,7 +1646,9 @@ export default function AdminPinReset() {
               <Settings className="h-3 w-3" />
               <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>
-          </TabsList>
+              </TabsList>
+            </CardContent>
+          </Card>
 
           <TabsContent value="workers">
             <WorkersTab adminSecret={adminSecret} />
