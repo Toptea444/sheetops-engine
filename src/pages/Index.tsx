@@ -291,30 +291,25 @@ const Index = () => {
 
     setSheetDataCache(newCache);
 
-    // Always merge with cycle cache so historical sheets that are now disabled/deleted
-    // still appear when viewing prior cycles.
-    let mergedResults = newResults;
-    if (userId) {
+    // If no live data found, try loading from cache (sheet may have been disabled)
+    if (!foundInAnySheet && userId) {
       const cachedResults = await loadWorkerResults(userId, currentCycleKey);
       if (cachedResults.length > 0) {
-        const liveBySheet = new Map(newResults.map((result) => [result.sheetName, result]));
-
-        // Keep cached entries for sheets we can no longer fetch live.
-        const missingFromLive = cachedResults.filter((cachedResult) => !liveBySheet.has(cachedResult.sheetName));
-        mergedResults = [...newResults, ...missingFromLive];
-
-        // Also load cached sheet snapshots for leaderboard/activity widgets.
+        setResults(cachedResults);
+        setIsFetchingData(false);
+        // Also load cached sheet snapshots for leaderboard etc.
         const cachedSheets = await loadAllSheetSnapshots(currentCycleKey);
         setSheetDataCache(prev => ({ ...prev, ...cachedSheets }));
+        return;
       }
     }
 
-    setResults(mergedResults);
+    setResults(newResults);
     setIsFetchingData(false);
 
     // Check for data updates (notifications)
-    if (mergedResults.length > 0) {
-      const dataHash = generateDataHash(mergedResults);
+    if (newResults.length > 0) {
+      const dataHash = generateDataHash(newResults);
       checkForUpdates(dataHash);
     }
 
@@ -327,7 +322,7 @@ const Index = () => {
     if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
       fetchUserData();
     }
-  }, [userId, selectedSheets, isInitializing, identityConfirmed, selectedCycle, fetchUserData]);
+  }, [userId, selectedSheets, isInitializing, identityConfirmed]);
 
   // Background polling: re-fetch data every 5 minutes when notifications are enabled
   useEffect(() => {
