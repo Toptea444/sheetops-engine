@@ -16,33 +16,21 @@ function normalizeStage(stage: string): string {
   return compact || 'UNKNOWN';
 }
 
-function parseStageWorkerCoverageFromSnapshots(snapshots: Array<{ sheet_name: string; sheet_data: unknown }> | null | undefined) {
+function parseStageWorkerCoverageFromSnapshots(snapshots: Array<{ sheet_name: string; sheet_data: any }> | null | undefined) {
   const workersToStage = new Map<string, string>();
   const stageToWorkers = new Map<string, Set<string>>();
-
-  const looksLikeStage = (value: string): boolean => {
-    const v = String(value || '').trim();
-    if (!v) return false;
-    return /^(?:S|T)\s*[-_]?\s*\d+$/i.test(v) || /^STAGE\s*\d+$/i.test(v);
-  };
-
-  const isHeaderLike = (value: string): boolean => {
-    const v = String(value || '').trim().toLowerCase();
-    return v.includes('date') || v.includes('bonus') || v.includes('total') || v.includes('rank');
-  };
 
   const workerIdLike = (value: string) => {
     const v = String(value || '').trim().toUpperCase();
     if (!v) return false;
-    if (v.length < 2 || v.length > 40) return false;
-    if (isHeaderLike(v)) return false;
-    return /^[A-Z0-9._-]+$/.test(v);
+    if (v.includes(' ')) return false;
+    if (v.length < 2 || v.length > 20) return false;
+    return /^[A-Z0-9-]+$/.test(v) && /\d/.test(v);
   };
 
   snapshots?.forEach((snapshot) => {
-    const maybeSheetData = snapshot?.sheet_data as { rows?: unknown } | null | undefined;
-    const rows = Array.isArray(maybeSheetData?.rows)
-      ? maybeSheetData.rows.map((r) => Array.isArray(r) ? r.map((c) => String(c ?? '')) : [])
+    const rows: string[][] = Array.isArray(snapshot?.sheet_data?.rows)
+      ? snapshot.sheet_data.rows.map((r: unknown) => Array.isArray(r) ? r.map((c: unknown) => String(c ?? '')) : [])
       : [];
     if (rows.length === 0) return;
 
@@ -55,29 +43,24 @@ function parseStageWorkerCoverageFromSnapshots(snapshots: Array<{ sheet_name: st
 
       if (stageCol < 0 || idCol < 0) {
         row.forEach((cell, idx) => {
-          const normalized = String(cell || '').trim().toLowerCase().replace(/\s+/g, ' ');
-          if (stageCol < 0 && (normalized === 'stage' || normalized === 'stages' || normalized.includes('stage '))) {
-            stageCol = idx;
-          }
-          if (idCol < 0 && (normalized === 'id' || normalized === 'ids' || normalized === 'user id' || normalized === 'worker id' || normalized.includes('worker') && normalized.includes('id') || normalized === 'userid')) {
-            idCol = idx;
-          }
+          const normalized = String(cell || '').trim().toLowerCase();
+          if (stageCol < 0 && (normalized === 'stage' || normalized === 'stages')) stageCol = idx;
+          if (idCol < 0 && (normalized === 'id' || normalized === 'ids' || normalized === 'user id' || normalized === 'worker id')) idCol = idx;
         });
       }
 
-      const stageCell = stageCol >= 0 ? String(row[stageCol] ?? '').trim() : '';
-      const idCell = idCol >= 0 ? String(row[idCol] ?? '').trim().toUpperCase() : '';
+      if (stageCol < 0 || idCol < 0) continue;
 
-      if (looksLikeStage(stageCell)) {
+      const stageCell = String(row[stageCol] ?? '').trim();
+      const idCell = String(row[idCol] ?? '').trim().toUpperCase();
+
+      if (stageCell) {
         currentStage = stageCell;
       }
 
       if (!workerIdLike(idCell)) continue;
 
-      const chosenStage = stageCell && !isHeaderLike(stageCell) ? stageCell : currentStage;
-      if (!chosenStage || !looksLikeStage(chosenStage)) continue;
-
-      const stage = normalizeStage(chosenStage);
+      const stage = normalizeStage(stageCell || currentStage);
       workersToStage.set(idCell, stage);
       const group = stageToWorkers.get(stage) || new Set<string>();
       group.add(idCell);
@@ -884,7 +867,7 @@ Deno.serve(async (req) => {
           .sort((a, b) => b.total - a.total);
 
         const totalWorkersFromEarnings = allWorkers.length;
-        const totalWorkers = sheetCoverage.totalWorkers;
+        const totalWorkers = sheetCoverage.totalWorkers || totalWorkersFromEarnings;
         const avgEarning = totalWorkersFromEarnings > 0 ? grandTotal / totalWorkersFromEarnings : 0;
 
         // Build stage breakdown
@@ -896,7 +879,7 @@ Deno.serve(async (req) => {
             .map(([sheet, total]) => ({ sheet, total }))
             .sort((a, b) => b.total - a.total);
           const workerCountFromEarnings = stageWorkers.length;
-          const workerCount = sheetCoverage.byStageCounts.get(stage) || 0;
+          const workerCount = sheetCoverage.byStageCounts.get(stage) || workerCountFromEarnings;
           const avgStage = workerCountFromEarnings > 0 ? data.total / workerCountFromEarnings : 0;
           return {
             stage,
@@ -960,8 +943,8 @@ Deno.serve(async (req) => {
           })).sort((a, b) => b.total - a.total),
           by_stage: byStage,
           stats_source: {
-            total_workers: 'cycle_sheet_cache',
-            by_stage_counts: 'cycle_sheet_cache',
+            total_workers: sheetCoverage.totalWorkers ? 'cycle_sheet_cache' : 'cycle_worker_cache',
+            by_stage_counts: sheetCoverage.totalWorkers ? 'cycle_sheet_cache' : 'cycle_worker_cache',
           },
           total_transfers: transfers?.length || 0,
           total_transfer_amount: transfers?.reduce((s, t) => s + (t.amount || 0), 0) || 0,
