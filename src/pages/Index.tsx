@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
 import { IdentityConfirmationModal } from '@/components/dashboard/IdentityConfirmationModal';
@@ -80,6 +80,7 @@ const Index = () => {
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
+  const sheetDataCacheRef = useRef<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
   const [swapDetected, setSwapDetected] = useState<{ oldId: string; newId: string; reassigned?: boolean; swapId: string } | null>(null);
@@ -249,13 +250,18 @@ const Index = () => {
     }
   }, [userId, identityConfirmed]);
 
+  useEffect(() => {
+    sheetDataCacheRef.current = sheetDataCache;
+  }, [sheetDataCache]);
+
   const fetchUserData = useCallback(async (forceRefetch = false) => {
     if (!userId || selectedSheets.length === 0 || !identityConfirmed) return;
 
     setDataError(null);
     setIsFetchingData(true);
     const newResults: BonusResult[] = [];
-    const newCache: Record<string, SheetData> = { ...sheetDataCache };
+    const existingCache = sheetDataCacheRef.current;
+    const newCache: Record<string, SheetData> = { ...existingCache };
     let foundInAnySheet = false;
 
     const allTimeStart = new Date(2020, 0, 1);
@@ -263,7 +269,7 @@ const Index = () => {
     const currentCycleKey = getCycleKey(selectedCycle);
 
     for (const sheetName of selectedSheets) {
-      let data = forceRefetch ? null : sheetDataCache[sheetName];
+      let data = forceRefetch ? null : existingCache[sheetName];
       if (!data) {
         data = await fetchSheetData(sheetName);
         if (data) {
@@ -289,40 +295,47 @@ const Index = () => {
       }
     }
 
-    setSheetDataCache(newCache);
+    if (Object.keys(newCache).length !== Object.keys(existingCache).length) {
+      setSheetDataCache(newCache);
+    }
 
-    // If no live data found, try loading from cache (sheet may have been disabled)
-    if (!foundInAnySheet && userId) {
+    // Always merge with cycle cache so historical sheets that are now disabled/deleted
+    // still appear when viewing prior cycles.
+    let mergedResults = newResults;
+    if (userId) {
       const cachedResults = await loadWorkerResults(userId, currentCycleKey);
       if (cachedResults.length > 0) {
-        setResults(cachedResults);
-        setIsFetchingData(false);
-        // Also load cached sheet snapshots for leaderboard etc.
+        const liveBySheet = new Map(newResults.map((result) => [result.sheetName, result]));
+
+        // Keep cached entries for sheets we can no longer fetch live.
+        const missingFromLive = cachedResults.filter((cachedResult) => !liveBySheet.has(cachedResult.sheetName));
+        mergedResults = [...newResults, ...missingFromLive];
+
+        // Also load cached sheet snapshots for leaderboard/activity widgets.
         const cachedSheets = await loadAllSheetSnapshots(currentCycleKey);
         setSheetDataCache(prev => ({ ...prev, ...cachedSheets }));
-        return;
       }
     }
 
-    setResults(newResults);
+    setResults(mergedResults);
     setIsFetchingData(false);
 
     // Check for data updates (notifications)
-    if (newResults.length > 0) {
-      const dataHash = generateDataHash(newResults);
+    if (mergedResults.length > 0) {
+      const dataHash = generateDataHash(mergedResults);
       checkForUpdates(dataHash);
     }
 
     if (!foundInAnySheet && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots]);
+  }, [userId, selectedSheets, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, checkForUpdates]);
 
   useEffect(() => {
     if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
       fetchUserData();
     }
-  }, [userId, selectedSheets, isInitializing, identityConfirmed]);
+  }, [userId, selectedSheets, isInitializing, identityConfirmed, selectedCycle, fetchUserData]);
 
   // Background polling: re-fetch data every 5 minutes when notifications are enabled
   useEffect(() => {
@@ -371,43 +384,6 @@ const Index = () => {
     const interval = setInterval(checkSwap, 30_000);
     return () => clearInterval(interval);
   }, [userId, identityConfirmed, pinVerifiedThisSession]);
-
-  // When switching cycles, try to load cached data for past cycles
-  useEffect(() => {
-    if (!userId || !identityConfirmed || isInitializing) return;
-
-    const cycleKey = getCycleKey(selectedCycle);
-    const currentCycleKey = getCycleKey(getCycleOptions(0)[0]);
-
-    // Only use cache fallback for past cycles
-    if (cycleKey === currentCycleKey) return;
-
-    const loadCachedCycleData = async () => {
-      const cachedResults = await loadWorkerResults(userId, cycleKey);
-      if (cachedResults.length > 0) {
-        // Merge cached results with any live results (live takes priority)
-        setResults(prev => {
-          const liveSheets = new Set(prev.map(r => r.sheetName));
-          const cachedOnly = cachedResults.filter(r => !liveSheets.has(r.sheetName));
-          return cachedOnly.length > 0 ? [...prev, ...cachedOnly] : prev;
-        });
-      }
-
-      // Load cached sheet snapshots for leaderboard
-      const cachedSheets = await loadAllSheetSnapshots(cycleKey);
-      if (Object.keys(cachedSheets).length > 0) {
-        setSheetDataCache(prev => {
-          const merged = { ...prev };
-          for (const [name, data] of Object.entries(cachedSheets)) {
-            if (!merged[name]) merged[name] = data;
-          }
-          return merged;
-        });
-      }
-    };
-
-    loadCachedCycleData();
-  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots]);
 
   // Validate ID exists in sheets (used by WelcomeModal before PIN step)
   const handleIdValidation = async (newUserId: string): Promise<{ valid: boolean; userName?: string }> => {
@@ -610,7 +586,9 @@ const Index = () => {
         if (data) newCache[sheetName] = data;
       }
       
+      if (Object.keys(newCache).length !== Object.keys(existingCache).length) {
       setSheetDataCache(newCache);
+    }
       
       const allTimeStart = new Date(2020, 0, 1);
       const endDate = new Date();
@@ -656,9 +634,6 @@ const Index = () => {
     adjustedResults.forEach((result) => {
       if (result.valueType === 'percent') return;
 
-      // Exclude sheets not currently selected
-      if (result.sheetName && !selectedSheets.includes(result.sheetName)) return;
-
       // Exclude Weekly Bonus GH and Ranking Bonus GH from totals
       if (result.sheetName && isWeeklyBonusGhSheet(result.sheetName)) return;
       if (!includeRankingBonusInTotal && result.sheetName && isRankingBonusSheet(result.sheetName)) return;
@@ -674,7 +649,7 @@ const Index = () => {
     });
 
     return { totalEarnings, daysActive: activeDays.size };
-  }, [adjustedResults, selectedCycle, selectedSheets, includeRankingBonusInTotal]);
+  }, [adjustedResults, selectedCycle, includeRankingBonusInTotal]);
 
   // Compute yesterday's earnings for the reveal animation
   const previousDayEarnings = useMemo(() => {
@@ -685,7 +660,6 @@ const Index = () => {
 
     adjustedResults.forEach((result) => {
       if (result.valueType === 'percent') return;
-      if (result.sheetName && !selectedSheets.includes(result.sheetName)) return;
       if (result.sheetName && isWeeklyBonusGhSheet(result.sheetName)) return;
       if (!includeRankingBonusInTotal && result.sheetName && isRankingBonusSheet(result.sheetName)) return;
 
@@ -700,7 +674,7 @@ const Index = () => {
     });
 
     return total;
-  }, [adjustedResults, selectedSheets, includeRankingBonusInTotal]);
+  }, [adjustedResults, includeRankingBonusInTotal]);
 
   // Get current user's stage from results
   const userStage = useMemo(() => {
