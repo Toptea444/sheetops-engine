@@ -22,6 +22,7 @@ import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
+import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
@@ -40,6 +41,7 @@ import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
+import { Settings2 } from 'lucide-react';
 
 const Index = () => {
   const { 
@@ -81,6 +83,11 @@ const Index = () => {
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
   const [swapDetected, setSwapDetected] = useState<{ oldId: string; newId: string; reassigned?: boolean; swapId: string } | null>(null);
+  const RANKING_BONUS_TOTAL_PREF_KEY = 'performanceTracker_includeRankingBonusInTotal';
+  const [includeRankingBonusInTotal, setIncludeRankingBonusInTotal] = useState(false);
+  const [rankingPreferenceSet, setRankingPreferenceSet] = useState(false);
+  const [showRankingPreferenceModal, setShowRankingPreferenceModal] = useState(false);
+  const [rankingPreferenceFromSettings, setRankingPreferenceFromSettings] = useState(false);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
@@ -168,14 +175,35 @@ const Index = () => {
            (n.includes('WEEKLY') && n.includes('BONUS') && n.includes('GH'));
   };
 
-  const isRankingBonusGhSheet = (name: string): boolean => {
+  const isRankingBonusSheet = (name: string): boolean => {
     const n = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const isRanking = n.includes('RANKINGBONUSGH') || 
-           (n.includes('RANKING') && n.includes('BONUS') && n.includes('GH'));
-    if (!isRanking) return false;
-    // Dated ranking bonus sheets (with digits after GH) should NOT be excluded
-    const hasDateSuffix = /RANKINGBONUS.*GH.*\d/.test(n) || /RANKING.*BONUS.*GH.*\d/.test(n);
-    return !hasDateSuffix;
+    return n.includes('RANKINGBONUS') || (n.includes('RANKING') && n.includes('BONUS'));
+  };
+
+  useEffect(() => {
+    const savedPreference = localStorage.getItem(RANKING_BONUS_TOTAL_PREF_KEY);
+    if (savedPreference === 'true' || savedPreference === 'false') {
+      setIncludeRankingBonusInTotal(savedPreference === 'true');
+      setRankingPreferenceSet(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (identityConfirmed && !isInitializing && !rankingPreferenceSet) {
+      setRankingPreferenceFromSettings(false);
+      setShowRankingPreferenceModal(true);
+    }
+  }, [identityConfirmed, isInitializing, rankingPreferenceSet]);
+
+  const saveRankingBonusPreference = useCallback((shouldInclude: boolean) => {
+    localStorage.setItem(RANKING_BONUS_TOTAL_PREF_KEY, shouldInclude ? 'true' : 'false');
+    setIncludeRankingBonusInTotal(shouldInclude);
+    setRankingPreferenceSet(true);
+  }, []);
+
+  const openRankingPreferenceFromSettings = () => {
+    setRankingPreferenceFromSettings(true);
+    setShowRankingPreferenceModal(true);
   };
   
   useEffect(() => {
@@ -632,7 +660,8 @@ const Index = () => {
       if (result.sheetName && !selectedSheets.includes(result.sheetName)) return;
 
       // Exclude Weekly Bonus GH and Ranking Bonus GH from totals
-      if (result.sheetName && (isWeeklyBonusGhSheet(result.sheetName) || isRankingBonusGhSheet(result.sheetName))) return;
+      if (result.sheetName && isWeeklyBonusGhSheet(result.sheetName)) return;
+      if (!includeRankingBonusInTotal && result.sheetName && isRankingBonusSheet(result.sheetName)) return;
 
       result.dailyBreakdown?.forEach((day) => {
         if (day.fullDate === undefined) return;
@@ -645,7 +674,7 @@ const Index = () => {
     });
 
     return { totalEarnings, daysActive: activeDays.size };
-  }, [adjustedResults, selectedCycle, selectedSheets]);
+  }, [adjustedResults, selectedCycle, selectedSheets, includeRankingBonusInTotal]);
 
   // Compute yesterday's earnings for the reveal animation
   const previousDayEarnings = useMemo(() => {
@@ -657,7 +686,8 @@ const Index = () => {
     adjustedResults.forEach((result) => {
       if (result.valueType === 'percent') return;
       if (result.sheetName && !selectedSheets.includes(result.sheetName)) return;
-      if (result.sheetName && (isWeeklyBonusGhSheet(result.sheetName) || isRankingBonusGhSheet(result.sheetName))) return;
+      if (result.sheetName && isWeeklyBonusGhSheet(result.sheetName)) return;
+      if (!includeRankingBonusInTotal && result.sheetName && isRankingBonusSheet(result.sheetName)) return;
 
       result.dailyBreakdown?.forEach((day) => {
         if (day.fullDate === undefined) return;
@@ -670,7 +700,7 @@ const Index = () => {
     });
 
     return total;
-  }, [adjustedResults, selectedSheets]);
+  }, [adjustedResults, selectedSheets, includeRankingBonusInTotal]);
 
   // Get current user's stage from results
   const userStage = useMemo(() => {
@@ -741,6 +771,17 @@ const Index = () => {
       <DownloadAppModal
         identityConfirmed={identityConfirmed}
         openRequestId={downloadModalRequestId}
+      />
+
+      <RankingBonusPreferenceModal
+        open={showRankingPreferenceModal}
+        isFromSettings={rankingPreferenceFromSettings}
+        currentPreference={includeRankingBonusInTotal}
+        onSavePreference={saveRankingBonusPreference}
+        onClose={() => {
+          setShowRankingPreferenceModal(false);
+          setRankingPreferenceFromSettings(false);
+        }}
       />
 
       {/* Admin Alerts Display */}
@@ -843,13 +884,21 @@ const Index = () => {
                   />
                 )}
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 flex items-center justify-end gap-2">
                 <SheetSelector
                   sheets={sheets}
                   selectedSheets={selectedSheets}
                   onSelectionChange={handleSheetSelectionChange}
                   isLoading={isLoading}
                 />
+                <button
+                  onClick={openRankingPreferenceFromSettings}
+                  className="h-10 w-10 rounded-xl border border-border bg-background/90 hover:bg-muted/60 transition-colors flex items-center justify-center"
+                  aria-label="Ranking bonus total settings"
+                  title="Ranking bonus total settings"
+                >
+                  <Settings2 className="h-4.5 w-4.5 text-muted-foreground" />
+                </button>
               </div>
             </div>
 
