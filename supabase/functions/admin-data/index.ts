@@ -825,7 +825,7 @@ Deno.serve(async (req) => {
 
         // Available cycles
         const { data: allCycles } = await supabase
-          .from('cycle_worker_cache')
+          .from('cycle_sheet_cache')
           .select('cycle_key');
         const uniqueCycles = [...new Set(allCycles?.map(c => c.cycle_key) || [])].sort().reverse();
 
