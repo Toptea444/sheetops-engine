@@ -41,7 +41,7 @@ import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
-import { Settings2 } from 'lucide-react';
+import { Settings } from 'lucide-react';
 
 const Index = () => {
   const { 
@@ -869,8 +869,8 @@ const Index = () => {
             )}
 
             {/* Top Controls Section */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-8">
-              <div className="flex items-center justify-between flex-1 min-w-0">
+            <div className="flex flex-col gap-3 mb-8">
+              <div className="flex items-center justify-between gap-3 min-w-0">
                 <CycleSelector
                   cycles={cycleOptions}
                   selectedCycle={selectedCycle}
@@ -884,7 +884,7 @@ const Index = () => {
                   />
                 )}
               </div>
-              <div className="flex-1 min-w-0 flex items-center justify-end gap-2">
+              <div className="min-w-0 flex items-center gap-2">
                 <SheetSelector
                   sheets={sheets}
                   selectedSheets={selectedSheets}
@@ -893,11 +893,11 @@ const Index = () => {
                 />
                 <button
                   onClick={openRankingPreferenceFromSettings}
-                  className="h-10 w-10 rounded-xl border border-border bg-background/90 hover:bg-muted/60 transition-colors flex items-center justify-center"
+                  className="h-8 w-8 rounded-md border border-border bg-background/90 hover:bg-muted/60 transition-colors flex items-center justify-center"
                   aria-label="Ranking bonus total settings"
                   title="Ranking bonus total settings"
                 >
-                  <Settings2 className="h-4.5 w-4.5 text-muted-foreground" />
+                  <Settings className="h-4 w-4 text-muted-foreground" />
                 </button>
               </div>
             </div>
