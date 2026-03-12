@@ -7,6 +7,76 @@ const corsHeaders = {
 
 const ADMIN_SECRET = (Deno.env.get('ADMIN_PIN_RESET_SECRET') || 'default-admin-secret-change-me').trim();
 
+function normalizeStage(stage: string): string {
+  const compact = String(stage || '').toUpperCase().replace(/[\s\-_]/g, '');
+  if (compact.startsWith('STAGE')) {
+    const n = compact.replace(/^STAGE/, '');
+    if (n) return `S${n}`;
+  }
+  return compact || 'UNKNOWN';
+}
+
+function parseStageWorkerCoverageFromSnapshots(snapshots: Array<{ sheet_name: string; sheet_data: any }> | null | undefined) {
+  const workersToStage = new Map<string, string>();
+  const stageToWorkers = new Map<string, Set<string>>();
+
+  const workerIdLike = (value: string) => {
+    const v = String(value || '').trim().toUpperCase();
+    if (!v) return false;
+    if (v.includes(' ')) return false;
+    if (v.length < 2 || v.length > 20) return false;
+    return /^[A-Z0-9-]+$/.test(v) && /\d/.test(v);
+  };
+
+  snapshots?.forEach((snapshot) => {
+    const rows: string[][] = Array.isArray(snapshot?.sheet_data?.rows)
+      ? snapshot.sheet_data.rows.map((r: unknown) => Array.isArray(r) ? r.map((c: unknown) => String(c ?? '')) : [])
+      : [];
+    if (rows.length === 0) return;
+
+    let stageCol = -1;
+    let idCol = -1;
+    let currentStage = '';
+
+    for (const row of rows) {
+      if (!Array.isArray(row) || row.length === 0) continue;
+
+      if (stageCol < 0 || idCol < 0) {
+        row.forEach((cell, idx) => {
+          const normalized = String(cell || '').trim().toLowerCase();
+          if (stageCol < 0 && (normalized === 'stage' || normalized === 'stages')) stageCol = idx;
+          if (idCol < 0 && (normalized === 'id' || normalized === 'ids' || normalized === 'user id' || normalized === 'worker id')) idCol = idx;
+        });
+      }
+
+      if (stageCol < 0 || idCol < 0) continue;
+
+      const stageCell = String(row[stageCol] ?? '').trim();
+      const idCell = String(row[idCol] ?? '').trim().toUpperCase();
+
+      if (stageCell) {
+        currentStage = stageCell;
+      }
+
+      if (!workerIdLike(idCell)) continue;
+
+      const stage = normalizeStage(stageCell || currentStage);
+      workersToStage.set(idCell, stage);
+      const group = stageToWorkers.get(stage) || new Set<string>();
+      group.add(idCell);
+      stageToWorkers.set(stage, group);
+    }
+  });
+
+  return {
+    workersToStage,
+    totalWorkers: workersToStage.size,
+    byStageCounts: new Map<string, number>(
+      Array.from(stageToWorkers.entries()).map(([stage, workers]) => [stage, workers.size])
+    ),
+  };
+}
+
 // ─── Audit Logger ────────────────────────────────────────────
 async function logAudit(
   supabase: ReturnType<typeof createClient>,
@@ -747,21 +817,17 @@ Deno.serve(async (req) => {
           .select('worker_id, sheet_name, result_data')
           .eq('cycle_key', reportCycleKey);
 
+        const { data: sheetSnapshots } = await supabase
+          .from('cycle_sheet_cache')
+          .select('sheet_name, sheet_data')
+          .eq('cycle_key', reportCycleKey);
+        const sheetCoverage = parseStageWorkerCoverageFromSnapshots(sheetSnapshots);
+
         // Available cycles
         const { data: allCycles } = await supabase
           .from('cycle_worker_cache')
           .select('cycle_key');
         const uniqueCycles = [...new Set(allCycles?.map(c => c.cycle_key) || [])].sort().reverse();
-
-        // Helper to normalize stage identifiers (S1, S-1, S 1 → S1)
-        function normalizeStage(stage: string): string {
-          const compact = stage.toUpperCase().replace(/[\s\-_]/g, '');
-          if (compact.startsWith('STAGE')) {
-            const n = compact.replace(/^STAGE/, '');
-            if (n) return `S${n}`;
-          }
-          return compact || 'UNKNOWN';
-        }
 
         const earningsByWorker = new Map<string, { total: number; stage: string; sheets: Record<string, number> }>();
         const sheetTotals = new Map<string, { total: number; workerCount: number }>();
@@ -800,8 +866,9 @@ Deno.serve(async (req) => {
           .map(([id, val]) => ({ worker_id: id, total: val.total, stage: val.stage, sheets: val.sheets }))
           .sort((a, b) => b.total - a.total);
 
-        const totalWorkers = allWorkers.length;
-        const avgEarning = totalWorkers > 0 ? grandTotal / totalWorkers : 0;
+        const totalWorkersFromEarnings = allWorkers.length;
+        const totalWorkers = sheetCoverage.totalWorkers || totalWorkersFromEarnings;
+        const avgEarning = totalWorkersFromEarnings > 0 ? grandTotal / totalWorkersFromEarnings : 0;
 
         // Build stage breakdown
         const byStage = Array.from(stageTotals.entries()).map(([stage, data]) => {
@@ -811,8 +878,9 @@ Deno.serve(async (req) => {
           const stageSheets = Array.from(data.sheets.entries())
             .map(([sheet, total]) => ({ sheet, total }))
             .sort((a, b) => b.total - a.total);
-          const workerCount = stageWorkers.length;
-          const avgStage = workerCount > 0 ? data.total / workerCount : 0;
+          const workerCountFromEarnings = stageWorkers.length;
+          const workerCount = sheetCoverage.byStageCounts.get(stage) || workerCountFromEarnings;
+          const avgStage = workerCountFromEarnings > 0 ? data.total / workerCountFromEarnings : 0;
           return {
             stage,
             total: data.total,
@@ -823,6 +891,23 @@ Deno.serve(async (req) => {
             by_sheet: stageSheets,
           };
         }).sort((a, b) => b.total - a.total);
+
+        // Include stages that may have workers but no cached earnings yet.
+        sheetCoverage.byStageCounts.forEach((workerCount, stage) => {
+          if (!byStage.some((s) => s.stage === stage)) {
+            byStage.push({
+              stage,
+              total: 0,
+              worker_count: workerCount,
+              avg_earning: 0,
+              top_earners: [],
+              bottom_earners: [],
+              by_sheet: [],
+            });
+          }
+        });
+
+        byStage.sort((a, b) => b.total - a.total);
 
         // Transfers & swaps for this cycle
         const { data: transfers } = await supabase
@@ -857,6 +942,10 @@ Deno.serve(async (req) => {
             worker_count: val.workerCount,
           })).sort((a, b) => b.total - a.total),
           by_stage: byStage,
+          stats_source: {
+            total_workers: sheetCoverage.totalWorkers ? 'cycle_sheet_cache' : 'cycle_worker_cache',
+            by_stage_counts: sheetCoverage.totalWorkers ? 'cycle_sheet_cache' : 'cycle_worker_cache',
+          },
           total_transfers: transfers?.length || 0,
           total_transfer_amount: transfers?.reduce((s, t) => s + (t.amount || 0), 0) || 0,
           transfers_by_sheet: transfersBySheet,
