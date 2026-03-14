@@ -1526,22 +1526,6 @@ export default function AdminPinReset() {
   const { dots, markViewed } = useTabNotifications(adminSecret);
   const { theme, accentColor, setTheme, setAccentColor } = useTheme();
 
-  const tabConfig = [
-    { value: 'workers', label: 'Workers', icon: Users },
-    { value: 'pin-requests', label: 'PIN Requests', icon: KeyRound, hasDot: dots['pin-requests'] },
-    { value: 'earnings', label: 'Earnings', icon: TrendingUp },
-    { value: 'reports', label: 'Reports', icon: ClipboardList },
-    { value: 'stage-totals', label: 'Stage Totals', icon: BarChart3 },
-    { value: 'swaps', label: 'Swaps & Transfers', icon: ArrowLeftRight },
-    { value: 'notes', label: 'Worker Notes', icon: StickyNote },
-    { value: 'cache', label: 'Cache', icon: Database },
-    { value: 'activity', label: 'Activity', icon: Activity, hasDot: dots.activity },
-    { value: 'audit', label: 'Audit', icon: FileText },
-    { value: 'feedback', label: 'Feedback', icon: MessageSquare, hasDot: dots.feedback },
-    { value: 'alerts', label: 'Alerts', icon: Bell },
-    { value: 'settings', label: 'Settings', icon: Settings },
-  ] as const;
-
   const handleAuth = async (secret: string) => {
     setAuthError(false);
     const res = await adminRequest(secret, 'get_workers');
@@ -1566,16 +1550,16 @@ export default function AdminPinReset() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(80%_60%_at_0%_0%,hsl(var(--primary)/0.12),transparent_70%),radial-gradient(80%_60%_at_100%_0%,hsl(var(--secondary)/0.12),transparent_70%)]">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5">
       <header className="sticky top-0 z-50 border-b bg-background/85 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/30">
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center">
               <Shield className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
               <p className="font-semibold text-foreground">Admin Control Center</p>
-              <p className="text-xs text-muted-foreground hidden sm:block">Manage workers, operations, and platform security</p>
+              <p className="text-xs text-muted-foreground">Manage workers, security, and operations</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1599,113 +1583,117 @@ export default function AdminPinReset() {
         </div>
       </header>
 
-      <main className="container mx-auto max-w-7xl px-4 py-5 sm:py-8">
-        <Tabs defaultValue="workers" className="space-y-4 sm:space-y-5" onValueChange={(val) => {
+      <main className="container mx-auto max-w-5xl px-4 py-5 sm:py-8">
+        <Tabs defaultValue="workers" className="space-y-5" onValueChange={(val) => {
           if (dots[val]) markViewed(val);
         }}>
-          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-primary/20 bg-card/75 shadow-sm">
-              <CardContent className="p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Access</p>
-                <div className="mt-2 flex items-center justify-between">
-                  <p className="text-lg font-semibold">Secure session</p>
-                  <Badge className="gap-1"><Lock className="h-3 w-3" /> Active</Badge>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-primary/20 bg-card/75 shadow-sm">
-              <CardContent className="p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Workspace</p>
-                <p className="mt-2 text-lg font-semibold">SheetOps Admin</p>
-                <p className="text-xs text-muted-foreground">Operational controls and reporting</p>
-              </CardContent>
-            </Card>
-            <Card className="border-primary/20 bg-card/75 shadow-sm">
-              <CardContent className="p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Updates</p>
-                <p className="mt-2 text-lg font-semibold">{Object.values(dots).filter(Boolean).length}</p>
-                <p className="text-xs text-muted-foreground">tabs need your attention</p>
-              </CardContent>
-            </Card>
-            <Card className="border-primary/20 bg-card/75 shadow-sm">
-              <CardContent className="p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Navigation</p>
-                <p className="mt-2 text-lg font-semibold">13 modules</p>
-                <p className="text-xs text-muted-foreground">Workers, reports, alerts, and settings</p>
-              </CardContent>
-            </Card>
-          </section>
-
-          <div className="grid gap-4 lg:grid-cols-[250px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]">
-            <Card className="hidden h-fit border-primary/15 bg-card/80 p-2 lg:block">
-              <p className="px-2 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Admin Modules</p>
-              <TabsList className="mt-2 grid h-auto w-full gap-1 bg-transparent p-0">
-                {tabConfig.map(({ value, label, icon: Icon, hasDot }) => (
-                  <TabsTrigger key={value} value={value} className="relative h-10 justify-start gap-2 rounded-lg px-3 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                    <Icon className="h-4 w-4" />
-                    <span>{label}</span>
-                    {hasDot && <span className="absolute right-2 h-2 w-2 rounded-full bg-destructive" />}
-                  </TabsTrigger>
-                ))}
+          <Card className="border-primary/15 bg-card/80 shadow-sm">
+            <CardContent className="p-2">
+              <TabsList className="flex h-10 w-full gap-1 overflow-x-auto overflow-y-hidden bg-transparent p-0 scrollbar-none">
+            <TabsTrigger value="workers" className="text-xs gap-0.5 px-2 shrink-0">
+              <Users className="h-3 w-3" />
+              <span className="hidden sm:inline">Workers</span>
+            </TabsTrigger>
+            <TabsTrigger value="pin-requests" className="text-xs gap-0.5 px-2 shrink-0 relative">
+              <KeyRound className="h-3 w-3" />
+              <span className="hidden sm:inline">PINs</span>
+              {dots['pin-requests'] && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="earnings" className="text-xs gap-0.5 px-2 shrink-0">
+              <TrendingUp className="h-3 w-3" />
+              <span className="hidden sm:inline">Earnings</span>
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="text-xs gap-0.5 px-2 shrink-0">
+              <ClipboardList className="h-3 w-3" />
+              <span className="hidden sm:inline">Reports</span>
+            </TabsTrigger>
+            <TabsTrigger value="stage-totals" className="text-xs gap-0.5 px-2 shrink-0">
+              <BarChart3 className="h-3 w-3" />
+              <span className="hidden sm:inline">Stage Totals</span>
+            </TabsTrigger>
+            <TabsTrigger value="swaps" className="text-xs gap-0.5 px-2 shrink-0">
+              <ArrowLeftRight className="h-3 w-3" />
+              <span className="hidden sm:inline">Swaps</span>
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="text-xs gap-0.5 px-2 shrink-0">
+              <StickyNote className="h-3 w-3" />
+              <span className="hidden sm:inline">Notes</span>
+            </TabsTrigger>
+            <TabsTrigger value="cache" className="text-xs gap-0.5 px-2 shrink-0">
+              <Database className="h-3 w-3" />
+              <span className="hidden sm:inline">Cache</span>
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="text-xs gap-0.5 px-2 shrink-0 relative">
+              <Activity className="h-3 w-3" />
+              <span className="hidden sm:inline">Activity</span>
+              {dots['activity'] && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="audit" className="text-xs gap-0.5 px-2 shrink-0">
+              <FileText className="h-3 w-3" />
+              <span className="hidden sm:inline">Audit</span>
+            </TabsTrigger>
+            <TabsTrigger value="feedback" className="text-xs gap-0.5 px-2 shrink-0 relative">
+              <MessageSquare className="h-3 w-3" />
+              <span className="hidden sm:inline">Feedback</span>
+              {dots['feedback'] && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="text-xs gap-0.5 px-2 shrink-0">
+              <Bell className="h-3 w-3" />
+              <span className="hidden sm:inline">Alerts</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs gap-0.5 px-2 shrink-0">
+              <Settings className="h-3 w-3" />
+              <span className="hidden sm:inline">Settings</span>
+            </TabsTrigger>
               </TabsList>
-            </Card>
+            </CardContent>
+          </Card>
 
-            <div className="space-y-4">
-              <Card className="lg:hidden border-primary/15 bg-card/80 shadow-sm">
-                <CardContent className="p-2">
-                  <TabsList className="flex h-11 w-full gap-1 overflow-x-auto overflow-y-hidden bg-transparent p-0 scrollbar-none">
-                    {tabConfig.map(({ value, label, icon: Icon, hasDot }) => (
-                      <TabsTrigger key={value} value={value} className="relative h-9 shrink-0 gap-1 rounded-md border border-transparent px-3 text-xs data-[state=active]:border-primary/40 data-[state=active]:bg-primary/10">
-                        <Icon className="h-3.5 w-3.5" />
-                        <span>{label}</span>
-                        {hasDot && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-destructive" />}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </CardContent>
-              </Card>
-
-          <TabsContent value="workers" className="mt-0">
+          <TabsContent value="workers">
             <WorkersTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="pin-requests" className="mt-0">
+          <TabsContent value="pin-requests">
             <PinResetRequestsTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="earnings" className="mt-0">
+          <TabsContent value="earnings">
             <EarningsTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="reports" className="mt-0">
+          <TabsContent value="reports">
             <CycleReportTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="stage-totals" className="mt-0">
+          <TabsContent value="stage-totals">
             <StageTotalsTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="swaps" className="mt-0">
+          <TabsContent value="swaps">
             <SwapsTransfersTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="notes" className="mt-0">
+          <TabsContent value="notes">
             <WorkerNotesTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="cache" className="mt-0">
+          <TabsContent value="cache">
             <CacheTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="activity" className="mt-0">
+          <TabsContent value="activity">
             <ActivityTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="audit" className="mt-0">
+          <TabsContent value="audit">
             <AuditLogTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="feedback" className="mt-0">
+          <TabsContent value="feedback">
             <FeedbackTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="alerts" className="mt-0">
+          <TabsContent value="alerts">
             <AlertsTab adminSecret={adminSecret} />
           </TabsContent>
-          <TabsContent value="settings" className="mt-0">
+          <TabsContent value="settings">
             <SettingsTab adminSecret={adminSecret} />
           </TabsContent>
-            </div>
-          </div>
         </Tabs>
       </main>
     </div>
