@@ -16,6 +16,11 @@ function normalizeStage(stage: string): string {
   return compact || 'UNKNOWN';
 }
 
+function isBonusSheetName(sheetName: string): boolean {
+  const normalized = String(sheetName || '').toUpperCase();
+  return normalized.includes('RANKING BONUS') || normalized.includes('WEEKLY BONUS');
+}
+
 function parseStageWorkerCoverageFromSnapshots(snapshots: Array<{ sheet_name: string; sheet_data: any }> | null | undefined) {
   const workersToStage = new Map<string, string>();
   const stageToWorkers = new Map<string, Set<string>>();
@@ -805,6 +810,83 @@ Deno.serve(async (req) => {
       }
 
       // ─── Cycle Report ─────────────────────────────────────
+      case 'get_cycle_stage_totals': {
+        const reportCycleKey = params?.cycle_key;
+        if (!reportCycleKey) {
+          result = { success: false, error: 'cycle_key is required' };
+          break;
+        }
+
+        const { data: sheetSnapshots } = await supabase
+          .from('cycle_sheet_cache')
+          .select('sheet_name, sheet_data')
+          .eq('cycle_key', reportCycleKey);
+
+        const { data: workerCache } = await supabase
+          .from('cycle_worker_cache')
+          .select('worker_id, sheet_name, result_data')
+          .eq('cycle_key', reportCycleKey);
+
+        // Available cycles
+        const { data: allSheetCycles } = await supabase
+          .from('cycle_sheet_cache')
+          .select('cycle_key');
+        const { data: allWorkerCycles } = await supabase
+          .from('cycle_worker_cache')
+          .select('cycle_key');
+        const uniqueCycles = [...new Set([
+          ...(allSheetCycles?.map(c => c.cycle_key) || []),
+          ...(allWorkerCycles?.map(c => c.cycle_key) || []),
+        ])].sort().reverse();
+
+        const includedSheets = [...new Set(
+          (workerCache || [])
+            .map((worker) => worker.sheet_name)
+            .filter((sheetName) => !isBonusSheetName(sheetName))
+        )];
+        const includedSheetSet = new Set(includedSheets);
+
+        const sheetCoverage = parseStageWorkerCoverageFromSnapshots(sheetSnapshots);
+        const stageTotals = new Map<string, { total: number; workers: Map<string, number> }>();
+        let grandTotal = 0;
+
+        (workerCache || []).forEach((w) => {
+          if (!includedSheetSet.has(w.sheet_name)) return;
+
+          const d = w.result_data as any;
+          const amount = Number(d?.totalBonus ?? d?.total ?? 0);
+          const rawStage = d?.stage || sheetCoverage.workersToStage.get(String(w.worker_id || '').toUpperCase()) || '';
+          const stage = normalizeStage(rawStage);
+
+          const stageEntry = stageTotals.get(stage) || { total: 0, workers: new Map<string, number>() };
+          stageEntry.total += amount;
+          stageEntry.workers.set(w.worker_id, (stageEntry.workers.get(w.worker_id) || 0) + amount);
+          stageTotals.set(stage, stageEntry);
+          grandTotal += amount;
+        });
+
+        const byStage = Array.from(stageTotals.entries())
+          .map(([stage, data]) => ({
+            stage,
+            total: data.total,
+            worker_count: data.workers.size,
+            workers: Array.from(data.workers.entries())
+              .map(([workerId, total]) => ({ worker_id: workerId, total }))
+              .sort((a, b) => b.total - a.total),
+          }))
+          .sort((a, b) => b.total - a.total);
+
+        result = {
+          cycle_key: reportCycleKey,
+          available_cycles: uniqueCycles,
+          grand_total: grandTotal,
+          included_sheets: includedSheets.sort((a, b) => a.localeCompare(b)),
+          excluded_sheet_keywords: ['RANKING BONUS', 'WEEKLY BONUS'],
+          by_stage: byStage,
+        };
+        break;
+      }
+
       case 'get_cycle_report': {
         const reportCycleKey = params?.cycle_key;
         if (!reportCycleKey) {

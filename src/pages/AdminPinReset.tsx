@@ -26,6 +26,7 @@ import { SwapsTransfersTab } from '@/components/admin/SwapsTransfersTab';
 import { AuditLogTab } from '@/components/admin/AuditLogTab';
 import { CycleReportTab } from '@/components/admin/CycleReportTab';
 import { WorkerNotesTab } from '@/components/admin/WorkerNotesTab';
+import { StageTotalsTab } from '@/components/admin/StageTotalsTab';
 import { ThemeSwitcher } from '@/components/dashboard/ThemeSwitcher';
 import { useTheme, type Theme, type AccentColor } from '@/hooks/useTheme';
 import { toast } from 'sonner';
@@ -1608,6 +1609,10 @@ export default function AdminPinReset() {
               <ClipboardList className="h-3 w-3" />
               <span className="hidden sm:inline">Reports</span>
             </TabsTrigger>
+            <TabsTrigger value="stage-totals" className="text-xs gap-0.5 px-2 shrink-0">
+              <BarChart3 className="h-3 w-3" />
+              <span className="hidden sm:inline">Stage Totals</span>
+            </TabsTrigger>
             <TabsTrigger value="swaps" className="text-xs gap-0.5 px-2 shrink-0">
               <ArrowLeftRight className="h-3 w-3" />
               <span className="hidden sm:inline">Swaps</span>
@@ -1661,6 +1666,9 @@ export default function AdminPinReset() {
           </TabsContent>
           <TabsContent value="reports">
             <CycleReportTab adminSecret={adminSecret} />
+          </TabsContent>
+          <TabsContent value="stage-totals">
+            <StageTotalsTab adminSecret={adminSecret} />
           </TabsContent>
           <TabsContent value="swaps">
             <SwapsTransfersTab adminSecret={adminSecret} />
