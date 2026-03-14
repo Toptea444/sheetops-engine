@@ -1,7 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 
 type PreferenceStep = 'question' | 'yes-confirm' | 'no-success';
+
+const STEP_FADE_OUT_MS = 180;
+const STEP_FADE_IN_MS = 450;
+const YES_CONFIRM_AUTO_CLOSE_MS = 2200;
+const NO_SUCCESS_AUTO_CLOSE_MS = 3000;
 
 interface RankingBonusPreferenceModalProps {
   open: boolean;
@@ -20,26 +25,66 @@ export function RankingBonusPreferenceModal({
 }: RankingBonusPreferenceModalProps) {
   const [fadeIn, setFadeIn] = useState(false);
   const [step, setStep] = useState<PreferenceStep>('question');
+  const [displayStep, setDisplayStep] = useState<PreferenceStep>('question');
+  const [stepVisible, setStepVisible] = useState(false);
+
+  const handleDismiss = useCallback(() => {
+    setFadeIn(false);
+    setTimeout(() => {
+      onClose();
+    }, 250);
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) {
       setFadeIn(false);
       setStep('question');
+      setDisplayStep('question');
+      setStepVisible(false);
       return;
     }
 
     setStep('question');
+    setDisplayStep('question');
+    setStepVisible(false);
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => setFadeIn(true));
+      requestAnimationFrame(() => {
+        setFadeIn(true);
+        setStepVisible(true);
+      });
     });
   }, [open]);
 
-  const handleDismiss = () => {
-    setFadeIn(false);
-    setTimeout(() => {
-      onClose();
-    }, 250);
-  };
+  useEffect(() => {
+    if (!open || step === displayStep) return;
+
+    setStepVisible(false);
+    const swapTimer = setTimeout(() => {
+      setDisplayStep(step);
+      requestAnimationFrame(() => setStepVisible(true));
+    }, STEP_FADE_OUT_MS);
+
+    return () => clearTimeout(swapTimer);
+  }, [displayStep, open, step]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const duration =
+      step === 'yes-confirm'
+        ? YES_CONFIRM_AUTO_CLOSE_MS
+        : step === 'no-success'
+          ? NO_SUCCESS_AUTO_CLOSE_MS
+          : null;
+
+    if (!duration) return;
+
+    const closeTimer = setTimeout(() => {
+      handleDismiss();
+    }, duration);
+
+    return () => clearTimeout(closeTimer);
+  }, [handleDismiss, open, step]);
 
   const handleInclude = () => {
     onSavePreference(true);
@@ -69,10 +114,10 @@ export function RankingBonusPreferenceModal({
         }}
       >
         <div className="bg-card border border-border rounded-2xl p-6 shadow-xl overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full opacity-20 pointer-events-none"
+          <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full opacity-20 pointer-events-none"
             style={{
-              background:
-                'radial-gradient(circle, hsl(var(--primary) / 0.55) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, hsl(var(--primary) / 0.55) 0%, transparent 70%)',
               filter: 'blur(40px)',
             }}
           />
@@ -82,67 +127,77 @@ export function RankingBonusPreferenceModal({
               <SlidersHorizontal className="h-7 w-7 text-primary" />
             </div>
 
-            {step === 'question' && (
-              <>
-                <h2 className="text-lg font-bold text-foreground leading-snug">
-                  Ranking bonus in total earnings?
-                </h2>
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                  Some users find the total earnings confusing when ranking bonus is added.
-                  Do you want us to include ranking bonus inside your total earnings card?
-                </p>
-                {isFromSettings && (
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Current setting: {currentPreference ? 'Included in total earnings' : 'Hidden from total earnings'}.
+            <div
+              className="w-full transition-all"
+              style={{
+                opacity: stepVisible ? 1 : 0,
+                transform: stepVisible ? 'translateY(0)' : 'translateY(6px)',
+                transitionDuration: `${stepVisible ? STEP_FADE_IN_MS : STEP_FADE_OUT_MS}ms`,
+              }}
+            >
+              {displayStep === 'question' && (
+                <>
+                  <h2 className="text-lg font-bold text-foreground leading-snug">
+                    Ranking bonus in total earnings?
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                    Some users find the total earnings confusing when ranking bonus is added.
+                    Do you want us to include ranking bonus inside your total earnings card?
                   </p>
-                )}
+                  {isFromSettings && (
+                    <p className="text-xs text-muted-foreground mt-3">
+                      Current setting:{' '}
+                      {currentPreference ? 'Included in total earnings' : 'Hidden from total earnings'}.
+                    </p>
+                  )}
 
-                <button
-                  onClick={handleInclude}
-                  className="mt-5 w-full h-12 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all"
-                >
-                  I'm okay with it
-                </button>
-                <button
-                  onClick={handleExclude}
-                  className="mt-2.5 w-full h-11 rounded-2xl border border-border bg-background text-foreground text-sm font-medium hover:bg-muted/60 active:scale-[0.97] transition-all"
-                >
-                  No, I'd like to change it
-                </button>
-              </>
-            )}
+                  <button
+                    onClick={handleInclude}
+                    className="mt-5 w-full h-12 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all"
+                  >
+                    I'm okay with it
+                  </button>
+                  <button
+                    onClick={handleExclude}
+                    className="mt-2.5 w-full h-11 rounded-2xl border border-border bg-background text-foreground text-sm font-medium hover:bg-muted/60 active:scale-[0.97] transition-all"
+                  >
+                    No, I'd like to change it
+                  </button>
+                </>
+              )}
 
-            {step === 'yes-confirm' && (
-              <>
-                <h2 className="text-lg font-bold text-foreground leading-snug">Preference saved</h2>
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                  Great. Ranking bonus will now be included in your total earnings.
-                </p>
-                <button
-                  onClick={handleDismiss}
-                  className="mt-5 w-full h-11 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all"
-                >
-                  Done
-                </button>
-              </>
-            )}
+              {displayStep === 'yes-confirm' && (
+                <>
+                  <h2 className="text-lg font-bold text-foreground leading-snug">Preference saved</h2>
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                    Great. Ranking bonus will now be included in your total earnings.
+                  </p>
+                  <button
+                    onClick={handleDismiss}
+                    className="mt-5 w-full h-11 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all"
+                  >
+                    Done
+                  </button>
+                </>
+              )}
 
-            {step === 'no-success' && (
-              <>
-                <h2 className="text-lg font-bold text-foreground leading-snug">Done, updated successfully</h2>
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                  Ranking bonus is now hidden from your total earnings card.
-                  You can change this anytime with the settings button beside the sheet selector.
-                  Your ranking bonus breakdown is still available in your earnings breakdown section.
-                </p>
-                <button
-                  onClick={handleDismiss}
-                  className="mt-5 w-full h-11 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all"
-                >
-                  Got it
-                </button>
-              </>
-            )}
+              {displayStep === 'no-success' && (
+                <>
+                  <h2 className="text-lg font-bold text-foreground leading-snug">Done, updated successfully</h2>
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                    Ranking bonus is now hidden from your total earnings card.
+                    You can change this anytime with the settings button beside the sheet selector.
+                    Your ranking bonus breakdown is still available in your earnings breakdown section.
+                  </p>
+                  <button
+                    onClick={handleDismiss}
+                    className="mt-5 w-full h-11 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all"
+                  >
+                    Got it
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
