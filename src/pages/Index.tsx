@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
 import { IdentityConfirmationModal } from '@/components/dashboard/IdentityConfirmationModal';
