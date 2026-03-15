@@ -292,7 +292,7 @@ const Index = () => {
     const allTimeStart = new Date(2020, 0, 1);
     const endDate = new Date();
     const currentCycleKey = getCycleKey(selectedCycle);
-    const workerIdsToFetch = workerIdsForSwapFetch;
+    const workerIdsToFetch = getWorkerIdsToFetch();
 
     for (const sheetName of selectedSheets) {
       let data = forceRefetch ? null : sheetDataCache[sheetName];
@@ -353,7 +353,7 @@ const Index = () => {
     if (!foundInAnySheet && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, workerIdsForSwapFetch, checkForUpdates]);
+  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, checkForUpdates]);
 
   useEffect(() => {
     if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
@@ -707,7 +707,7 @@ const Index = () => {
       const allTimeStart = new Date(2020, 0, 1);
       const endDate = new Date();
       const newResults: BonusResult[] = [];
-      const workerIdsToFetch = workerIdsForSwapFetch;
+      const workerIdsToFetch = getWorkerIdsToFetch();
 
       for (const sheetName of newSelection) {
         const data = newCache[sheetName];
@@ -731,7 +731,7 @@ const Index = () => {
       const allTimeStart = new Date(2020, 0, 1);
       const endDate = new Date();
       const newResults: BonusResult[] = [];
-      const workerIdsToFetch = workerIdsForSwapFetch;
+      const workerIdsToFetch = getWorkerIdsToFetch();
 
       for (const sheetName of newSelection) {
         const data = sheetDataCache[sheetName];
@@ -751,7 +751,7 @@ const Index = () => {
       );
       setResults(dedupedResults);
     }
-  }, [selectedSheets, sheetDataCache, userId, fetchSheetData, searchWorker, calculateBonus, workerIdsForSwapFetch]);
+  }, [selectedSheets, sheetDataCache, userId, fetchSheetData, searchWorker, calculateBonus, getWorkerIdsToFetch]);
 
   const cycleStats = useMemo(() => {
     let totalEarnings = 0;
