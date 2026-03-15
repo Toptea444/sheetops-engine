@@ -46,6 +46,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
 import { Settings, CalendarDays } from 'lucide-react';
 
+const getTodayLocalDateStr = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
+
 const Index = () => {
   const { 
     isLoading: sheetsLoading, 
@@ -85,7 +90,7 @@ const Index = () => {
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
-  const [swapDetected, setSwapDetected] = useState<{ oldId: string; newId: string; reassigned?: boolean; swapId: string } | null>(null);
+  const [swapDetected, setSwapDetected] = useState<{ oldId: string; newId: string; swapId: string; effectiveDate?: string } | null>(null);
   const RANKING_BONUS_TOTAL_PREF_KEY = 'performanceTracker_includeRankingBonusInTotal';
   const [includeRankingBonusInTotal, setIncludeRankingBonusInTotal] = useState(false);
   const [rankingPreferenceSet, setRankingPreferenceSet] = useState(false);
@@ -108,6 +113,7 @@ const Index = () => {
 
   const cycleOptions = useMemo(() => getCycleOptions(6), []);
   const [selectedCycle, setSelectedCycle] = useState<CyclePeriod>(cycleOptions[0]);
+  const selectedCycleKey = getCycleKey(selectedCycle);
 
   // Theme
   const { theme, accentColor, setTheme, setAccentColor } = useTheme();
@@ -276,6 +282,7 @@ const Index = () => {
     const allTimeStart = new Date(2020, 0, 1);
     const endDate = new Date();
     const currentCycleKey = getCycleKey(selectedCycle);
+    const workerIdsToFetch = getWorkerIdsToFetch();
 
     for (const sheetName of selectedSheets) {
       let data = forceRefetch ? null : sheetDataCache[sheetName];
@@ -289,18 +296,20 @@ const Index = () => {
       }
       
       if (data) {
-        const worker = searchWorker(data, userId);
+        for (const workerIdToFetch of workerIdsToFetch) {
+          const worker = searchWorker(data, workerIdToFetch);
           if (worker) {
             foundInAnySheet = true;
-            if (worker.userName && worker.userName !== userId) {
+            if (workerIdToFetch.toUpperCase() === userId.toUpperCase() && worker.userName && worker.userName !== userId) {
               setUserName(worker.userName);
             }
             const result = calculateBonus(worker, allTimeStart, endDate);
             const resultWithSheet = { ...result, sheetName: sheetName };
             newResults.push(resultWithSheet);
             // Cache the worker result for this cycle
-            saveWorkerResult(userId, sheetName, selectedCycle, resultWithSheet);
+            saveWorkerResult(workerIdToFetch, sheetName, selectedCycle, resultWithSheet);
           }
+        }
       }
     }
 
@@ -319,19 +328,22 @@ const Index = () => {
       }
     }
 
-    setResults(newResults);
+    const dedupedResults = newResults.filter((result, idx, arr) =>
+      arr.findIndex(r => r.workerId === result.workerId && r.sheetName === result.sheetName) === idx
+    );
+    setResults(dedupedResults);
     setIsFetchingData(false);
 
     // Check for data updates (notifications)
-    if (newResults.length > 0) {
-      const dataHash = generateDataHash(newResults);
+    if (dedupedResults.length > 0) {
+      const dataHash = generateDataHash(dedupedResults);
       checkForUpdates(dataHash);
     }
 
     if (!foundInAnySheet && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots]);
+  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, checkForUpdates]);
 
   useEffect(() => {
     if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
@@ -390,8 +402,11 @@ const Index = () => {
       
       // Find any swap involving this user's ID (either side of a bidirectional swap)
       const { data: swapRes } = await supabase.from('id_swaps')
-        .select('id, old_worker_id, new_worker_id')
+        .select('id, old_worker_id, new_worker_id, effective_date')
         .or(`old_worker_id.eq.${uid},new_worker_id.eq.${uid}`)
+        .eq('cycle_key', selectedCycleKey)
+        .lte('effective_date', getTodayLocalDateStr())
+        .order('effective_date', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -402,12 +417,11 @@ const Index = () => {
         const ackKey = 'performanceTracker_swapAckPair_' + pair;
         
         if (!localStorage.getItem(ackKey)) {
-          const isOldSide = swap.old_worker_id === uid;
           setSwapDetected({
             oldId: swap.old_worker_id,
             newId: swap.new_worker_id,
-            reassigned: !isOldSide, // If user is the new_worker_id side, their ID was reassigned
             swapId: swap.id,
+            effectiveDate: swap.effective_date,
           });
         }
       }
@@ -416,7 +430,7 @@ const Index = () => {
     checkSwap();
     const interval = setInterval(checkSwap, 30_000);
     return () => clearInterval(interval);
-  }, [userId, identityConfirmed, pinVerifiedThisSession]);
+  }, [userId, identityConfirmed, pinVerifiedThisSession, selectedCycleKey]);
 
   // When switching cycles, try to load cached data for past cycles
   useEffect(() => {
@@ -494,8 +508,11 @@ const Index = () => {
     // Check for ID swap before granting access
     const { data: swapRows } = await supabase
       .from('id_swaps')
-      .select('id, old_worker_id, new_worker_id')
+      .select('id, old_worker_id, new_worker_id, effective_date')
       .or(`old_worker_id.eq.${newUserId.toUpperCase()},new_worker_id.eq.${newUserId.toUpperCase()}`)
+      .eq('cycle_key', selectedCycleKey)
+      .lte('effective_date', getTodayLocalDateStr())
+      .order('effective_date', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -504,13 +521,12 @@ const Index = () => {
       const pair = [swap.old_worker_id, swap.new_worker_id].sort().join('_');
       const ackKey = 'performanceTracker_swapAckPair_' + pair;
       if (!localStorage.getItem(ackKey)) {
-        const isOldSide = swap.old_worker_id === newUserId.toUpperCase();
-        setSwapDetected({
-          oldId: swap.old_worker_id,
-          newId: swap.new_worker_id,
-          reassigned: !isOldSide,
-          swapId: swap.id,
-        });
+          setSwapDetected({
+            oldId: swap.old_worker_id,
+            newId: swap.new_worker_id,
+            swapId: swap.id,
+            effectiveDate: swap.effective_date,
+          });
         setShowWelcome(false);
         return; // Don't grant access
       }
@@ -531,22 +547,24 @@ const Index = () => {
       const uid = userId.toUpperCase();
       const { data: swapRows } = await supabase
         .from('id_swaps')
-        .select('id, old_worker_id, new_worker_id')
-        .or(`old_worker_id.eq.${uid},new_worker_id.eq.${uid}`)
-        .order('created_at', { ascending: false })
-        .limit(1);
+      .select('id, old_worker_id, new_worker_id, effective_date')
+      .or(`old_worker_id.eq.${uid},new_worker_id.eq.${uid}`)
+      .eq('cycle_key', selectedCycleKey)
+      .lte('effective_date', getTodayLocalDateStr())
+      .order('effective_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1);
 
       if (swapRows && swapRows.length > 0) {
         const swap = swapRows[0];
         const pair = [swap.old_worker_id, swap.new_worker_id].sort().join('_');
         const ackKey = 'performanceTracker_swapAckPair_' + pair;
         if (!localStorage.getItem(ackKey)) {
-          const isOldSide = swap.old_worker_id === uid;
           setSwapDetected({
             oldId: swap.old_worker_id,
             newId: swap.new_worker_id,
-            reassigned: !isOldSide,
             swapId: swap.id,
+            effectiveDate: swap.effective_date,
           });
           return; // Don't grant access
         }
@@ -557,7 +575,7 @@ const Index = () => {
     setPinVerifiedThisSession(true);
     setShowPinGate(false);
     confirmIdentity(userId || undefined);
-  }, [confirmIdentity, userId]);
+  }, [confirmIdentity, userId, selectedCycleKey]);
 
   const handlePinGateSwitchUser = useCallback(async () => {
     if (userId) await releaseSession(userId);
@@ -671,39 +689,51 @@ const Index = () => {
       const allTimeStart = new Date(2020, 0, 1);
       const endDate = new Date();
       const newResults: BonusResult[] = [];
+      const workerIdsToFetch = getWorkerIdsToFetch();
 
       for (const sheetName of newSelection) {
         const data = newCache[sheetName];
         if (data) {
-          const worker = searchWorker(data, userId);
-          if (worker) {
-            const result = calculateBonus(worker, allTimeStart, endDate);
-            newResults.push({ ...result, sheetName: sheetName });
+          for (const workerIdToFetch of workerIdsToFetch) {
+            const worker = searchWorker(data, workerIdToFetch);
+            if (worker) {
+              const result = calculateBonus(worker, allTimeStart, endDate);
+              newResults.push({ ...result, sheetName: sheetName });
+            }
           }
         }
       }
       
-      setResults(newResults);
+      const dedupedResults = newResults.filter((result, idx, arr) =>
+        arr.findIndex(r => r.workerId === result.workerId && r.sheetName === result.sheetName) === idx
+      );
+      setResults(dedupedResults);
       setIsFetchingData(false);
     } else if (userId) {
       const allTimeStart = new Date(2020, 0, 1);
       const endDate = new Date();
       const newResults: BonusResult[] = [];
+      const workerIdsToFetch = getWorkerIdsToFetch();
 
       for (const sheetName of newSelection) {
         const data = sheetDataCache[sheetName];
         if (data) {
-          const worker = searchWorker(data, userId);
-          if (worker) {
-            const result = calculateBonus(worker, allTimeStart, endDate);
-            newResults.push({ ...result, sheetName: sheetName });
+          for (const workerIdToFetch of workerIdsToFetch) {
+            const worker = searchWorker(data, workerIdToFetch);
+            if (worker) {
+              const result = calculateBonus(worker, allTimeStart, endDate);
+              newResults.push({ ...result, sheetName: sheetName });
+            }
           }
         }
       }
       
-      setResults(newResults);
+      const dedupedResults = newResults.filter((result, idx, arr) =>
+        arr.findIndex(r => r.workerId === result.workerId && r.sheetName === result.sheetName) === idx
+      );
+      setResults(dedupedResults);
     }
-  }, [selectedSheets, sheetDataCache, userId, fetchSheetData, searchWorker, calculateBonus]);
+  }, [selectedSheets, sheetDataCache, userId, fetchSheetData, searchWorker, calculateBonus, getWorkerIdsToFetch]);
 
   const cycleStats = useMemo(() => {
     let totalEarnings = 0;
@@ -878,7 +908,7 @@ const Index = () => {
         open={!!swapDetected}
         oldWorkerId={swapDetected?.oldId || ''}
         newWorkerId={swapDetected?.newId || ''}
-        reassigned={swapDetected?.reassigned}
+        effectiveDate={swapDetected?.effectiveDate}
         onLogout={handleSwapLogout}
       />
 
