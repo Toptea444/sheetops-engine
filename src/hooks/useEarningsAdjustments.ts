@@ -97,15 +97,18 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       const uid = userId.toUpperCase();
 
       allSwaps.forEach(s => {
-        // Determine direction for THIS user
-        let userPrevId: string, userNewId: string;
+        // Determine the user's old and new IDs based on which side of the swap they are
+        // In a bidirectional swap: A <-> B
+        // - If user is A (old_worker_id), they become B (new_worker_id)
+        // - If user is B (new_worker_id), they become A (old_worker_id)
+        let userOldId: string, userNewId: string;
         if (s.old_worker_id === uid) {
-          // Direct: user was old_worker_id, now is new_worker_id
-          userPrevId = s.old_worker_id;
+          // User was on the "old" side, now uses the "new" ID
+          userOldId = s.old_worker_id;
           userNewId = s.new_worker_id;
         } else if (s.new_worker_id === uid) {
-          // Reverse (bidirectional swap): user was new_worker_id, now is old_worker_id
-          userPrevId = s.new_worker_id;
+          // User was on the "new" side, now uses the "old" ID
+          userOldId = s.new_worker_id;
           userNewId = s.old_worker_id;
         } else {
           return;
@@ -115,7 +118,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
           type: 'swap_in',
           date: s.effective_date,
           amount: 0,
-          description: `Your ID was changed from ${userPrevId} to ${userNewId} on ${dateLabel}. Earnings before ${dateLabel} are from your old ID (${userPrevId}), and earnings from ${dateLabel} onward are under your new ID (${userNewId}).${s.notes ? ` Note: ${s.notes}` : ''}`,
+          description: `Your ID was swapped from ${userOldId} to ${userNewId} on ${dateLabel}. Earnings before ${dateLabel} are from your previous ID (${userOldId}), and earnings from ${dateLabel} onward are under your new ID (${userNewId}).${s.notes ? ` Note: ${s.notes}` : ''}`,
           created_at: s.created_at,
         });
       });
@@ -196,26 +199,29 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
           for (const swap of swapsForThisId) {
             const effectiveStr = swap.effective_date;
             
-            // Determine this user's previous and current IDs from this swap
-            let userPreviousId: string, userCurrentId: string;
-            if (swap.new_worker_id === uid) {
-              // Direct: user moved from old to new
-              userPreviousId = swap.old_worker_id;
-              userCurrentId = swap.new_worker_id;
-            } else {
-              // Reverse (bidirectional swap): user moved from new to old
-              userPreviousId = swap.new_worker_id;
-              userCurrentId = swap.old_worker_id;
-            }
+// Determine this user's old and new IDs from this swap
+  // In a bidirectional swap: A <-> B
+  // - If user was A (old_worker_id), they now use B (new_worker_id)
+  // - If user was B (new_worker_id), they now use A (old_worker_id)
+  let userOldId: string, userNewId: string;
+  if (swap.old_worker_id === uid) {
+  // User was on the "old" side, now uses the "new" ID
+  userOldId = swap.old_worker_id;
+  userNewId = swap.new_worker_id;
+  } else {
+  // User was on the "new" side, now uses the "old" ID
+  userOldId = swap.new_worker_id;
+  userNewId = swap.old_worker_id;
+  }
             
-            if (resultId === userPreviousId) {
-              // Data from user's previous ID — only keep days BEFORE effective date
-              if (dayStr >= effectiveStr) return false;
-            }
-            if (resultId === userCurrentId) {
-              // Data from user's current ID — only keep days FROM effective date onward
-              if (dayStr < effectiveStr) return false;
-            }
+if (resultId === userOldId) {
+  // Data from user's old ID — only keep days BEFORE effective date
+  if (dayStr >= effectiveStr) return false;
+  }
+  if (resultId === userNewId) {
+  // Data from user's new ID — only keep days FROM effective date onward
+  if (dayStr < effectiveStr) return false;
+  }
           }
           return true;
         });
