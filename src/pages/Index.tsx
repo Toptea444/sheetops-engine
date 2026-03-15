@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
 import { IdentityConfirmationModal } from '@/components/dashboard/IdentityConfirmationModal';
@@ -147,16 +147,6 @@ const Index = () => {
     getTransferInfoForDate,
     isLoading: adjustmentsLoading,
   } = useEarningsAdjustments(userId, selectedCycle);
-
-  const workerIdsForSwapFetch = useMemo(() => {
-    const ids = getWorkerIdsToFetch();
-    return ids.length > 0 ? ids : (userId ? [userId.toUpperCase()] : []);
-  }, [getWorkerIdsToFetch, userId]);
-
-  const workerIdsForSwapFetchKey = useMemo(
-    () => [...workerIdsForSwapFetch].sort().join('|'),
-    [workerIdsForSwapFetch]
-  );
 
   // Apply adjustments to results
   const { adjustedResults, netAdjustment } = useMemo(() => {
@@ -360,14 +350,6 @@ const Index = () => {
       fetchUserData();
     }
   }, [userId, selectedSheets, isInitializing, identityConfirmed]);
-
-  // If swap-linked IDs load after initial login fetch, force a one-time refetch
-  // so pre-swap earnings from the linked ID are included.
-  useEffect(() => {
-    if (!userId || !identityConfirmed || isInitializing || selectedSheets.length === 0) return;
-    if (!workerIdsForSwapFetchKey.includes('|')) return;
-    fetchUserData(true);
-  }, [userId, identityConfirmed, isInitializing, selectedSheets.length, workerIdsForSwapFetchKey, fetchUserData]);
 
   // Trigger Cycle Summary Modal when conditions are met
   useEffect(() => {
