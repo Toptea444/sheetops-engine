@@ -759,6 +759,18 @@ const Index = () => {
     return buildPreviousCycleSummary(adjustedResults, selectedSheets);
   }, [adjustedResults, selectedSheets]);
 
+  useEffect(() => {
+    if (!identityConfirmed || !userId || isLoading || adjustedResults.length === 0) return;
+    if (new Date().getDate() !== 16) return;
+
+    const summaryCycleKey = getCycleKey(previousCycleSummary.cycle);
+    const shownKey = `performanceTracker_previousCycleSummaryShown_${userId}_${summaryCycleKey}`;
+    if (localStorage.getItem(shownKey)) return;
+
+    setShowAnimatedCycleSummary(true);
+    localStorage.setItem(shownKey, 'true');
+  }, [identityConfirmed, userId, isLoading, adjustedResults.length, previousCycleSummary]);
+
   const isLoading = sheetsLoading || identityLoading || isFetchingData;
 
   useEffect(() => {
