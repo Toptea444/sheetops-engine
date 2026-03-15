@@ -97,17 +97,23 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       const uid = userId.toUpperCase();
 
       allSwaps.forEach(s => {
-        // Determine the user's old and new IDs based on which side of the swap they are
-        // In a bidirectional swap: A <-> B
-        // - If user is A (old_worker_id), they become B (new_worker_id)
-        // - If user is B (new_worker_id), they become A (old_worker_id)
+        // In a bidirectional swap: two workers exchange IDs
+        // Swap record stores: old_worker_id <-> new_worker_id
+        // 
+        // From the swap record perspective:
+        // - The person who HAD old_worker_id NOW uses new_worker_id
+        // - The person who HAD new_worker_id NOW uses old_worker_id
+        //
+        // So for the current user (uid):
+        // - If uid === new_worker_id: user's OLD ID was old_worker_id, NEW ID is new_worker_id
+        // - If uid === old_worker_id: user's OLD ID was new_worker_id, NEW ID is old_worker_id
         let userOldId: string, userNewId: string;
-        if (s.old_worker_id === uid) {
-          // User was on the "old" side, now uses the "new" ID
+        if (s.new_worker_id === uid) {
+          // User is now logged in with new_worker_id, meaning they came FROM old_worker_id
           userOldId = s.old_worker_id;
           userNewId = s.new_worker_id;
-        } else if (s.new_worker_id === uid) {
-          // User was on the "new" side, now uses the "old" ID
+        } else if (s.old_worker_id === uid) {
+          // User is now logged in with old_worker_id, meaning they came FROM new_worker_id
           userOldId = s.new_worker_id;
           userNewId = s.old_worker_id;
         } else {
@@ -118,7 +124,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
           type: 'swap_in',
           date: s.effective_date,
           amount: 0,
-          description: `Your ID was swapped from ${userOldId} to ${userNewId} on ${dateLabel}. Earnings before ${dateLabel} are from your previous ID (${userOldId}), and earnings from ${dateLabel} onward are under your new ID (${userNewId}).${s.notes ? ` Note: ${s.notes}` : ''}`,
+          description: `Your ID was swapped from ${userOldId} to ${userNewId} on ${dateLabel}. Earnings before ${dateLabel} are from your previous ID (${userOldId}), and earnings from ${dateLabel} onward are under your current ID (${userNewId}).${s.notes ? ` Note: ${s.notes}` : ''}`,
           created_at: s.created_at,
         });
       });
@@ -199,29 +205,20 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
           for (const swap of swapsForThisId) {
             const effectiveStr = swap.effective_date;
             
-// Determine this user's old and new IDs from this swap
-  // In a bidirectional swap: A <-> B
-  // - If user was A (old_worker_id), they now use B (new_worker_id)
-  // - If user was B (new_worker_id), they now use A (old_worker_id)
-  let userOldId: string, userNewId: string;
-  if (swap.old_worker_id === uid) {
-  // User was on the "old" side, now uses the "new" ID
-  userOldId = swap.old_worker_id;
-  userNewId = swap.new_worker_id;
-  } else {
-  // User was on the "new" side, now uses the "old" ID
-  userOldId = swap.new_worker_id;
-  userNewId = swap.old_worker_id;
-  }
+// The swap record defines: old_worker_id had the ID before swap,
+            // new_worker_id has the ID after swap.
+            // Regardless of which ID the user is currently logged in as:
+            // - old_worker_id's data is valid BEFORE effective_date
+            // - new_worker_id's data is valid FROM effective_date onward
             
-if (resultId === userOldId) {
-  // Data from user's old ID — only keep days BEFORE effective date
-  if (dayStr >= effectiveStr) return false;
-  }
-  if (resultId === userNewId) {
-  // Data from user's new ID — only keep days FROM effective date onward
-  if (dayStr < effectiveStr) return false;
-  }
+            if (resultId === swap.old_worker_id) {
+              // Data from old_worker_id — only keep days BEFORE effective date
+              if (dayStr >= effectiveStr) return false;
+            }
+            if (resultId === swap.new_worker_id) {
+              // Data from new_worker_id — only keep days FROM effective date onward
+              if (dayStr < effectiveStr) return false;
+            }
           }
           return true;
         });
