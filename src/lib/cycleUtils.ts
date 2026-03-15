@@ -161,3 +161,26 @@ export function getTotalDaysInCycle(cycle: CyclePeriod): number {
   const diffMs = cycle.endDate.getTime() - cycle.startDate.getTime();
   return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
 }
+
+/**
+ * Get the cycle immediately preceding the given cycle
+ */
+export function getPreviousCycle(cycle: CyclePeriod): CyclePeriod {
+  const prevDate = new Date(cycle.startDate);
+  prevDate.setDate(prevDate.getDate() - 1);
+  return getCycleForDate(prevDate);
+}
+
+/**
+ * Check if a date is the first day of any cycle (the 16th)
+ */
+export function isFirstDayOfCycle(date: Date = new Date()): boolean {
+  return date.getDate() === 16;
+}
+
+/**
+ * Check if we're in a new cycle (date is 16th or later in current month)
+ */
+export function isInNewCycle(date: Date = new Date()): boolean {
+  return date.getDate() >= 16;
+}
