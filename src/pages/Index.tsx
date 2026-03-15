@@ -27,7 +27,10 @@ import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonus
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
 import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
+import { CycleSummaryModal } from '@/components/dashboard/CycleSummaryModal';
+import { CycleSummaryStaticModal } from '@/components/dashboard/CycleSummaryStaticModal';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
+import { useCycleSummary } from '@/hooks/useCycleSummary';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
 import { useTheme } from '@/hooks/useTheme';
@@ -41,7 +44,7 @@ import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
-import { Settings } from 'lucide-react';
+import { Settings, CalendarDays } from 'lucide-react';
 
 const Index = () => {
   const { 
@@ -88,6 +91,11 @@ const Index = () => {
   const [rankingPreferenceSet, setRankingPreferenceSet] = useState(false);
   const [showRankingPreferenceModal, setShowRankingPreferenceModal] = useState(false);
   const [rankingPreferenceFromSettings, setRankingPreferenceFromSettings] = useState(false);
+
+  // Cycle Summary Modal states
+  const [showCycleSummaryAnimated, setShowCycleSummaryAnimated] = useState(false);
+  const [showCycleSummaryStatic, setShowCycleSummaryStatic] = useState(false);
+  const [cycleSummaryShownThisSession, setCycleSummaryShownThisSession] = useState(false);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
@@ -139,6 +147,13 @@ const Index = () => {
     if (results.length === 0) return { adjustedResults: results, netAdjustment: 0 };
     return applyAdjustments(results);
   }, [results, applyAdjustments]);
+
+  // Cycle Summary (for showing previous cycle recap)
+  const { 
+    summaryData: cycleSummaryData, 
+    shouldShowAnimatedSummary: cycleSummaryShouldShowAnimated,
+    markAsShown: markCycleSummaryAsShown 
+  } = useCycleSummary(adjustedResults, selectedCycle);
 
   // Streaks & Achievements
   const { streakData, achievements, totalUnlocked } = useStreaksAndAchievements(
@@ -323,6 +338,37 @@ const Index = () => {
       fetchUserData();
     }
   }, [userId, selectedSheets, isInitializing, identityConfirmed]);
+
+  // Trigger Cycle Summary Modal when conditions are met
+  useEffect(() => {
+    // Compute loading inline since isLoading is defined later in the component
+    const stillLoading = sheetsLoading || identityLoading || isFetchingData;
+    
+    if (
+      cycleSummaryShouldShowAnimated &&
+      !cycleSummaryShownThisSession &&
+      identityConfirmed &&
+      pinVerifiedThisSession &&
+      !stillLoading &&
+      adjustedResults.length > 0
+    ) {
+      // Delay slightly to let EarningsReveal show first if applicable
+      const timer = setTimeout(() => {
+        setShowCycleSummaryAnimated(true);
+        setCycleSummaryShownThisSession(true);
+      }, 6000); // Show after EarningsReveal auto-dismisses
+      return () => clearTimeout(timer);
+    }
+  }, [
+    cycleSummaryShouldShowAnimated, 
+    cycleSummaryShownThisSession, 
+    identityConfirmed, 
+    pinVerifiedThisSession,
+    sheetsLoading,
+    identityLoading,
+    isFetchingData,
+    adjustedResults.length
+  ]);
 
   // Background polling: re-fetch data every 5 minutes when notifications are enabled
   useEffect(() => {
@@ -554,6 +600,16 @@ const Index = () => {
     setShowPinGate(false);
     setShowWelcome(true);
   }, [clearIdentity, releaseSession, userId, swapDetected]);
+
+  // Cycle Summary Modal handlers
+  const handleCycleSummaryAnimatedClose = useCallback(() => {
+    setShowCycleSummaryAnimated(false);
+    markCycleSummaryAsShown();
+  }, [markCycleSummaryAsShown]);
+
+  const handleOpenCycleSummaryStatic = useCallback(() => {
+    setShowCycleSummaryStatic(true);
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     setDataError(null);
@@ -835,6 +891,25 @@ const Index = () => {
         isDataReady={!isLoading && identityConfirmed && adjustedResults.length > 0}
       />
 
+      {/* Cycle Summary Modals */}
+      {cycleSummaryData && (
+        <>
+          <CycleSummaryModal
+            isOpen={showCycleSummaryAnimated}
+            onClose={handleCycleSummaryAnimatedClose}
+            summaryData={cycleSummaryData}
+            userName={userName}
+            onShowStaticSummary={handleOpenCycleSummaryStatic}
+          />
+          <CycleSummaryStaticModal
+            isOpen={showCycleSummaryStatic}
+            onClose={() => setShowCycleSummaryStatic(false)}
+            summaryData={cycleSummaryData}
+            userName={userName}
+          />
+        </>
+      )}
+
       <div
         className={`flex flex-1 flex-col ${isIdentityLocked ? 'pointer-events-none select-none blur-sm' : ''}`}
         aria-hidden={isIdentityLocked}
@@ -899,6 +974,17 @@ const Index = () => {
                 >
                   <Settings className="h-4 w-4 text-muted-foreground" />
                 </button>
+                {cycleSummaryData && (
+                  <button
+                    onClick={handleOpenCycleSummaryStatic}
+                    className="h-8 px-3 rounded-md border border-border bg-background/90 hover:bg-muted/60 transition-colors flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+                    aria-label="View last cycle summary"
+                    title="View last cycle summary"
+                  >
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Last Cycle</span>
+                  </button>
+                )}
               </div>
             </div>
 
