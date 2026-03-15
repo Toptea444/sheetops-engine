@@ -44,12 +44,6 @@ const toLocalDateStr = (ts: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-/** Today's date in local timezone as YYYY-MM-DD. */
-const getTodayLocalDateStr = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-};
-
 /** Get per-sheet amount from a transfer. Falls back to total amount if no sheet_amounts. */
 function getTransferAmountForSheet(t: DayTransfer, sheetName: string): number {
   if (t.sheet_amounts && typeof t.sheet_amounts === 'object') {
@@ -88,13 +82,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     setIsLoading(true);
     try {
       const [swapRes, transferRes] = await Promise.all([
-        supabase
-          .from('id_swaps')
-          .select('*')
-          .eq('cycle_key', cycleKey)
-          .lte('effective_date', getTodayLocalDateStr())
-          .order('effective_date', { ascending: true })
-          .order('created_at', { ascending: true }),
+        supabase.from('id_swaps').select('*').order('effective_date', { ascending: true }),
         supabase.from('day_transfers').select('*').eq('cycle_key', cycleKey),
       ]);
 
@@ -124,10 +112,10 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
         }
         const dateLabel = new Date(s.effective_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         notes.push({
-          type: s.old_worker_id === uid ? 'swap_out' : 'swap_in',
+          type: 'swap_in',
           date: s.effective_date,
           amount: 0,
-          description: `You were swapped with ${userNewId}. Effective ${dateLabel}, earnings before ${dateLabel} come from ${userPrevId}, and earnings from ${dateLabel} onward come from ${userNewId}.${s.notes ? ` Note: ${s.notes}` : ''}`,
+          description: `Your ID was changed from ${userPrevId} to ${userNewId} on ${dateLabel}. Earnings before ${dateLabel} are from your old ID (${userPrevId}), and earnings from ${dateLabel} onward are under your new ID (${userNewId}).${s.notes ? ` Note: ${s.notes}` : ''}`,
           created_at: s.created_at,
         });
       });
