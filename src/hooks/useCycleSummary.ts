@@ -65,6 +65,50 @@ export function markSummaryAsSeen(cycleKey: string): void {
   }
 }
 
+// ─── Demo Data Generator ─────────────────────────────────────
+export function generateDemoSummaryData(): CycleSummaryData {
+  // Create a "previous cycle" that's always the most recent completed one
+  const today = new Date();
+  const day = today.getDate();
+  
+  // If we're before the 16th, previous cycle is month-2 16th to month-1 15th
+  // If we're on/after 16th, previous cycle is month-1 16th to current 15th
+  let startDate: Date;
+  let endDate: Date;
+  
+  if (day >= 16) {
+    startDate = new Date(today.getFullYear(), today.getMonth() - 1, 16);
+    endDate = new Date(today.getFullYear(), today.getMonth(), 15);
+  } else {
+    startDate = new Date(today.getFullYear(), today.getMonth() - 2, 16);
+    endDate = new Date(today.getFullYear(), today.getMonth() - 1, 15);
+  }
+
+  // Generate some realistic looking demo data
+  const bestDays: DayStats[] = [
+    { date: 'Mar 08', fullDate: startDate.getTime() + 20 * 24 * 60 * 60 * 1000, amount: 4850 },
+    { date: 'Mar 02', fullDate: startDate.getTime() + 14 * 24 * 60 * 60 * 1000, amount: 4200 },
+  ];
+
+  const worstDays: DayStats[] = [
+    { date: 'Feb 19', fullDate: startDate.getTime() + 3 * 24 * 60 * 60 * 1000, amount: 320 },
+  ];
+
+  return {
+    previousCycle: { startDate, endDate },
+    totalBonus: 47650,
+    bestDays,
+    worstDays,
+    activeDays: 24,
+    inactiveDays: 6,
+    totalCycleDays: 30,
+    rankingBonusTotal: 12500,
+    rankingBonusActiveDays: 18,
+    hasRankingBonusData: true,
+    hasDailyPerformanceData: true
+  };
+}
+
 // ─── Main Hook ───────────────────────────────────────────────
 export function useCycleSummary(
   results: BonusResult[],
