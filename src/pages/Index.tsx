@@ -30,7 +30,7 @@ import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
 import { CycleSummaryModal } from '@/components/dashboard/CycleSummaryModal';
 import { CycleSummaryStaticModal } from '@/components/dashboard/CycleSummaryStaticModal';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
-import { useCycleSummary } from '@/hooks/useCycleSummary';
+import { useCycleSummary, generateDemoSummaryData } from '@/hooks/useCycleSummary';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
 import { useTheme } from '@/hooks/useTheme';
@@ -96,6 +96,8 @@ const Index = () => {
   const [showCycleSummaryAnimated, setShowCycleSummaryAnimated] = useState(false);
   const [showCycleSummaryStatic, setShowCycleSummaryStatic] = useState(false);
   const [cycleSummaryShownThisSession, setCycleSummaryShownThisSession] = useState(false);
+  const [showCycleSummaryDemo, setShowCycleSummaryDemo] = useState(false);
+  const demoSummaryData = useMemo(() => generateDemoSummaryData(), []);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
@@ -891,24 +893,32 @@ const Index = () => {
         isDataReady={!isLoading && identityConfirmed && adjustedResults.length > 0}
       />
 
-      {/* Cycle Summary Modals */}
-      {cycleSummaryData && (
-        <>
-          <CycleSummaryModal
-            isOpen={showCycleSummaryAnimated}
-            onClose={handleCycleSummaryAnimatedClose}
-            summaryData={cycleSummaryData}
-            userName={userName}
-            onShowStaticSummary={handleOpenCycleSummaryStatic}
-          />
-          <CycleSummaryStaticModal
-            isOpen={showCycleSummaryStatic}
-            onClose={() => setShowCycleSummaryStatic(false)}
-            summaryData={cycleSummaryData}
-            userName={userName}
-          />
-        </>
-      )}
+{/* Cycle Summary Modals */}
+  {cycleSummaryData && (
+  <>
+  <CycleSummaryModal
+  isOpen={showCycleSummaryAnimated}
+  onClose={handleCycleSummaryAnimatedClose}
+  summaryData={cycleSummaryData}
+  userName={userName}
+  onShowStaticSummary={handleOpenCycleSummaryStatic}
+  />
+  <CycleSummaryStaticModal
+  isOpen={showCycleSummaryStatic}
+  onClose={() => setShowCycleSummaryStatic(false)}
+  summaryData={cycleSummaryData}
+  userName={userName}
+  />
+  </>
+  )}
+
+  {/* Demo Cycle Summary Modal (for preview/testing) */}
+  <CycleSummaryModal
+    isOpen={showCycleSummaryDemo}
+    onClose={() => setShowCycleSummaryDemo(false)}
+    summaryData={demoSummaryData}
+    userName={userName || 'Demo User'}
+  />
 
       <div
         className={`flex flex-1 flex-col ${isIdentityLocked ? 'pointer-events-none select-none blur-sm' : ''}`}
@@ -974,17 +984,26 @@ const Index = () => {
                 >
                   <Settings className="h-4 w-4 text-muted-foreground" />
                 </button>
-                {cycleSummaryData && (
-                  <button
-                    onClick={handleOpenCycleSummaryStatic}
-                    className="h-8 px-3 rounded-md border border-border bg-background/90 hover:bg-muted/60 transition-colors flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-                    aria-label="View last cycle summary"
-                    title="View last cycle summary"
-                  >
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Last Cycle</span>
-                  </button>
-                )}
+{cycleSummaryData && (
+  <button
+  onClick={handleOpenCycleSummaryStatic}
+  className="h-8 px-3 rounded-md border border-border bg-background/90 hover:bg-muted/60 transition-colors flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+  aria-label="View last cycle summary"
+  title="View last cycle summary"
+  >
+  <CalendarDays className="h-3.5 w-3.5" />
+  <span className="hidden sm:inline">Last Cycle</span>
+  </button>
+  )}
+  <button
+    onClick={() => setShowCycleSummaryDemo(true)}
+    className="h-8 px-3 rounded-md border border-dashed border-primary/50 bg-primary/5 hover:bg-primary/10 transition-colors flex items-center gap-1.5 text-xs font-medium text-primary"
+    aria-label="Preview cycle summary demo"
+    title="Preview cycle summary demo"
+  >
+    <CalendarDays className="h-3.5 w-3.5" />
+    <span className="hidden sm:inline">Preview Demo</span>
+  </button>
               </div>
             </div>
 
