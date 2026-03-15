@@ -45,7 +45,7 @@ export function AdjustmentsPanel({ notes, netAdjustment, isLoading }: Props) {
         <div className="flex gap-2 mb-3 p-2.5 rounded-lg bg-muted/30 border border-border/50">
           <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Your admin has made adjustments to your earnings. These corrections account for ID changes or shift coverage by other workers. Your displayed totals reflect these adjustments.
+            Your admin has made adjustments to your earnings. For ID swaps, your earnings are split into two periods: before the swap date (from your old ID) and after (from your new ID). Your displayed totals combine both periods.
           </p>
         </div>
 
