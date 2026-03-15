@@ -582,10 +582,14 @@ const Index = () => {
   }, []);
 
   const handleSwapLogout = useCallback(async () => {
-    // Acknowledge the swap so the modal doesn't reappear — per-user ack key
+    // Acknowledge the swap so the modal doesn't reappear
+    // Set ack keys for BOTH IDs (old and new) so when the user logs in with their new ID,
+    // the swap is already acknowledged and won't trigger another logout loop
     if (swapDetected) {
-      const ackKey = `performanceTracker_swapAck_${swapDetected.swapId}_${swapDetected.currentUserId}`;
-      localStorage.setItem(ackKey, 'true');
+      const ackKeyOld = `performanceTracker_swapAck_${swapDetected.swapId}_${swapDetected.currentUserId}`;
+      const ackKeyNew = `performanceTracker_swapAck_${swapDetected.swapId}_${swapDetected.swappedWithId}`;
+      localStorage.setItem(ackKeyOld, 'true');
+      localStorage.setItem(ackKeyNew, 'true');
     }
     if (userId) await releaseSession(userId);
     localStorage.removeItem(PIN_VERIFIED_KEY);
