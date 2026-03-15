@@ -23,6 +23,7 @@ import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
+import { PreviousCycleSummaryModal } from '@/components/dashboard/PreviousCycleSummaryModal';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
@@ -38,10 +39,11 @@ import { useCycleCache } from '@/hooks/useCycleCache';
 import { getCycleOptions, isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
+import { buildPreviousCycleSummary } from '@/lib/cycleSummaryUtils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
-import { Settings } from 'lucide-react';
+import { Settings, FileText } from 'lucide-react';
 
 const Index = () => {
   const { 
@@ -88,6 +90,8 @@ const Index = () => {
   const [rankingPreferenceSet, setRankingPreferenceSet] = useState(false);
   const [showRankingPreferenceModal, setShowRankingPreferenceModal] = useState(false);
   const [rankingPreferenceFromSettings, setRankingPreferenceFromSettings] = useState(false);
+  const [showAnimatedCycleSummary, setShowAnimatedCycleSummary] = useState(false);
+  const [showStaticCycleSummary, setShowStaticCycleSummary] = useState(false);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
@@ -751,6 +755,22 @@ const Index = () => {
     } as SheetData;
   }, [selectedSheets, sheetDataCache]);
 
+  const previousCycleSummary = useMemo(() => {
+    return buildPreviousCycleSummary(adjustedResults, selectedSheets);
+  }, [adjustedResults, selectedSheets]);
+
+  useEffect(() => {
+    if (!identityConfirmed || !userId || isLoading || adjustedResults.length === 0) return;
+    if (new Date().getDate() !== 16) return;
+
+    const summaryCycleKey = getCycleKey(previousCycleSummary.cycle);
+    const shownKey = `performanceTracker_previousCycleSummaryShown_${userId}_${summaryCycleKey}`;
+    if (localStorage.getItem(shownKey)) return;
+
+    setShowAnimatedCycleSummary(true);
+    localStorage.setItem(shownKey, 'true');
+  }, [identityConfirmed, userId, isLoading, adjustedResults.length, previousCycleSummary]);
+
   const isLoading = sheetsLoading || identityLoading || isFetchingData;
   
   if (isInitializing || identityLoading) {
@@ -771,6 +791,20 @@ const Index = () => {
       <DownloadAppModal
         identityConfirmed={identityConfirmed}
         openRequestId={downloadModalRequestId}
+      />
+
+      <PreviousCycleSummaryModal
+        open={showAnimatedCycleSummary}
+        animated
+        summary={previousCycleSummary}
+        onClose={() => setShowAnimatedCycleSummary(false)}
+      />
+
+      <PreviousCycleSummaryModal
+        open={showStaticCycleSummary}
+        animated={false}
+        summary={previousCycleSummary}
+        onClose={() => setShowStaticCycleSummary(false)}
       />
 
       <RankingBonusPreferenceModal
@@ -898,6 +932,15 @@ const Index = () => {
                   title="Ranking bonus total settings"
                 >
                   <Settings className="h-4 w-4 text-muted-foreground" />
+                </button>
+                <button
+                  onClick={() => setShowStaticCycleSummary(true)}
+                  className="h-8 rounded-md border border-border bg-background/90 hover:bg-muted/60 transition-colors flex items-center gap-2 px-3"
+                  aria-label="View last cycle summary"
+                  title="View last cycle summary"
+                >
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs sm:text-sm">View last cycle summary</span>
                 </button>
               </div>
             </div>
