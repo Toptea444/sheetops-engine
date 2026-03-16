@@ -6,7 +6,8 @@ import {
   isDateInCycle, 
   getCycleKey,
   getTotalDaysInCycle,
-  isInNewCycle
+  isInNewCycle,
+  getCurrentCycle
 } from '@/lib/cycleUtils';
 
 // ─── Types ───────────────────────────────────────────────────
@@ -242,6 +243,12 @@ export function useCycleSummary(
   const shouldShowAnimatedSummary = useMemo(() => {
     // Must have data
     if (!summaryData) return false;
+
+    // Only auto-play on the current cycle dashboard view.
+    // If users manually switch to an older cycle, showing another animation feels
+    // like a duplicate/incorrect recap because the reference cycle shifts again.
+    const isViewingCurrentCycle = getCycleKey(currentCycle) === getCycleKey(getCurrentCycle());
+    if (!isViewingCurrentCycle) return false;
     
     // Must be in a new cycle (day 16 or later)
     if (!isInNewCycle()) return false;
@@ -253,7 +260,7 @@ export function useCycleSummary(
     if (summaryData.totalBonus === 0 && summaryData.rankingBonusTotal === 0) return false;
 
     return true;
-  }, [summaryData, currentCycleKey]);
+  }, [summaryData, currentCycle, currentCycleKey]);
 
   const markAsShown = useCallback(() => {
     markSummaryAsSeen(currentCycleKey);
