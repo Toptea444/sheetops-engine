@@ -1,5 +1,5 @@
-import { X, Calendar, TrendingUp, TrendingDown, Activity, Award } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Calendar, TrendingUp, TrendingDown, Activity, Award, ChevronUp, ChevronDown } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { CycleSummaryData } from '@/hooks/useCycleSummary';
 
 // ─── Types ───────────────────────────────────────────────────
@@ -10,34 +10,43 @@ interface CycleSummaryStaticModalProps {
   userName: string | null;
 }
 
-// ─── Stat Card Component ─────────────────────────────────────
-function StatCard({
-  icon: Icon,
-  iconColor,
-  bgColor,
-  borderColor,
-  label,
-  value,
-  subValue
+// ─── Day Ranking Item ────────────────────────────────────────
+function DayRankItem({
+  rank,
+  date,
+  amount,
+  variant,
+  isTop
 }: {
-  icon: typeof Calendar;
-  iconColor: string;
-  bgColor: string;
-  borderColor: string;
-  label: string;
-  value: string;
-  subValue?: string;
+  rank: number;
+  date: string;
+  amount: number;
+  variant: 'best' | 'worst';
+  isTop?: boolean;
 }) {
+  const isBest = variant === 'best';
+  
   return (
-    <div className={`${bgColor} border ${borderColor} rounded-xl p-4`}>
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className={`h-4 w-4 ${iconColor}`} />
-        <span className={`text-xs font-medium ${iconColor}`}>{label}</span>
+    <div className={`flex items-center gap-3 py-2 ${isTop ? '' : 'opacity-75'}`}>
+      <div className={`
+        flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold
+        ${isTop 
+          ? isBest ? 'bg-emerald-500 text-white' : 'bg-orange-500 text-white'
+          : isBest ? 'bg-emerald-500/20 text-emerald-600' : 'bg-orange-500/20 text-orange-600'
+        }
+      `}>
+        {rank}
       </div>
-      <p className="text-xl font-bold text-foreground">{value}</p>
-      {subValue && (
-        <p className="text-xs text-muted-foreground mt-1">{subValue}</p>
-      )}
+      <span className="text-sm text-muted-foreground flex-1">{date}</span>
+      <span className={`
+        font-semibold tabular-nums
+        ${isTop 
+          ? isBest ? 'text-emerald-600 text-base' : 'text-orange-600 text-base'
+          : 'text-foreground text-sm'
+        }
+      `}>
+        {'\u20A6'}{amount.toLocaleString()}
+      </span>
     </div>
   );
 }
@@ -56,134 +65,169 @@ export function CycleSummaryStaticModal({
     ? Math.round((summaryData.activeDays / summaryData.totalCycleDays) * 100) 
     : 0;
 
+  // Get top 3 best and worst days
+  const topBest = summaryData.bestDays.slice(0, 3);
+  const bottomWorst = summaryData.worstDays.slice(0, 3);
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            <DialogTitle className="text-lg">Cycle Summary</DialogTitle>
-          </div>
-        </DialogHeader>
-
-        <div className="space-y-6 pt-2">
-          {/* Greeting */}
-          <div className="text-center pb-2">
-            <p className="text-sm text-muted-foreground">
-              Hey {firstName}, here's how you performed during
-            </p>
-            <p className="text-sm font-medium text-primary">
-              {summaryData.previousCycle.label}
-            </p>
-          </div>
-
-          {/* Total Earnings */}
-          <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 rounded-2xl p-6 text-center">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
-              Total Bonus Earned
-            </p>
-            <p className="text-4xl font-bold text-emerald-500 tabular-nums">
-              {'\u20A6'}{summaryData.totalBonus.toLocaleString()}
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              from Daily & Performance sheets
-            </p>
-          </div>
-
-          {/* Highlights Grid */}
-          <div>
-            <h3 className="text-sm font-medium text-foreground mb-3">Highlights</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {/* Best Day */}
-              <StatCard
-                icon={TrendingUp}
-                iconColor="text-emerald-500"
-                bgColor="bg-emerald-500/5"
-                borderColor="border-emerald-500/20"
-                label="Best Day"
-                value={summaryData.bestDays.length > 0 
-                  ? `\u20A6${summaryData.bestDays[0].amount.toLocaleString()}`
-                  : 'N/A'
-                }
-                subValue={summaryData.bestDays.length > 1 
-                  ? `${summaryData.bestDays.length} days tied`
-                  : summaryData.bestDays[0]?.date
-                }
-              />
-
-              {/* Worst Day */}
-              <StatCard
-                icon={TrendingDown}
-                iconColor="text-orange-500"
-                bgColor="bg-orange-500/5"
-                borderColor="border-orange-500/20"
-                label="Room to Grow"
-                value={summaryData.worstDays.length > 0 && summaryData.worstDays[0].amount > 0
-                  ? `\u20A6${summaryData.worstDays[0].amount.toLocaleString()}`
-                  : 'All wins!'
-                }
-                subValue={summaryData.worstDays.length > 1 
-                  ? `${summaryData.worstDays.length} days`
-                  : summaryData.worstDays[0]?.date
-                }
-              />
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-2xl border-0 shadow-xl">
+        {/* Header Section */}
+        <div className="bg-gradient-to-br from-primary/8 via-primary/4 to-transparent px-6 pt-6 pb-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Calendar className="h-5 w-5 text-primary" />
             </div>
-          </div>
-
-          {/* Activity Section */}
-          <div>
-            <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Activity
-            </h3>
-            <div className="bg-muted/30 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-muted-foreground">Active days</span>
-                <span className="text-sm font-semibold text-foreground">
-                  {summaryData.activeDays} of {summaryData.totalCycleDays} days
-                </span>
-              </div>
-              
-              {/* Progress bar */}
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-primary rounded-full transition-all"
-                  style={{ width: `${activePercent}%` }}
-                />
-              </div>
-              
-              <div className="flex justify-between mt-2">
-                <span className="text-xs text-muted-foreground">
-                  {summaryData.inactiveDays} days without earnings
-                </span>
-                <span className="text-xs font-medium text-primary">
-                  {activePercent}% active
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Ranking Bonus Section */}
-          {summaryData.hasRankingBonusData && (
             <div>
-              <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-                <Award className="h-4 w-4 text-amber-500" />
-                Ranking Bonus
-              </h3>
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Total earned</p>
-                    <p className="text-2xl font-bold text-amber-500 tabular-nums">
-                      {'\u20A6'}{summaryData.rankingBonusTotal.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Qualifying days</p>
-                    <p className="text-lg font-semibold text-foreground">
-                      {summaryData.rankingBonusActiveDays}
-                    </p>
-                  </div>
+              <p className="text-xs text-muted-foreground">Previous Cycle</p>
+              <p className="text-sm font-medium text-foreground">{summaryData.previousCycle.label}</p>
+            </div>
+          </div>
+          
+          <p className="text-muted-foreground text-sm">
+            Hey {firstName}, here's your cycle recap
+          </p>
+        </div>
+
+        <div className="px-6 pb-6 space-y-5">
+          {/* Total Earnings - Hero Section */}
+          <div className="relative overflow-hidden bg-card border rounded-xl p-5">
+            <div className="relative">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                Total Bonus
+              </p>
+              <p className="text-3xl font-bold text-emerald-600 tabular-nums">
+                {'\u20A6'}{summaryData.totalBonus.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Daily + Performance sheets
+              </p>
+            </div>
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-emerald-500/5" />
+          </div>
+
+          {/* Top 3 Best & Worst Days */}
+          <div className="grid grid-cols-1 gap-4">
+            {/* Best Days */}
+            <div className="bg-card border rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <ChevronUp className="h-4 w-4 text-emerald-600" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Top 3 Best Days</span>
+              </div>
+              {topBest.length > 0 ? (
+                <div className="divide-y divide-border/50">
+                  {topBest.map((day, i) => (
+                    <DayRankItem
+                      key={day.date}
+                      rank={i + 1}
+                      date={day.date}
+                      amount={day.amount}
+                      variant="best"
+                      isTop={i === 0}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">No data available</p>
+              )}
+            </div>
+
+            {/* Worst Days */}
+            <div className="bg-card border rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                <div className="w-6 h-6 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                  <ChevronDown className="h-4 w-4 text-orange-600" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Bottom 3 Days</span>
+              </div>
+              {bottomWorst.length > 0 && bottomWorst[0].amount > 0 ? (
+                <div className="divide-y divide-border/50">
+                  {bottomWorst.map((day, i) => (
+                    <DayRankItem
+                      key={day.date}
+                      rank={i + 1}
+                      date={day.date}
+                      amount={day.amount}
+                      variant="worst"
+                      isTop={i === 0}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-emerald-600 font-medium py-2">Every day was a win!</p>
+              )}
+            </div>
+          </div>
+
+          {/* Activity Stats - Compact Row */}
+          <div className="bg-card border rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Activity</span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              {/* Circular Progress */}
+              <div className="relative w-14 h-14 flex-shrink-0">
+                <svg className="w-full h-full -rotate-90">
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    className="text-muted/30"
+                  />
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 24}`}
+                    strokeDashoffset={2 * Math.PI * 24 * (1 - activePercent / 100)}
+                    className="text-primary"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs font-bold text-foreground">{activePercent}%</span>
+                </div>
+              </div>
+              
+              {/* Stats */}
+              <div className="flex-1 grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-lg font-bold text-foreground">{summaryData.activeDays}</p>
+                  <p className="text-xs text-muted-foreground">days active</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-muted-foreground">{summaryData.inactiveDays}</p>
+                  <p className="text-xs text-muted-foreground">days off</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Ranking Bonus - Compact */}
+          {summaryData.hasRankingBonusData && (
+            <div className="bg-card border rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm font-medium text-foreground">Ranking Bonus</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-amber-600 tabular-nums">
+                    {'\u20A6'}{summaryData.rankingBonusTotal.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {summaryData.rankingBonusActiveDays} qualifying days
+                  </p>
                 </div>
               </div>
             </div>
@@ -192,9 +236,9 @@ export function CycleSummaryStaticModal({
           {/* Close button */}
           <button
             onClick={onClose}
-            className="w-full py-3 bg-muted hover:bg-muted/80 rounded-lg text-sm font-medium text-foreground transition-colors"
+            className="w-full py-3 bg-primary/10 hover:bg-primary/15 rounded-xl text-sm font-medium text-primary transition-colors"
           >
-            Close
+            Done
           </button>
         </div>
       </DialogContent>
