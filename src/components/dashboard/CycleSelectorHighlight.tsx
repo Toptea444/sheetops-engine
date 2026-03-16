@@ -34,7 +34,10 @@ export function CycleSelectorHighlight({
   const [position, setPosition] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
 
   useEffect(() => {
-    if (isVisible && targetRef.current) {
+    if (!isVisible || !targetRef.current) return;
+
+    const updatePosition = () => {
+      if (!targetRef.current) return;
       const rect = targetRef.current.getBoundingClientRect();
       setPosition({
         top: rect.top,
@@ -42,9 +45,47 @@ export function CycleSelectorHighlight({
         width: rect.width,
         height: rect.height,
       });
-    }
+    };
+
+    updatePosition();
+    const rafId = requestAnimationFrame(updatePosition);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, { passive: true });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition);
+    };
   }, [isVisible, targetRef]);
 
+
+
+  useEffect(() => {
+    if (!isVisible) return;
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    const preventScroll = (event: Event) => {
+      event.preventDefault();
+    };
+
+    window.addEventListener('wheel', preventScroll, { passive: false });
+    window.addEventListener('touchmove', preventScroll, { passive: false });
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      window.removeEventListener('wheel', preventScroll);
+      window.removeEventListener('touchmove', preventScroll);
+    };
+  }, [isVisible]);
   const handleDismiss = () => {
     markCycleSelectorHighlightAsSeen();
     onDismiss();

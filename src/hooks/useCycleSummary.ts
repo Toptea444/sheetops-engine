@@ -16,6 +16,18 @@ export interface DayStats {
   amount: number;
 }
 
+
+
+interface DoubleBonusPeriodData {
+  startLabel: string;
+  endLabel: string;
+  maxPossible: number;
+  totalEarned: number;
+  daysWithEarnings: number;
+  breakdown: DayStats[];
+  progressPercent: number;
+  attemptStatus: 'none' | 'tried' | 'strong' | 'maxed';
+}
 export interface CycleSummaryData {
   previousCycle: CyclePeriod;
   totalBonus: number;
@@ -28,6 +40,7 @@ export interface CycleSummaryData {
   rankingBonusActiveDays: number;
   hasRankingBonusData: boolean;
   hasDailyPerformanceData: boolean;
+  doubleBonusPeriod: DoubleBonusPeriodData;
 }
 
 // ─── Sheet Type Detection ────────────────────────────────────
@@ -64,6 +77,15 @@ export function markSummaryAsSeen(cycleKey: string): void {
     // ignore
   }
 }
+
+
+const DOUBLE_BONUS_PERIOD = {
+  startMonth: 1, // February (0-indexed)
+  startDay: 23,
+  endMonth: 1,
+  endDay: 28,
+  maxPossible: 24000,
+};
 
 // ─── Main Hook ───────────────────────────────────────────────
 export function useCycleSummary(
@@ -142,6 +164,31 @@ export function useCycleSummary(
 
     // Convert to array and sort
     const dailyEarnings = Array.from(dailyEarningsMap.values());
+
+    const periodYear = previousCycle.endDate.getFullYear();
+    const doubleBonusStart = new Date(periodYear, DOUBLE_BONUS_PERIOD.startMonth, DOUBLE_BONUS_PERIOD.startDay);
+    doubleBonusStart.setHours(0, 0, 0, 0);
+    const doubleBonusEnd = new Date(periodYear, DOUBLE_BONUS_PERIOD.endMonth, DOUBLE_BONUS_PERIOD.endDay);
+    doubleBonusEnd.setHours(23, 59, 59, 999);
+
+    const doubleBonusBreakdown = dailyEarnings
+      .filter((day) => {
+        const dayDate = new Date(day.fullDate);
+        return dayDate >= doubleBonusStart && dayDate <= doubleBonusEnd;
+      })
+      .sort((a, b) => a.fullDate - b.fullDate);
+
+    const doubleBonusTotal = doubleBonusBreakdown.reduce((sum, day) => sum + day.amount, 0);
+    const doubleBonusProgress = Math.min(100, Math.round((doubleBonusTotal / DOUBLE_BONUS_PERIOD.maxPossible) * 100));
+
+    let doubleBonusAttemptStatus: DoubleBonusPeriodData['attemptStatus'] = 'none';
+    if (doubleBonusTotal >= DOUBLE_BONUS_PERIOD.maxPossible) {
+      doubleBonusAttemptStatus = 'maxed';
+    } else if (doubleBonusTotal >= DOUBLE_BONUS_PERIOD.maxPossible * 0.5) {
+      doubleBonusAttemptStatus = 'strong';
+    } else if (doubleBonusTotal > 0) {
+      doubleBonusAttemptStatus = 'tried';
+    }
     
     if (dailyEarnings.length === 0 && rankingBonusTotal === 0) {
       return null;
@@ -177,7 +224,17 @@ export function useCycleSummary(
       rankingBonusTotal,
       rankingBonusActiveDays: rankingBonusDaysSet.size,
       hasRankingBonusData: rankingBonusResults.length > 0,
-      hasDailyPerformanceData: dailyPerformanceResults.length > 0
+      hasDailyPerformanceData: dailyPerformanceResults.length > 0,
+      doubleBonusPeriod: {
+        startLabel: 'Feb 23',
+        endLabel: 'Feb 28',
+        maxPossible: DOUBLE_BONUS_PERIOD.maxPossible,
+        totalEarned: doubleBonusTotal,
+        daysWithEarnings: doubleBonusBreakdown.filter((day) => day.amount > 0).length,
+        breakdown: doubleBonusBreakdown,
+        progressPercent: doubleBonusProgress,
+        attemptStatus: doubleBonusAttemptStatus,
+      },
     };
   }, [results, previousCycle]);
 
