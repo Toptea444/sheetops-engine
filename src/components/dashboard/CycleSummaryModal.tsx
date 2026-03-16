@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { X, ChevronRight, ChevronLeft, Calendar, CalendarDays, TrendingUp, TrendingDown, Activity, Award, RotateCcw, Zap, Users, Trophy } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Calendar, CalendarDays, TrendingUp, TrendingDown, Activity, Award, RotateCcw } from 'lucide-react';
 import type { CycleSummaryData } from '@/hooks/useCycleSummary';
 
 // ─── Types ───────────────────────────────────────────────────
@@ -12,7 +12,7 @@ interface CycleSummaryModalProps {
   onShowStaticSummary?: () => void;
 }
 
-type Screen = 'welcome' | 'total' | 'doubleBonus' | 'highlights' | 'activity' | 'ranking' | 'stageRanking' | 'motivation' | 'closing';
+type Screen = 'welcome' | 'total' | 'highlights' | 'activity' | 'ranking' | 'motivation' | 'closing';
 
 // ─── Particle System ─────────────────────────────────────────
 interface Particle {
@@ -186,157 +186,6 @@ function TotalBonusScreen({ total, isAnimating }: { total: number; isAnimating: 
       >
         from your Daily & Performance sheets
       </motion.p>
-    </motion.div>
-  );
-}
-
-function DoubleBonusPeriodScreen({ 
-  doubleBonusPeriod,
-  isAnimating 
-}: { 
-  doubleBonusPeriod: NonNullable<CycleSummaryData['doubleBonusPeriod']>;
-  isAnimating: boolean;
-}) {
-  const { totalEarned, targetAmount, dailyBreakdown, achievementLevel, percentOfTarget, startDate, endDate } = doubleBonusPeriod;
-  
-  const getAchievementMessage = () => {
-    switch (achievementLevel) {
-      case 'exceeded':
-        return { text: 'You crushed it!', emoji: '🔥', color: 'text-emerald-500' };
-      case 'achieved':
-        return { text: 'Target reached!', emoji: '🎯', color: 'text-emerald-500' };
-      case 'close':
-        return { text: 'So close!', emoji: '💪', color: 'text-amber-500' };
-      default:
-        return { text: 'Room to grow!', emoji: '📈', color: 'text-orange-500' };
-    }
-  };
-  
-  const achievement = getAchievementMessage();
-
-  return (
-    <motion.div 
-      className="flex flex-col items-center justify-center px-6 h-full overflow-y-auto py-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-    >
-      <motion.div
-        className="flex items-center gap-2 mb-2"
-        initial={{ y: -20, opacity: 0, scale: 0.8 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        transition={{ delay: 0.2, type: 'spring' }}
-      >
-        <motion.div
-          animate={{ 
-            scale: [1, 1.2, 1],
-            rotate: [0, 10, -10, 0]
-          }}
-          transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 0.5 }}
-        >
-          <Zap className="h-6 w-6 text-yellow-500" />
-        </motion.div>
-        <p className="text-sm uppercase tracking-widest text-muted-foreground">
-          Double Bonus Period
-        </p>
-      </motion.div>
-      
-      <motion.p 
-        className="text-xs text-muted-foreground/70 mb-6"
-        initial={{ y: -15, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.3, type: 'spring' }}
-      >
-        {startDate} - {endDate}
-      </motion.p>
-      
-      {/* Total earned with achievement indicator */}
-      <motion.div
-        className="relative mb-6"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.4, type: 'spring', stiffness: 120 }}
-      >
-        <motion.div
-          animate={{ 
-            textShadow: achievementLevel === 'exceeded' || achievementLevel === 'achieved'
-              ? ['0 0 20px rgba(16, 185, 129, 0)', '0 0 40px rgba(16, 185, 129, 0.5)', '0 0 20px rgba(16, 185, 129, 0)']
-              : ['0 0 20px rgba(245, 158, 11, 0)', '0 0 30px rgba(245, 158, 11, 0.3)', '0 0 20px rgba(245, 158, 11, 0)']
-          }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          <h2 className={`text-5xl sm:text-6xl font-bold ${achievementLevel === 'exceeded' || achievementLevel === 'achieved' ? 'text-emerald-500' : 'text-amber-500'}`}>
-            {isAnimating ? (
-              <AnimatedNumber value={totalEarned} prefix={'\u20A6'} />
-            ) : (
-              <span className="tabular-nums">{'\u20A6'}{totalEarned.toLocaleString()}</span>
-            )}
-          </h2>
-        </motion.div>
-      </motion.div>
-      
-      {/* Progress towards target */}
-      <motion.div
-        className="w-full max-w-xs mb-4"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.6, type: 'spring' }}
-      >
-        <div className="flex justify-between text-xs text-muted-foreground mb-2">
-          <span>Target: {'\u20A6'}{targetAmount.toLocaleString()}</span>
-          <span className={achievement.color}>{percentOfTarget}%</span>
-        </div>
-        <div className="h-3 bg-muted/30 rounded-full overflow-hidden">
-          <motion.div
-            className={`h-full rounded-full ${achievementLevel === 'exceeded' || achievementLevel === 'achieved' ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-amber-500 to-orange-400'}`}
-            initial={{ width: 0 }}
-            animate={{ width: `${Math.min(percentOfTarget, 100)}%` }}
-            transition={{ delay: 0.8, duration: 1, ease: 'easeOut' }}
-          />
-        </div>
-      </motion.div>
-      
-      {/* Achievement badge */}
-      <motion.div
-        className={`flex items-center gap-2 px-4 py-2 rounded-full mb-6 ${
-          achievementLevel === 'exceeded' || achievementLevel === 'achieved' 
-            ? 'bg-emerald-500/15 border border-emerald-500/30' 
-            : achievementLevel === 'close'
-              ? 'bg-amber-500/15 border border-amber-500/30'
-              : 'bg-orange-500/15 border border-orange-500/30'
-        }`}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 1.0, type: 'spring', stiffness: 150 }}
-      >
-        <span className="text-xl">{achievement.emoji}</span>
-        <span className={`font-semibold ${achievement.color}`}>{achievement.text}</span>
-      </motion.div>
-      
-      {/* Daily breakdown */}
-      <motion.div
-        className="w-full max-w-sm bg-muted/20 rounded-xl p-4"
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 1.2, type: 'spring' }}
-      >
-        <p className="text-xs text-muted-foreground mb-3 text-center">Daily Breakdown</p>
-        <div className="space-y-2">
-          {dailyBreakdown.map((day, index) => (
-            <motion.div
-              key={day.date}
-              className="flex items-center justify-between bg-background/50 rounded-lg px-3 py-2"
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 1.3 + index * 0.1, type: 'spring' }}
-            >
-              <span className="text-xs text-muted-foreground">{day.date}</span>
-              <span className={`text-sm font-semibold tabular-nums ${day.amount > 0 ? 'text-foreground' : 'text-muted-foreground/50'}`}>
-                {'\u20A6'}{day.amount.toLocaleString()}
-              </span>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
     </motion.div>
   );
 }
@@ -683,158 +532,6 @@ function RankingBonusScreen({
   );
 }
 
-// ─── Stage Ranking Screen ────────────────────────────────────
-function StageRankingScreen({ 
-  stageRanking 
-}: { 
-  stageRanking: NonNullable<CycleSummaryData['stageRanking']>;
-}) {
-  const { rank, totalInStage, percentile, stageName } = stageRanking;
-  const peopleBehind = totalInStage - rank;
-  
-  const getRankMessage = () => {
-    if (percentile >= 90) return { text: 'Top performer!', emoji: '👑', color: 'text-amber-500' };
-    if (percentile >= 75) return { text: 'Outstanding!', emoji: '🌟', color: 'text-emerald-500' };
-    if (percentile >= 50) return { text: 'Above average!', emoji: '💪', color: 'text-blue-500' };
-    if (percentile >= 25) return { text: 'Keep pushing!', emoji: '🚀', color: 'text-purple-500' };
-    return { text: 'Room to grow!', emoji: '📈', color: 'text-orange-500' };
-  };
-  
-  const rankMessage = getRankMessage();
-
-  return (
-    <motion.div 
-      className="flex flex-col items-center justify-center text-center px-6 h-full"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-    >
-      <motion.div
-        className="flex items-center gap-2 mb-4"
-        initial={{ y: -20, opacity: 0, scale: 0.8 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        transition={{ delay: 0.2, type: 'spring' }}
-      >
-        <motion.div
-          animate={{ 
-            y: [0, -5, 0],
-            rotate: [0, 5, -5, 0]
-          }}
-          transition={{ duration: 2, repeat: Infinity, repeatDelay: 0.5 }}
-        >
-          <Users className="h-6 w-6 text-primary" />
-        </motion.div>
-        <p className="text-sm uppercase tracking-widest text-muted-foreground">
-          Your Ranking
-        </p>
-      </motion.div>
-      
-      <motion.p 
-        className="text-sm text-muted-foreground/70 mb-6"
-        initial={{ y: -15, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.3, type: 'spring' }}
-      >
-        in {stageName}
-      </motion.p>
-      
-      {/* Main ranking display */}
-      <motion.div
-        className="relative mb-6"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.4, type: 'spring', stiffness: 120 }}
-      >
-        <motion.div
-          className="w-36 h-36 rounded-full bg-gradient-to-br from-primary/20 to-emerald-500/20 flex items-center justify-center"
-          animate={{ 
-            boxShadow: [
-              '0 0 0 0 rgba(var(--primary), 0)',
-              '0 0 0 15px rgba(var(--primary), 0.1)',
-              '0 0 0 0 rgba(var(--primary), 0)'
-            ]
-          }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          <div className="text-center">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.6, type: 'spring', stiffness: 150 }}
-            >
-              <Trophy className="h-8 w-8 text-primary mx-auto mb-1" />
-            </motion.div>
-            <motion.span 
-              className="text-4xl font-bold text-foreground"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-            >
-              #{rank}
-            </motion.span>
-          </div>
-        </motion.div>
-      </motion.div>
-      
-      {/* Achievement badge */}
-      <motion.div
-        className={`flex items-center gap-2 px-4 py-2 rounded-full mb-6 bg-primary/10 border border-primary/20`}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 1.0, type: 'spring', stiffness: 150 }}
-      >
-        <span className="text-xl">{rankMessage.emoji}</span>
-        <span className={`font-semibold ${rankMessage.color}`}>{rankMessage.text}</span>
-      </motion.div>
-      
-      {/* People you earned more than */}
-      <motion.div
-        className="bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/25 rounded-2xl p-5 max-w-xs"
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 1.2, type: 'spring' }}
-      >
-        <motion.p 
-          className="text-muted-foreground text-sm mb-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.4 }}
-        >
-          You earned more than
-        </motion.p>
-        <motion.div
-          className="flex items-baseline justify-center gap-2"
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 1.5, type: 'spring' }}
-        >
-          <span className="text-4xl font-bold text-emerald-500">{peopleBehind}</span>
-          <span className="text-muted-foreground">people</span>
-        </motion.div>
-        <motion.p 
-          className="text-xs text-muted-foreground/70 mt-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.6 }}
-        >
-          out of {totalInStage} in your stage
-        </motion.p>
-      </motion.div>
-      
-      {/* Percentile indicator */}
-      <motion.div
-        className="mt-6 flex items-center gap-2"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 1.8 }}
-      >
-        <span className="text-sm text-muted-foreground">Top</span>
-        <span className={`text-lg font-bold ${rankMessage.color}`}>{100 - percentile}%</span>
-        <span className="text-sm text-muted-foreground">of earners</span>
-      </motion.div>
-    </motion.div>
-  );
-}
-
 // ─── Motivation Screen ───────────────────────────────────────
 function MotivationScreen({ userName }: { userName: string | null }) {
   const firstName = userName ? userName.split(' ')[0] : null;
@@ -1021,25 +718,12 @@ export function CycleSummaryModal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
 
-  const screens: Screen[] = ['welcome', 'total'];
-  
-  // Add double bonus period screen if data exists
-  if (summaryData.doubleBonusPeriod) {
-    screens.push('doubleBonus');
-  }
-  
-  screens.push('highlights', 'activity');
-  
+  const screens: Screen[] = ['welcome', 'total', 'highlights', 'activity'];
   if (summaryData.hasRankingBonusData) {
     screens.push('ranking');
   }
-  
-  // Add stage ranking screen before motivation if data exists
-  if (summaryData.stageRanking) {
-    screens.push('stageRanking');
-  }
-  
-  screens.push('motivation', 'closing');
+  screens.push('motivation');
+  screens.push('closing');
 
   const currentIndex = screens.indexOf(currentScreen);
   const isFirstScreen = currentIndex === 0;
@@ -1094,11 +778,9 @@ export function CycleSummaryModal({
     const screenTimings: Record<Screen, number> = {
       welcome: 3000,
       total: 4000,
-      doubleBonus: 6000,
       highlights: 5000,
       activity: 4500,
       ranking: 4000,
-      stageRanking: 5000,
       motivation: 5000,
       closing: 0, // Don't auto-advance
     };
@@ -1249,13 +931,6 @@ export function CycleSummaryModal({
             isAnimating={isAnimating}
           />
         );
-      case 'doubleBonus':
-        return summaryData.doubleBonusPeriod ? (
-          <DoubleBonusPeriodScreen 
-            doubleBonusPeriod={summaryData.doubleBonusPeriod}
-            isAnimating={isAnimating}
-          />
-        ) : null;
       case 'highlights':
         return (
           <HighlightsScreen 
@@ -1280,12 +955,6 @@ export function CycleSummaryModal({
             isAnimating={isAnimating}
           />
         );
-      case 'stageRanking':
-        return summaryData.stageRanking ? (
-          <StageRankingScreen 
-            stageRanking={summaryData.stageRanking}
-          />
-        ) : null;
       case 'motivation':
         return (
           <MotivationScreen userName={userName} />
@@ -1358,11 +1027,9 @@ export function CycleSummaryModal({
             const screenTimings: Record<Screen, number> = {
               welcome: 3000,
               total: 4000,
-              doubleBonus: 6000,
               highlights: 5000,
               activity: 4500,
               ranking: 4000,
-              stageRanking: 5000,
               motivation: 5000,
               closing: 0,
             };
