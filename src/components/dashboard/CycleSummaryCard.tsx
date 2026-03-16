@@ -125,7 +125,7 @@ export function CycleSummaryCard({
       {/* Stats row */}
       <div className="flex gap-8 pt-1">
         <div>
-          <p className="text-xs text-muted-foreground">Active Days</p>
+          <p className="text-xs text-muted-foreground">Days with Earnings</p>
           <p className="text-lg font-semibold">{daysActive}</p>
         </div>
         <div>
