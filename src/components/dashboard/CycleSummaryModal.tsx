@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { X, ChevronRight, ChevronLeft, Calendar, CalendarDays, TrendingUp, TrendingDown, Activity, Award, RotateCcw } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Calendar, CalendarDays, TrendingUp, TrendingDown, Activity, Award, RotateCcw, Users, Trophy } from 'lucide-react';
 import type { CycleSummaryData } from '@/hooks/useCycleSummary';
 
 // ─── Types ───────────────────────────────────────────────────
@@ -10,9 +10,10 @@ interface CycleSummaryModalProps {
   summaryData: CycleSummaryData;
   userName: string | null;
   onShowStaticSummary?: () => void;
+  peopleOutperformedInStage?: number | null;
 }
 
-type Screen = 'welcome' | 'total' | 'highlights' | 'activity' | 'ranking' | 'motivation' | 'closing';
+type Screen = 'welcome' | 'total' | 'doubleBonus' | 'highlights' | 'activity' | 'ranking' | 'stageOutperform' | 'motivation' | 'closing';
 
 // ─── Particle System ─────────────────────────────────────────
 interface Particle {
@@ -532,6 +533,137 @@ function RankingBonusScreen({
   );
 }
 
+function DoubleBonusPeriodScreen({
+  period,
+  isAnimating,
+}: {
+  period: CycleSummaryData['doubleBonusPeriod'];
+  isAnimating: boolean;
+}) {
+  const statusMessage: Record<CycleSummaryData['doubleBonusPeriod']['attemptStatus'], string> = {
+    none: "You didn't earn in this period yet.",
+    tried: 'Nice try. You got something in this period.',
+    strong: 'Solid run! You pushed well during this period.',
+    maxed: 'You maxed it out. Amazing work!',
+  };
+
+  return (
+    <motion.div
+      className="flex flex-col items-center justify-center px-6 h-full py-4 overflow-y-auto"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      <motion.div
+        className="flex items-center gap-2 mb-3"
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2, type: 'spring' }}
+      >
+        <Award className="h-5 w-5 text-amber-500" />
+        <p className="text-sm uppercase tracking-widest text-muted-foreground">Double Bonus Period</p>
+      </motion.div>
+
+      <motion.p
+        className="text-sm text-muted-foreground mb-4 text-center"
+        initial={{ y: -10, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.3 }}
+      >
+        Here's how you performed from {period.startLabel} to {period.endLabel}.
+      </motion.p>
+
+      <motion.div
+        className="text-center mb-4"
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.4, type: 'spring' }}
+      >
+        <h2 className="text-4xl sm:text-5xl font-bold text-amber-500 tabular-nums">
+          {isAnimating ? <AnimatedNumber value={period.totalEarned} prefix={'\u20A6'} /> : `${'\u20A6'}${period.totalEarned.toLocaleString()}`}
+        </h2>
+        <p className="text-xs text-muted-foreground mt-2">Total earned in the period</p>
+      </motion.div>
+
+      <div className="w-full max-w-sm mb-4">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+          <span>Max: {'\u20A6'}{period.maxPossible.toLocaleString()}</span>
+          <span>{period.progressPercent}%</span>
+        </div>
+        <div className="h-2 rounded-full bg-muted overflow-hidden">
+          <motion.div
+            className="h-full bg-amber-500"
+            initial={{ width: 0 }}
+            animate={{ width: `${period.progressPercent}%` }}
+            transition={{ delay: 0.5, duration: 1 }}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">{statusMessage[period.attemptStatus]}</p>
+      </div>
+
+      <div className="w-full max-w-sm space-y-2">
+        {period.breakdown.length > 0 ? period.breakdown.map((day, index) => (
+          <motion.div
+            key={day.date}
+            className="flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2"
+            initial={{ x: 20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.6 + index * 0.1 }}
+          >
+            <span className="text-sm text-muted-foreground">{day.date}</span>
+            <span className="text-sm font-semibold tabular-nums text-foreground">{'\u20A6'}{day.amount.toLocaleString()}</span>
+          </motion.div>
+        )) : (
+          <p className="text-sm text-muted-foreground text-center py-2">No earnings found in this period.</p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function StageOutperformScreen({ peopleOutperformedInStage }: { peopleOutperformedInStage: number | null | undefined }) {
+  const count = Math.max(0, peopleOutperformedInStage ?? 0);
+
+  return (
+    <motion.div
+      className="flex flex-col items-center justify-center text-center px-6 h-full"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      <motion.div
+        initial={{ scale: 0, rotate: -180 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ delay: 0.2, type: 'spring', stiffness: 120 }}
+        className="mb-6"
+      >
+        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+          <Users className="h-10 w-10 text-primary" />
+        </div>
+      </motion.div>
+
+      <p className="text-sm uppercase tracking-widest text-muted-foreground mb-3">Stage Performance</p>
+
+      <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 leading-tight">
+        You earned more than
+        <span className="block text-primary mt-2">{count} {count === 1 ? 'person' : 'people'}</span>
+      </h2>
+
+      <p className="text-muted-foreground max-w-sm">
+        This is based on your stage leaderboard for the last cycle. Keep going, you're moving up.
+      </p>
+
+      <motion.div
+        className="mt-8 flex items-center gap-2 text-amber-500"
+        initial={{ y: 15, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.6 }}
+      >
+        <Trophy className="h-5 w-5" />
+        <span className="text-sm font-medium">Nice one!</span>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ─── Motivation Screen ───────────────────────────────────────
 function MotivationScreen({ userName }: { userName: string | null }) {
   const firstName = userName ? userName.split(' ')[0] : null;
@@ -709,7 +841,8 @@ export function CycleSummaryModal({
   onClose,
   summaryData,
   userName,
-  onShowStaticSummary
+  onShowStaticSummary,
+  peopleOutperformedInStage
 }: CycleSummaryModalProps) {
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
   const [direction, setDirection] = useState(1);
@@ -718,10 +851,11 @@ export function CycleSummaryModal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
 
-  const screens: Screen[] = ['welcome', 'total', 'highlights', 'activity'];
+  const screens: Screen[] = ['welcome', 'total', 'doubleBonus', 'highlights', 'activity'];
   if (summaryData.hasRankingBonusData) {
     screens.push('ranking');
   }
+  screens.push('stageOutperform');
   screens.push('motivation');
   screens.push('closing');
 
@@ -778,9 +912,11 @@ export function CycleSummaryModal({
     const screenTimings: Record<Screen, number> = {
       welcome: 3000,
       total: 4000,
+      doubleBonus: 6000,
       highlights: 5000,
       activity: 4500,
       ranking: 4000,
+      stageOutperform: 4500,
       motivation: 5000,
       closing: 0, // Don't auto-advance
     };
@@ -931,6 +1067,13 @@ export function CycleSummaryModal({
             isAnimating={isAnimating}
           />
         );
+      case 'doubleBonus':
+        return (
+          <DoubleBonusPeriodScreen
+            period={summaryData.doubleBonusPeriod}
+            isAnimating={isAnimating}
+          />
+        );
       case 'highlights':
         return (
           <HighlightsScreen 
@@ -954,6 +1097,10 @@ export function CycleSummaryModal({
             hasData={summaryData.hasRankingBonusData}
             isAnimating={isAnimating}
           />
+        );
+      case 'stageOutperform':
+        return (
+          <StageOutperformScreen peopleOutperformedInStage={peopleOutperformedInStage} />
         );
       case 'motivation':
         return (
@@ -1027,9 +1174,11 @@ export function CycleSummaryModal({
             const screenTimings: Record<Screen, number> = {
               welcome: 3000,
               total: 4000,
+              doubleBonus: 6000,
               highlights: 5000,
               activity: 4500,
               ranking: 4000,
+              stageOutperform: 4500,
               motivation: 5000,
               closing: 0,
             };

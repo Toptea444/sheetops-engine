@@ -32,6 +32,7 @@ import { CycleSummaryStaticModal } from '@/components/dashboard/CycleSummaryStat
 import { CycleSelectorHighlight, hasSeenCycleSelectorHighlight, markCycleSelectorHighlightAsSeen } from '@/components/dashboard/CycleSelectorHighlight';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useCycleSummary } from '@/hooks/useCycleSummary';
+import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
 import { useTheme } from '@/hooks/useTheme';
@@ -39,7 +40,7 @@ import { useDisplayMode } from '@/hooks/useDisplayMode';
 import { useEarningsAdjustments } from '@/hooks/useEarningsAdjustments';
 import { useNotifications, generateDataHash, NOTIFICATION_POLL_INTERVAL_MS } from '@/hooks/useNotifications';
 import { useCycleCache } from '@/hooks/useCycleCache';
-import { getCycleOptions, isDateInCycle, getCycleKey } from '@/lib/cycleUtils';
+import { getCycleOptions, isDateInCycle, getCycleKey, getPreviousCycle } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
@@ -828,6 +829,23 @@ const Index = () => {
     } as SheetData;
   }, [selectedSheets, sheetDataCache]);
 
+
+  const summaryLeaderboardCycle = useMemo(() => getPreviousCycle(selectedCycle), [selectedCycle]);
+
+  const { currentUserRank: summaryCycleRank, totalParticipants: summaryCycleParticipants } = useLeaderboard({
+    sheetData: leaderboardSheetData,
+    currentUserId: userId,
+    currentUserName: userName,
+    userStage,
+    cycle: summaryLeaderboardCycle,
+    mode: 'cycle',
+  });
+
+  const peopleOutperformedInStage = useMemo(() => {
+    if (summaryCycleRank === null || summaryCycleParticipants <= 0) return null;
+    return Math.max(0, summaryCycleParticipants - summaryCycleRank);
+  }, [summaryCycleParticipants, summaryCycleRank]);
+
   const isLoading = sheetsLoading || identityLoading || isFetchingData;
   
   if (isInitializing || identityLoading) {
@@ -920,6 +938,7 @@ const Index = () => {
             summaryData={cycleSummaryData}
             userName={userName}
             onShowStaticSummary={handleOpenCycleSummaryStatic}
+            peopleOutperformedInStage={peopleOutperformedInStage}
           />
           <CycleSummaryStaticModal
             isOpen={showCycleSummaryStatic}
