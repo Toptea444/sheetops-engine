@@ -525,7 +525,7 @@ function RankingBonusScreen({
         transition={{ delay: 0.8, type: 'spring' }}
       >
         <p className="text-sm text-muted-foreground">
-          across <span className="font-bold text-amber-500">{activeDays}</span> qualifying days
+          across <span className="font-bold text-amber-500">{activeDays}</span> days with earnings
         </p>
       </motion.div>
     </motion.div>

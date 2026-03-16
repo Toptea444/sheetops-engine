@@ -203,7 +203,7 @@ export function CycleSummaryStaticModal({
               <div className="flex-1 grid grid-cols-2 gap-2">
                 <div>
                   <p className="text-lg font-bold text-foreground">{summaryData.activeDays}</p>
-                  <p className="text-xs text-muted-foreground">days active</p>
+                  <p className="text-xs text-muted-foreground">days with earnings</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-muted-foreground">{summaryData.inactiveDays}</p>
@@ -226,7 +226,7 @@ export function CycleSummaryStaticModal({
                     {'\u20A6'}{summaryData.rankingBonusTotal.toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {summaryData.rankingBonusActiveDays} qualifying days
+                    {summaryData.rankingBonusActiveDays} days with earnings
                   </p>
                 </div>
               </div>

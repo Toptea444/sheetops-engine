@@ -1,0 +1,164 @@
+import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Calendar, ChevronRight } from 'lucide-react';
+
+interface CycleSelectorHighlightProps {
+  isVisible: boolean;
+  onDismiss: () => void;
+  targetRef: React.RefObject<HTMLElement | null>;
+}
+
+const HIGHLIGHT_SEEN_KEY = 'performanceTracker_cycleSelectorHighlightSeen';
+
+export function hasSeenCycleSelectorHighlight(): boolean {
+  try {
+    return localStorage.getItem(HIGHLIGHT_SEEN_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function markCycleSelectorHighlightAsSeen(): void {
+  try {
+    localStorage.setItem(HIGHLIGHT_SEEN_KEY, 'true');
+  } catch {
+    // ignore
+  }
+}
+
+export function CycleSelectorHighlight({
+  isVisible,
+  onDismiss,
+  targetRef,
+}: CycleSelectorHighlightProps) {
+  const [position, setPosition] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+
+  useEffect(() => {
+    if (isVisible && targetRef.current) {
+      const rect = targetRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+  }, [isVisible, targetRef]);
+
+  const handleDismiss = () => {
+    markCycleSelectorHighlightAsSeen();
+    onDismiss();
+  };
+
+  if (!isVisible || !position) return null;
+
+  return (
+    <AnimatePresence>
+      {isVisible && (
+        <>
+          {/* Backdrop overlay with blur */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-[90] bg-background/80 backdrop-blur-sm"
+            onClick={handleDismiss}
+          />
+
+          {/* Spotlight cutout for the cycle selector */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="fixed z-[95]"
+            style={{
+              top: position.top - 8,
+              left: position.left - 8,
+              width: position.width + 16,
+              height: position.height + 16,
+            }}
+          >
+            {/* Glow ring around the element */}
+            <motion.div
+              className="absolute inset-0 rounded-xl border-2 border-primary shadow-[0_0_20px_rgba(var(--primary),0.4)]"
+              animate={{
+                boxShadow: [
+                  '0 0 15px rgba(var(--primary), 0.3)',
+                  '0 0 30px rgba(var(--primary), 0.5)',
+                  '0 0 15px rgba(var(--primary), 0.3)',
+                ],
+              }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            
+            {/* Pulsing indicator */}
+            <motion.div
+              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary"
+              animate={{
+                scale: [1, 1.2, 1],
+                opacity: [1, 0.7, 1],
+              }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            />
+          </motion.div>
+
+          {/* Tooltip card */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            className="fixed z-[100]"
+            style={{
+              top: position.top + position.height + 20,
+              left: Math.max(16, Math.min(position.left, window.innerWidth - 320)),
+            }}
+          >
+            <div className="bg-card border border-border rounded-2xl shadow-2xl p-5 max-w-[300px]">
+              {/* Close button */}
+              <button
+                onClick={handleDismiss}
+                className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                aria-label="Dismiss"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              {/* Icon and content */}
+              <div className="flex items-start gap-3 pr-6">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Calendar className="h-5 w-5 text-primary" />
+                </div>
+                <div className="space-y-2">
+                  <p className="font-semibold text-sm text-foreground">
+                    View Previous Cycles
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Tap here to switch between cycles and view your past performance history.
+                  </p>
+                </div>
+              </div>
+
+              {/* Action button */}
+              <button
+                onClick={handleDismiss}
+                className="w-full mt-4 py-2.5 bg-primary/10 hover:bg-primary/15 rounded-xl text-sm font-medium text-primary transition-colors flex items-center justify-center gap-1.5"
+              >
+                Got it
+                <ChevronRight className="h-4 w-4" />
+              </button>
+
+              {/* Arrow pointing up to the selector */}
+              <div 
+                className="absolute -top-2 w-4 h-4 bg-card border-l border-t border-border rotate-45"
+                style={{ left: Math.min(40, position.left - 8) }}
+              />
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
 import { IdentityConfirmationModal } from '@/components/dashboard/IdentityConfirmationModal';
@@ -29,6 +29,7 @@ import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
 import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
 import { CycleSummaryModal } from '@/components/dashboard/CycleSummaryModal';
 import { CycleSummaryStaticModal } from '@/components/dashboard/CycleSummaryStaticModal';
+import { CycleSelectorHighlight, hasSeenCycleSelectorHighlight, markCycleSelectorHighlightAsSeen } from '@/components/dashboard/CycleSelectorHighlight';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useCycleSummary } from '@/hooks/useCycleSummary';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
@@ -96,6 +97,8 @@ const Index = () => {
   const [showCycleSummaryAnimated, setShowCycleSummaryAnimated] = useState(false);
   const [showCycleSummaryStatic, setShowCycleSummaryStatic] = useState(false);
   const [cycleSummaryShownThisSession, setCycleSummaryShownThisSession] = useState(false);
+  const [showCycleSelectorHighlight, setShowCycleSelectorHighlight] = useState(false);
+  const cycleSelectorRef = useRef<HTMLDivElement>(null);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
@@ -615,6 +618,14 @@ const Index = () => {
   const handleCycleSummaryAnimatedClose = useCallback(() => {
     setShowCycleSummaryAnimated(false);
     markCycleSummaryAsShown();
+    
+    // Show the cycle selector highlight if user hasn't seen it before
+    if (!hasSeenCycleSelectorHighlight()) {
+      // Small delay to let the modal close animation finish
+      setTimeout(() => {
+        setShowCycleSelectorHighlight(true);
+      }, 500);
+    }
   }, [markCycleSummaryAsShown]);
 
   const handleOpenCycleSummaryStatic = useCallback(() => {
@@ -919,6 +930,13 @@ const Index = () => {
         </>
       )}
 
+      {/* Cycle Selector Highlight - shows after animated summary closes */}
+      <CycleSelectorHighlight
+        isVisible={showCycleSelectorHighlight}
+        onDismiss={() => setShowCycleSelectorHighlight(false)}
+        targetRef={cycleSelectorRef}
+      />
+
       <div
         className={`flex flex-1 flex-col ${isIdentityLocked ? 'pointer-events-none select-none blur-sm' : ''}`}
         aria-hidden={isIdentityLocked}
@@ -955,12 +973,14 @@ const Index = () => {
             {/* Top Controls Section */}
             <div className="flex flex-col gap-3 mb-8">
               <div className="flex items-center justify-between gap-3 min-w-0">
-                <CycleSelector
-                  cycles={cycleOptions}
-                  selectedCycle={selectedCycle}
-                  onCycleChange={setSelectedCycle}
-                  isLoading={isLoading}
-                />
+                <div ref={cycleSelectorRef}>
+                  <CycleSelector
+                    cycles={cycleOptions}
+                    selectedCycle={selectedCycle}
+                    onCycleChange={setSelectedCycle}
+                    isLoading={isLoading}
+                  />
+                </div>
                 {identityConfirmed && showDownloadBanner && (
                   <DownloadAppBanner
                     visible={true}

@@ -419,7 +419,7 @@ export function EarningsReveal({
           </div>
           <div className="w-px h-8 bg-border" />
           <div>
-            <p className="text-xs text-muted-foreground/70">Active Days</p>
+            <p className="text-xs text-muted-foreground/70">Days with Earnings</p>
             <p className="text-sm font-semibold text-foreground">{daysActive}</p>
           </div>
         </div>
