@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { X, ChevronRight, ChevronLeft, Calendar, CalendarDays, TrendingUp, TrendingDown, Activity, Award, RotateCcw, Zap, Users, Trophy } from 'lucide-react';
 import type { CycleSummaryData } from '@/hooks/useCycleSummary';
@@ -1021,30 +1021,25 @@ export function CycleSummaryModal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
 
-  const screens = useMemo<Screen[]>(() => {
-    const result: Screen[] = ['welcome', 'total'];
-    
-    // Add double bonus period screen if data exists
-    if (summaryData.doubleBonusPeriod) {
-      result.push('doubleBonus');
-    }
-    
-    result.push('highlights', 'activity');
-    
-    if (summaryData.hasRankingBonusData) {
-      result.push('ranking');
-    }
-    
-    // Add stage ranking screen before motivation if data exists
-    if (summaryData.stageRanking) {
-      result.push('stageRanking');
-    }
-    
-    result.push('motivation', 'closing');
-    
-    console.log("[v0] CycleSummaryModal screens array:", result);
-    return result;
-  }, [summaryData.doubleBonusPeriod, summaryData.hasRankingBonusData, summaryData.stageRanking]);
+  const screens: Screen[] = ['welcome', 'total'];
+  
+  // Add double bonus period screen if data exists
+  if (summaryData.doubleBonusPeriod) {
+    screens.push('doubleBonus');
+  }
+  
+  screens.push('highlights', 'activity');
+  
+  if (summaryData.hasRankingBonusData) {
+    screens.push('ranking');
+  }
+  
+  // Add stage ranking screen before motivation if data exists
+  if (summaryData.stageRanking) {
+    screens.push('stageRanking');
+  }
+  
+  screens.push('motivation', 'closing');
 
   const currentIndex = screens.indexOf(currentScreen);
   const isFirstScreen = currentIndex === 0;
@@ -1239,10 +1234,6 @@ export function CycleSummaryModal({
   };
 
   const renderScreen = () => {
-    console.log("[v0] CycleSummaryModal renderScreen - currentScreen:", currentScreen);
-    console.log("[v0] CycleSummaryModal renderScreen - summaryData:", summaryData);
-    console.log("[v0] CycleSummaryModal renderScreen - doubleBonusPeriod:", summaryData.doubleBonusPeriod);
-    console.log("[v0] CycleSummaryModal renderScreen - stageRanking:", summaryData.stageRanking);
     switch (currentScreen) {
       case 'welcome':
         return (

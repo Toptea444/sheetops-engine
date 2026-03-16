@@ -244,22 +244,19 @@ export function useCycleSummary(
     }
 
     // Mock stage ranking data (in a real app, this would come from backend)
-    // Use totalBonus as a seed for deterministic "random" values
-    const stageRanking = totalBonus > 0 ? (() => {
-      // Generate deterministic values based on totalBonus
-      const seed = totalBonus % 100;
-      const rank = Math.max(1, (seed % 50) + 1);
-      const totalInStage = 100 + (seed % 80);
-      const peopleBehind = totalInStage - rank;
-      const percentile = Math.round((peopleBehind / totalInStage) * 100);
-      
-      return {
-        rank,
-        totalInStage,
-        percentile,
-        stageName: 'Stage 2'
-      };
-    })() : null;
+    // This simulates ranking within a stage based on total earnings
+    const stageRanking = totalBonus > 0 ? {
+      rank: Math.max(1, Math.floor(Math.random() * 50) + 1), // Random rank 1-50
+      totalInStage: Math.floor(Math.random() * 100) + 80, // Random total 80-180
+      percentile: 0, // Will be calculated
+      stageName: 'Stage 2' // Default stage name
+    } : null;
+    
+    if (stageRanking) {
+      // Calculate percentile (how many people you beat)
+      const peopleBehind = stageRanking.totalInStage - stageRanking.rank;
+      stageRanking.percentile = Math.round((peopleBehind / stageRanking.totalInStage) * 100);
+    }
 
     return {
       previousCycle,

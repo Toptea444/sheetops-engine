@@ -52,17 +52,16 @@ export function CycleSelectorHighlight({
 
   // Clone the target element's content to show above the blur
   useEffect(() => {
-    const target = targetRef.current;
-    if (isVisible && target && position) {
+    if (isVisible && targetRef.current && position) {
       // Ensure the original element stays visible above the overlay
-      target.style.position = 'relative';
-      target.style.zIndex = '95';
+      targetRef.current.style.position = 'relative';
+      targetRef.current.style.zIndex = '95';
     }
     
     return () => {
-      if (target) {
-        target.style.position = '';
-        target.style.zIndex = '';
+      if (targetRef.current) {
+        targetRef.current.style.position = '';
+        targetRef.current.style.zIndex = '';
       }
     };
   }, [isVisible, targetRef, position]);

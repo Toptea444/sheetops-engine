@@ -912,9 +912,6 @@ const Index = () => {
       />
 
       {/* Cycle Summary Modals */}
-      {console.log("[v0] Index.tsx - cycleSummaryData:", cycleSummaryData)}
-      {console.log("[v0] Index.tsx - showCycleSummaryAnimated:", showCycleSummaryAnimated)}
-      {console.log("[v0] Index.tsx - showCycleSelectorHighlight:", showCycleSelectorHighlight)}
       {cycleSummaryData && (
         <>
           <CycleSummaryModal
