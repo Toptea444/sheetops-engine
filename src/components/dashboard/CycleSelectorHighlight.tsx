@@ -50,6 +50,22 @@ export function CycleSelectorHighlight({
     onDismiss();
   };
 
+  // Clone the target element's content to show above the blur
+  useEffect(() => {
+    if (isVisible && targetRef.current && position) {
+      // Ensure the original element stays visible above the overlay
+      targetRef.current.style.position = 'relative';
+      targetRef.current.style.zIndex = '95';
+    }
+    
+    return () => {
+      if (targetRef.current) {
+        targetRef.current.style.position = '';
+        targetRef.current.style.zIndex = '';
+      }
+    };
+  }, [isVisible, targetRef, position]);
+
   if (!isVisible || !position) return null;
 
   return (
@@ -66,13 +82,13 @@ export function CycleSelectorHighlight({
             onClick={handleDismiss}
           />
 
-          {/* Spotlight cutout for the cycle selector */}
+          {/* Highlight ring around the cycle selector */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="fixed z-[95]"
+            className="fixed z-[94] pointer-events-none"
             style={{
               top: position.top - 8,
               left: position.left - 8,
@@ -82,12 +98,15 @@ export function CycleSelectorHighlight({
           >
             {/* Glow ring around the element */}
             <motion.div
-              className="absolute inset-0 rounded-xl border-2 border-primary shadow-[0_0_20px_rgba(var(--primary),0.4)]"
+              className="absolute inset-0 rounded-xl border-2 border-primary"
+              style={{
+                boxShadow: '0 0 20px hsl(var(--primary) / 0.4)',
+              }}
               animate={{
                 boxShadow: [
-                  '0 0 15px rgba(var(--primary), 0.3)',
-                  '0 0 30px rgba(var(--primary), 0.5)',
-                  '0 0 15px rgba(var(--primary), 0.3)',
+                  '0 0 15px hsl(var(--primary) / 0.3)',
+                  '0 0 30px hsl(var(--primary) / 0.5)',
+                  '0 0 15px hsl(var(--primary) / 0.3)',
                 ],
               }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
