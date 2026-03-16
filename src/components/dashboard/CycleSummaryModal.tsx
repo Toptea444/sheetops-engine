@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { X, ChevronRight, ChevronLeft, Calendar, TrendingUp, TrendingDown, Activity, Award, RotateCcw } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Calendar, CalendarDays, TrendingUp, TrendingDown, Activity, Award, RotateCcw } from 'lucide-react';
 import type { CycleSummaryData } from '@/hooks/useCycleSummary';
 
 // ─── Types ───────────────────────────────────────────────────
@@ -12,7 +12,7 @@ interface CycleSummaryModalProps {
   onShowStaticSummary?: () => void;
 }
 
-type Screen = 'welcome' | 'total' | 'highlights' | 'activity' | 'ranking' | 'closing';
+type Screen = 'welcome' | 'total' | 'highlights' | 'activity' | 'ranking' | 'motivation' | 'closing';
 
 // ─── Particle System ─────────────────────────────────────────
 interface Particle {
@@ -77,45 +77,58 @@ function WelcomeScreen({ userName, cycleLabel }: { userName: string | null; cycl
       transition={{ duration: 0.5 }}
     >
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+        initial={{ scale: 0, rotate: -180, opacity: 0 }}
+        animate={{ scale: 1, rotate: 0, opacity: 1 }}
+        transition={{ delay: 0.2, type: 'spring', stiffness: 150, damping: 12 }}
       >
-        <Calendar className="h-16 w-16 text-primary mx-auto mb-6" />
+        <motion.div
+          animate={{ 
+            scale: [1, 1.1, 1],
+            rotate: [0, 5, -5, 0]
+          }}
+          transition={{ 
+            duration: 2,
+            repeat: Infinity,
+            repeatType: 'reverse',
+            ease: 'easeInOut'
+          }}
+        >
+          <Calendar className="h-20 w-20 text-primary mx-auto mb-6" />
+        </motion.div>
       </motion.div>
       
       <motion.h1 
-        className="text-2xl sm:text-3xl font-bold text-foreground mb-3"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.4 }}
+        className="text-3xl sm:text-4xl font-bold text-foreground mb-3"
+        initial={{ y: 40, opacity: 0, scale: 0.8 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ delay: 0.4, type: 'spring', stiffness: 120 }}
       >
         Hey{firstName ? `, ${firstName}` : ''}!
       </motion.h1>
       
       <motion.p 
-        className="text-lg text-muted-foreground mb-2"
-        initial={{ y: 20, opacity: 0 }}
+        className="text-xl text-muted-foreground mb-2"
+        initial={{ y: 30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.6 }}
+        transition={{ delay: 0.6, type: 'spring' }}
       >
         A new cycle just started
       </motion.p>
       
       <motion.p 
-        className="text-sm text-muted-foreground/70"
-        initial={{ y: 20, opacity: 0 }}
+        className="text-base text-muted-foreground/70"
+        initial={{ y: 30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.8 }}
+        transition={{ delay: 0.8, type: 'spring' }}
       >
         Here's how you performed during
       </motion.p>
       
       <motion.p 
-        className="text-sm font-medium text-primary"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 1.0 }}
+        className="text-base font-semibold text-primary mt-1"
+        initial={{ y: 30, opacity: 0, scale: 0.9 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ delay: 1.0, type: 'spring' }}
       >
         {cycleLabel}
       </motion.p>
@@ -131,34 +144,45 @@ function TotalBonusScreen({ total, isAnimating }: { total: number; isAnimating: 
       animate={{ opacity: 1 }}
     >
       <motion.p 
-        className="text-sm uppercase tracking-widest text-muted-foreground mb-4"
-        initial={{ y: -10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
+        className="text-sm uppercase tracking-widest text-muted-foreground mb-6"
+        initial={{ y: -20, opacity: 0, letterSpacing: '0.1em' }}
+        animate={{ y: 0, opacity: 1, letterSpacing: '0.25em' }}
+        transition={{ delay: 0.2, duration: 0.6 }}
       >
         Total Bonus Earned
       </motion.p>
       
       <motion.div
         className="relative"
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.4, type: 'spring', stiffness: 150 }}
+        initial={{ scale: 0, opacity: 0, rotate: -10 }}
+        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+        transition={{ delay: 0.4, type: 'spring', stiffness: 120, damping: 10 }}
       >
-        <h2 className="text-5xl sm:text-6xl font-bold text-emerald-500">
-          {isAnimating ? (
-            <AnimatedNumber value={total} prefix={'\u20A6'} />
-          ) : (
-            <span className="tabular-nums">{'\u20A6'}{total.toLocaleString()}</span>
-          )}
-        </h2>
+        <motion.div
+          animate={{ 
+            textShadow: [
+              '0 0 20px rgba(16, 185, 129, 0)',
+              '0 0 40px rgba(16, 185, 129, 0.5)',
+              '0 0 20px rgba(16, 185, 129, 0)'
+            ]
+          }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <h2 className="text-6xl sm:text-7xl font-bold text-emerald-500">
+            {isAnimating ? (
+              <AnimatedNumber value={total} prefix={'\u20A6'} />
+            ) : (
+              <span className="tabular-nums">{'\u20A6'}{total.toLocaleString()}</span>
+            )}
+          </h2>
+        </motion.div>
       </motion.div>
       
       <motion.p 
-        className="mt-6 text-muted-foreground"
-        initial={{ y: 10, opacity: 0 }}
+        className="mt-8 text-lg text-muted-foreground"
+        initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.8 }}
+        transition={{ delay: 0.8, type: 'spring' }}
       >
         from your Daily & Performance sheets
       </motion.p>
@@ -173,75 +197,118 @@ function HighlightsScreen({
   bestDays: { date: string; amount: number }[];
   worstDays: { date: string; amount: number }[];
 }) {
+  // Get top 3 best and bottom 3 worst days
+  const topBest = bestDays.slice(0, 3);
+  const bottomWorst = worstDays.slice(0, 3);
+
   return (
     <motion.div 
-      className="flex flex-col items-center justify-center px-6 h-full"
+      className="flex flex-col items-center justify-center px-6 h-full overflow-y-auto py-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
       <motion.p 
-        className="text-sm uppercase tracking-widest text-muted-foreground mb-8 text-center"
-        initial={{ y: -10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
+        className="text-sm uppercase tracking-widest text-muted-foreground mb-6 text-center"
+        initial={{ y: -20, opacity: 0, scale: 0.9 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ delay: 0.2, type: 'spring' }}
       >
         Your Highlights
       </motion.p>
       
-      <div className="flex flex-col gap-6 w-full max-w-sm">
-        {/* Best Day */}
+      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-2xl">
+        {/* Top 3 Best Days */}
         <motion.div
-          className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4"
-          initial={{ x: -30, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.4, type: 'spring' }}
+          className="flex-1 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/25 rounded-2xl p-4"
+          initial={{ x: -60, opacity: 0, rotateY: -15 }}
+          animate={{ x: 0, opacity: 1, rotateY: 0 }}
+          transition={{ delay: 0.3, type: 'spring', stiffness: 100 }}
         >
-          <div className="flex items-center gap-3 mb-2">
-            <TrendingUp className="h-5 w-5 text-emerald-500" />
-            <span className="text-sm text-emerald-500 font-medium">Best Day</span>
+          <div className="flex items-center gap-2 mb-3">
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
+            >
+              <TrendingUp className="h-5 w-5 text-emerald-500" />
+            </motion.div>
+            <span className="text-sm text-emerald-500 font-semibold">Top 3 Best Days</span>
           </div>
-          {bestDays.length > 0 ? (
-            <>
-              <p className="text-2xl font-bold text-foreground">
-                {'\u20A6'}{bestDays[0].amount.toLocaleString()}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {bestDays.length > 1 
-                  ? `${bestDays.length} days tied` 
-                  : bestDays[0].date
-                }
-              </p>
-            </>
+          {topBest.length > 0 ? (
+            <div className="space-y-2">
+              {topBest.map((day, index) => (
+                <motion.div
+                  key={day.date}
+                  className="flex items-center justify-between bg-emerald-500/10 rounded-lg px-3 py-2"
+                  initial={{ x: -30, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.4 + index * 0.15, type: 'spring' }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center ${
+                      index === 0 ? 'bg-emerald-500 text-white' : 'bg-emerald-500/20 text-emerald-500'
+                    }`}>
+                      {index + 1}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{day.date}</span>
+                  </div>
+                  <span className={`font-bold tabular-nums ${index === 0 ? 'text-lg text-emerald-500' : 'text-sm text-foreground'}`}>
+                    {'\u20A6'}{day.amount.toLocaleString()}
+                  </span>
+                </motion.div>
+              ))}
+            </div>
           ) : (
-            <p className="text-muted-foreground">No data</p>
+            <p className="text-muted-foreground text-sm">No data available</p>
           )}
         </motion.div>
 
-        {/* Worst Day */}
+        {/* Bottom 3 Worst Days */}
         <motion.div
-          className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4"
-          initial={{ x: 30, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.6, type: 'spring' }}
+          className="flex-1 bg-gradient-to-br from-orange-500/15 to-orange-500/5 border border-orange-500/25 rounded-2xl p-4"
+          initial={{ x: 60, opacity: 0, rotateY: 15 }}
+          animate={{ x: 0, opacity: 1, rotateY: 0 }}
+          transition={{ delay: 0.5, type: 'spring', stiffness: 100 }}
         >
-          <div className="flex items-center gap-3 mb-2">
-            <TrendingDown className="h-5 w-5 text-orange-500" />
-            <span className="text-sm text-orange-500 font-medium">Room to Grow</span>
+          <div className="flex items-center gap-2 mb-3">
+            <motion.div
+              animate={{ y: [0, 3, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
+            >
+              <TrendingDown className="h-5 w-5 text-orange-500" />
+            </motion.div>
+            <span className="text-sm text-orange-500 font-semibold">Room to Grow</span>
           </div>
-          {worstDays.length > 0 && worstDays[0].amount > 0 ? (
-            <>
-              <p className="text-2xl font-bold text-foreground">
-                {'\u20A6'}{worstDays[0].amount.toLocaleString()}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {worstDays.length > 1 
-                  ? `${worstDays.length} days` 
-                  : worstDays[0].date
-                }
-              </p>
-            </>
+          {bottomWorst.length > 0 && bottomWorst[0].amount > 0 ? (
+            <div className="space-y-2">
+              {bottomWorst.map((day, index) => (
+                <motion.div
+                  key={day.date}
+                  className="flex items-center justify-between bg-orange-500/10 rounded-lg px-3 py-2"
+                  initial={{ x: 30, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.6 + index * 0.15, type: 'spring' }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center bg-orange-500/20 text-orange-500">
+                      {index + 1}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{day.date}</span>
+                  </div>
+                  <span className="text-sm font-bold text-foreground tabular-nums">
+                    {'\u20A6'}{day.amount.toLocaleString()}
+                  </span>
+                </motion.div>
+              ))}
+            </div>
           ) : (
-            <p className="text-muted-foreground">Every day was a win!</p>
+            <motion.p 
+              className="text-orange-500/80 text-sm font-medium"
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.7 }}
+            >
+              Every day was a win!
+            </motion.p>
           )}
         </motion.div>
       </div>
@@ -268,11 +335,16 @@ function ActivityScreen({
     >
       <motion.div
         className="flex items-center gap-2 mb-6"
-        initial={{ y: -10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
+        initial={{ y: -20, opacity: 0, scale: 0.8 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ delay: 0.2, type: 'spring' }}
       >
-        <Activity className="h-5 w-5 text-primary" />
+        <motion.div
+          animate={{ rotate: [0, 360] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+        >
+          <Activity className="h-6 w-6 text-primary" />
+        </motion.div>
         <p className="text-sm uppercase tracking-widest text-muted-foreground">
           Your Activity
         </p>
@@ -280,59 +352,76 @@ function ActivityScreen({
       
       {/* Circular Progress */}
       <motion.div 
-        className="relative w-40 h-40 mb-6"
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.4 }}
+        className="relative w-44 h-44 mb-8"
+        initial={{ scale: 0, opacity: 0, rotate: -90 }}
+        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+        transition={{ delay: 0.4, type: 'spring', stiffness: 100 }}
       >
         <svg className="w-full h-full -rotate-90">
           <circle
-            cx="80"
-            cy="80"
-            r="70"
+            cx="88"
+            cy="88"
+            r="76"
             fill="none"
             stroke="currentColor"
-            strokeWidth="12"
-            className="text-muted/30"
+            strokeWidth="14"
+            className="text-muted/20"
           />
           <motion.circle
-            cx="80"
-            cy="80"
-            r="70"
+            cx="88"
+            cy="88"
+            r="76"
             fill="none"
-            stroke="currentColor"
-            strokeWidth="12"
+            stroke="url(#activityGradient)"
+            strokeWidth="14"
             strokeLinecap="round"
-            className="text-primary"
-            strokeDasharray={`${2 * Math.PI * 70}`}
-            initial={{ strokeDashoffset: 2 * Math.PI * 70 }}
+            strokeDasharray={`${2 * Math.PI * 76}`}
+            initial={{ strokeDashoffset: 2 * Math.PI * 76 }}
             animate={{ 
-              strokeDashoffset: 2 * Math.PI * 70 * (1 - activePercent / 100) 
+              strokeDashoffset: 2 * Math.PI * 76 * (1 - activePercent / 100) 
             }}
-            transition={{ delay: 0.6, duration: 1.2, ease: 'easeOut' }}
+            transition={{ delay: 0.6, duration: 1.5, ease: 'easeOut' }}
           />
+          <defs>
+            <linearGradient id="activityGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="hsl(var(--primary))" />
+              <stop offset="100%" stopColor="#10b981" />
+            </linearGradient>
+          </defs>
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-4xl font-bold text-foreground">{activePercent}%</span>
-          <span className="text-xs text-muted-foreground">active</span>
+          <motion.span 
+            className="text-5xl font-bold text-foreground"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 1.2, type: 'spring', stiffness: 150 }}
+          >
+            {activePercent}%
+          </motion.span>
+          <span className="text-sm text-muted-foreground mt-1">active</span>
         </div>
       </motion.div>
       
       <motion.div 
-        className="flex gap-8 text-center"
-        initial={{ y: 20, opacity: 0 }}
+        className="flex gap-10 text-center"
+        initial={{ y: 30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.8 }}
+        transition={{ delay: 1.0, type: 'spring' }}
       >
-        <div>
-          <p className="text-2xl font-bold text-emerald-500">{activeDays}</p>
-          <p className="text-xs text-muted-foreground">Days with earnings</p>
-        </div>
-        <div className="w-px bg-border" />
-        <div>
-          <p className="text-2xl font-bold text-muted-foreground">{inactiveDays}</p>
-          <p className="text-xs text-muted-foreground">Days without</p>
-        </div>
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          className="bg-emerald-500/10 rounded-xl px-5 py-3"
+        >
+          <p className="text-3xl font-bold text-emerald-500">{activeDays}</p>
+          <p className="text-xs text-muted-foreground mt-1">Days with earnings</p>
+        </motion.div>
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          className="bg-muted/50 rounded-xl px-5 py-3"
+        >
+          <p className="text-3xl font-bold text-muted-foreground">{inactiveDays}</p>
+          <p className="text-xs text-muted-foreground mt-1">Days without</p>
+        </motion.div>
       </motion.div>
     </motion.div>
   );
@@ -356,7 +445,13 @@ function RankingBonusScreen({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        <Award className="h-12 w-12 text-muted-foreground/50 mb-4" />
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring' }}
+        >
+          <Award className="h-14 w-14 text-muted-foreground/40 mb-4" />
+        </motion.div>
         <p className="text-muted-foreground">No Ranking Bonus data for this cycle</p>
       </motion.div>
     );
@@ -370,47 +465,150 @@ function RankingBonusScreen({
     >
       <motion.div
         className="flex items-center gap-2 mb-4"
-        initial={{ y: -10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
+        initial={{ y: -20, opacity: 0, scale: 0.8 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ delay: 0.2, type: 'spring' }}
       >
-        <Award className="h-5 w-5 text-amber-500" />
+        <motion.div
+          animate={{ 
+            rotate: [0, 15, -15, 0],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+        >
+          <Award className="h-6 w-6 text-amber-500" />
+        </motion.div>
         <p className="text-sm uppercase tracking-widest text-muted-foreground">
           Ranking Bonus
         </p>
       </motion.div>
       
       <motion.p 
-        className="text-sm text-muted-foreground/70 mb-6"
-        initial={{ y: -10, opacity: 0 }}
+        className="text-base text-muted-foreground/70 mb-8"
+        initial={{ y: -15, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.3, type: 'spring' }}
       >
         Here's how you performed during the Ranking Bonus period
       </motion.p>
       
       <motion.div
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.5, type: 'spring', stiffness: 150 }}
+        className="relative"
+        initial={{ scale: 0, opacity: 0, rotate: -15 }}
+        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+        transition={{ delay: 0.5, type: 'spring', stiffness: 120 }}
       >
-        <h2 className="text-4xl sm:text-5xl font-bold text-amber-500">
-          {isAnimating ? (
-            <AnimatedNumber value={total} prefix={'\u20A6'} />
-          ) : (
-            <span className="tabular-nums">{'\u20A6'}{total.toLocaleString()}</span>
-          )}
-        </h2>
+        <motion.div
+          animate={{ 
+            textShadow: [
+              '0 0 20px rgba(245, 158, 11, 0)',
+              '0 0 40px rgba(245, 158, 11, 0.4)',
+              '0 0 20px rgba(245, 158, 11, 0)'
+            ]
+          }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <h2 className="text-5xl sm:text-6xl font-bold text-amber-500">
+            {isAnimating ? (
+              <AnimatedNumber value={total} prefix={'\u20A6'} />
+            ) : (
+              <span className="tabular-nums">{'\u20A6'}{total.toLocaleString()}</span>
+            )}
+          </h2>
+        </motion.div>
       </motion.div>
       
-      <motion.p 
-        className="mt-4 text-sm text-muted-foreground"
-        initial={{ y: 10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.8 }}
+      <motion.div 
+        className="mt-6 bg-amber-500/10 rounded-full px-6 py-2"
+        initial={{ y: 20, opacity: 0, scale: 0.9 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ delay: 0.8, type: 'spring' }}
       >
-        across <span className="font-semibold text-foreground">{activeDays}</span> qualifying days
+        <p className="text-sm text-muted-foreground">
+          across <span className="font-bold text-amber-500">{activeDays}</span> qualifying days
+        </p>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── Motivation Screen ───────────────────────────────────────
+function MotivationScreen({ userName }: { userName: string | null }) {
+  const firstName = userName ? userName.split(' ')[0] : null;
+  
+  const motivationalMessages = [
+    `You've got this, ${firstName || 'champ'}! This new cycle is your blank canvas - go paint something amazing!`,
+    `Hey ${firstName || 'superstar'}! Every cycle is a fresh start. Time to crush it even harder!`,
+    `${firstName || 'Legend'}! You showed up last cycle, now let's level up this one!`,
+    `New cycle, new wins! ${firstName || 'You'}'ve already proven you can do it - now do it bigger!`,
+  ];
+  
+  const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+
+  return (
+    <motion.div 
+      className="flex flex-col items-center justify-center text-center px-6 h-full"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      <motion.div
+        initial={{ scale: 0, rotate: -180 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ delay: 0.2, type: 'spring', stiffness: 100, damping: 10 }}
+        className="mb-8"
+      >
+        <motion.div
+          animate={{ 
+            scale: [1, 1.2, 1],
+            rotate: [0, 10, -10, 0]
+          }}
+          transition={{ duration: 2, repeat: Infinity, repeatDelay: 0.5 }}
+          className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-emerald-500/20 flex items-center justify-center mx-auto"
+        >
+          <span className="text-5xl">&#127775;</span>
+        </motion.div>
+      </motion.div>
+      
+      <motion.h2 
+        className="text-2xl sm:text-3xl font-bold text-foreground mb-6 leading-tight"
+        initial={{ y: 30, opacity: 0, scale: 0.9 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ delay: 0.5, type: 'spring', stiffness: 100 }}
+      >
+        Ready for the Next Chapter?
+      </motion.h2>
+      
+      <motion.p 
+        className="text-lg text-muted-foreground max-w-sm leading-relaxed"
+        initial={{ y: 30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.7, type: 'spring' }}
+      >
+        {randomMessage}
       </motion.p>
+      
+      <motion.div
+        className="mt-8 flex gap-2"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 1.0 }}
+      >
+        {[...Array(3)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="w-3 h-3 rounded-full bg-primary"
+            animate={{ 
+              scale: [1, 1.5, 1],
+              opacity: [0.5, 1, 0.5]
+            }}
+            transition={{ 
+              duration: 1,
+              repeat: Infinity,
+              delay: i * 0.2
+            }}
+          />
+        ))}
+      </motion.div>
     </motion.div>
   );
 }
@@ -423,30 +621,40 @@ function ClosingScreen({ onViewSummary }: { onViewSummary?: () => void }) {
       animate={{ opacity: 1 }}
     >
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.2, type: 'spring' }}
-        className="mb-6"
+        initial={{ scale: 0, rotate: -180 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ delay: 0.2, type: 'spring', stiffness: 100 }}
+        className="mb-8"
       >
-        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-          <RotateCcw className="h-10 w-10 text-primary" />
-        </div>
+        <motion.div 
+          className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-emerald-500/20 flex items-center justify-center mx-auto"
+          animate={{ 
+            boxShadow: [
+              '0 0 0 0 rgba(var(--primary), 0)',
+              '0 0 0 20px rgba(var(--primary), 0.1)',
+              '0 0 0 0 rgba(var(--primary), 0)'
+            ]
+          }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <RotateCcw className="h-12 w-12 text-primary" />
+        </motion.div>
       </motion.div>
       
       <motion.h2 
-        className="text-xl font-bold text-foreground mb-2"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.4 }}
+        className="text-2xl font-bold text-foreground mb-3"
+        initial={{ y: 30, opacity: 0, scale: 0.9 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ delay: 0.4, type: 'spring' }}
       >
         That's your cycle recap!
       </motion.h2>
       
       <motion.p 
-        className="text-muted-foreground mb-8"
-        initial={{ y: 20, opacity: 0 }}
+        className="text-lg text-muted-foreground mb-8"
+        initial={{ y: 30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.6 }}
+        transition={{ delay: 0.6, type: 'spring' }}
       >
         Want to see this again anytime?
       </motion.p>
@@ -454,24 +662,42 @@ function ClosingScreen({ onViewSummary }: { onViewSummary?: () => void }) {
       {onViewSummary && (
         <motion.button
           onClick={onViewSummary}
-          className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          className="px-8 py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-lg shadow-lg hover:bg-primary/90 transition-all"
+          initial={{ y: 30, opacity: 0, scale: 0.9 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          transition={{ delay: 0.8, type: 'spring' }}
+          whileHover={{ scale: 1.05, boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}
+          whileTap={{ scale: 0.95 }}
         >
           View Full Summary
         </motion.button>
       )}
       
+      {/* Friendly note about the icon */}
+      <motion.div
+        className="mt-10 bg-muted/50 rounded-xl px-5 py-4 max-w-xs"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 1.0, type: 'spring' }}
+      >
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <CalendarDays className="h-4 w-4 text-primary" />
+          </div>
+          <span className="text-sm font-medium text-foreground">Pro tip!</span>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed text-left">
+          You can always view this summary again by clicking the calendar icon next to the settings button at the top of your dashboard!
+        </p>
+      </motion.div>
+      
       <motion.p 
-        className="mt-4 text-xs text-muted-foreground/60"
+        className="mt-6 text-xs text-muted-foreground/50"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
+        transition={{ delay: 1.2 }}
       >
-        Or tap anywhere to close
+        Tap anywhere to close
       </motion.p>
     </motion.div>
   );
@@ -496,6 +722,7 @@ export function CycleSummaryModal({
   if (summaryData.hasRankingBonusData) {
     screens.push('ranking');
   }
+  screens.push('motivation');
   screens.push('closing');
 
   const currentIndex = screens.indexOf(currentScreen);
@@ -540,10 +767,26 @@ export function CycleSummaryModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, goNext, goPrev, onClose]);
 
-  // Auto-advance for welcome screen
+  // Auto-advance for all screens (continuous auto-sliding)
   useEffect(() => {
-    if (!isOpen || currentScreen !== 'welcome') return;
-    const timer = setTimeout(goNext, 3000);
+    if (!isOpen) return;
+    
+    // Don't auto-advance on closing screen
+    if (currentScreen === 'closing') return;
+    
+    // Different timings for different screens for better pacing
+    const screenTimings: Record<Screen, number> = {
+      welcome: 3000,
+      total: 4000,
+      highlights: 5000,
+      activity: 4500,
+      ranking: 4000,
+      motivation: 5000,
+      closing: 0, // Don't auto-advance
+    };
+    
+    const timing = screenTimings[currentScreen] || 4000;
+    const timer = setTimeout(goNext, timing);
     return () => clearTimeout(timer);
   }, [isOpen, currentScreen, goNext]);
 
@@ -650,19 +893,25 @@ export function CycleSummaryModal({
     onShowStaticSummary?.();
   }, [onClose, onShowStaticSummary]);
 
-  // Slide variants
+  // Slide variants with more dramatic animations
   const slideVariants = {
     enter: (dir: number) => ({
       x: dir > 0 ? '100%' : '-100%',
-      opacity: 0
+      opacity: 0,
+      scale: 0.9,
+      rotateY: dir > 0 ? 15 : -15
     }),
     center: {
       x: 0,
-      opacity: 1
+      opacity: 1,
+      scale: 1,
+      rotateY: 0
     },
     exit: (dir: number) => ({
       x: dir < 0 ? '100%' : '-100%',
-      opacity: 0
+      opacity: 0,
+      scale: 0.9,
+      rotateY: dir < 0 ? 15 : -15
     })
   };
 
@@ -705,6 +954,10 @@ export function CycleSummaryModal({
             hasData={summaryData.hasRankingBonusData}
             isAnimating={isAnimating}
           />
+        );
+      case 'motivation':
+        return (
+          <MotivationScreen userName={userName} />
         );
       case 'closing':
         return (
@@ -766,24 +1019,51 @@ export function CycleSummaryModal({
 
       {/* Navigation controls */}
       <div className="relative z-20 pb-8 px-6">
-        {/* Progress dots */}
+        {/* Progress dots with animated timer */}
         <div className="flex justify-center gap-2 mb-4">
-          {screens.map((screen, i) => (
-            <button
-              key={screen}
-              onClick={() => {
-                setDirection(i > currentIndex ? 1 : -1);
-                setIsAnimating(false);
-                setCurrentScreen(screen);
-              }}
-              className={`w-2 h-2 rounded-full transition-all ${
-                i === currentIndex 
-                  ? 'bg-primary w-6' 
-                  : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
-              }`}
-              aria-label={`Go to screen ${i + 1}`}
-            />
-          ))}
+          {screens.map((screen, i) => {
+            const isActive = i === currentIndex;
+            const isPast = i < currentIndex;
+            const screenTimings: Record<Screen, number> = {
+              welcome: 3000,
+              total: 4000,
+              highlights: 5000,
+              activity: 4500,
+              ranking: 4000,
+              motivation: 5000,
+              closing: 0,
+            };
+            const timing = screenTimings[screen] || 4000;
+            
+            return (
+              <button
+                key={screen}
+                onClick={() => {
+                  setDirection(i > currentIndex ? 1 : -1);
+                  setIsAnimating(false);
+                  setCurrentScreen(screen);
+                }}
+                className={`relative h-2 rounded-full transition-all overflow-hidden ${
+                  isActive 
+                    ? 'w-8 bg-primary/30' 
+                    : isPast 
+                      ? 'w-2 bg-primary' 
+                      : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                }`}
+                aria-label={`Go to screen ${i + 1}`}
+              >
+                {isActive && currentScreen !== 'closing' && (
+                  <motion.div
+                    className="absolute inset-y-0 left-0 bg-primary rounded-full"
+                    initial={{ width: '0%' }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: timing / 1000, ease: 'linear' }}
+                    key={`progress-${currentScreen}`}
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Arrow navigation */}

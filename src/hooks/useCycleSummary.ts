@@ -156,20 +156,18 @@ export function useCycleSummary(
     // Sort for best/worst days (only consider days with data)
     const sortedByAmount = [...dailyEarnings].sort((a, b) => b.amount - a.amount);
     
-    // Get best day(s) - could be multiple with same amount
-    const bestAmount = sortedByAmount[0]?.amount || 0;
-    const bestDays = sortedByAmount.filter(d => d.amount === bestAmount && d.amount > 0);
+    // Get top 3 best days (highest amounts)
+    const bestDays = sortedByAmount.filter(d => d.amount > 0).slice(0, 3);
     
-    // Get worst day(s) - among days with earnings
+    // Get bottom 3 worst days - among days with earnings, sorted ascending
     const daysWithEarnings = sortedByAmount.filter(d => d.amount > 0);
-    const worstAmount = daysWithEarnings[daysWithEarnings.length - 1]?.amount || 0;
-    const worstDays = daysWithEarnings.filter(d => d.amount === worstAmount);
+    const worstDays = [...daysWithEarnings].reverse().slice(0, 3);
 
     return {
       previousCycle,
       totalBonus,
-      bestDays: bestDays.slice(0, 3), // Limit to top 3
-      worstDays: worstDays.slice(0, 3), // Limit to top 3
+      bestDays, // Top 3 best days
+      worstDays, // Bottom 3 worst days
       activeDays,
       inactiveDays: Math.max(0, inactiveDays),
       totalCycleDays,
