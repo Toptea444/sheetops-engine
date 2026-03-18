@@ -55,25 +55,29 @@ export function DailyEarningsTable({
   }, [sheetNames, activeTab]);
 
   const sheetData = useMemo(() => {
-    const result = results.find(r => r.sheetName === activeTab);
-    if (!result) return [];
+    // Merge ALL results for this sheet (handles swap scenario where there are
+    // two results for the same sheet: one for current ID, one for old ID)
+    const matchingResults = results.filter(r => r.sheetName === activeTab);
+    if (matchingResults.length === 0) return [];
     const days: DayData[] = [];
 
-    result.dailyBreakdown?.forEach((day) => {
-      if (day.fullDate === undefined) return;
-      const dayDate = new Date(day.fullDate);
-      if (!isDateInCycle(dayDate, cycle)) return;
+    matchingResults.forEach(result => {
+      result.dailyBreakdown?.forEach((day) => {
+        if (day.fullDate === undefined) return;
+        const dayDate = new Date(day.fullDate);
+        if (!isDateInCycle(dayDate, cycle)) return;
 
-      const total = day.total ?? day.value;
+        const total = day.total ?? day.value;
 
-      days.push({
-        date: day.date,
-        fullDate: day.fullDate,
-        value: total,
-        total,
-        bonus: day.bonus,
-        rankingBonus: day.rankingBonus,
-        sourceWorkerId: day.sourceWorkerId,
+        days.push({
+          date: day.date,
+          fullDate: day.fullDate,
+          value: total,
+          total,
+          bonus: day.bonus,
+          rankingBonus: day.rankingBonus,
+          sourceWorkerId: day.sourceWorkerId,
+        });
       });
     });
 
@@ -87,7 +91,7 @@ export function DailyEarningsTable({
   const isPercent = useMemo(() => {
     const result = results.find(r => r.sheetName === activeTab);
     return result?.valueType === 'percent';
-  }, [results, activeTab]);
+  }, [results, activeTab]);  // fine to use first match — valueType is consistent across IDs for same sheet
 
   const stats = useMemo(() => {
     const total = sheetData.reduce((sum, day) => sum + (day.total ?? day.value), 0);
