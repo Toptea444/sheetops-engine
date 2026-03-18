@@ -144,6 +144,7 @@ const Index = () => {
 
   // Earnings Adjustments (swap/transfer correction layer)
   const {
+    swaps: earningsSwaps,
     adjustmentNotes,
     applyAdjustments,
     getWorkerIdsToFetch,
@@ -356,6 +357,21 @@ const Index = () => {
       fetchUserData();
     }
   }, [userId, selectedSheets, isInitializing, identityConfirmed]);
+
+  // Re-fetch when swap data loads asynchronously — ensures old-ID earnings are included.
+  // Fixes race condition: fetchUserData() can run before useEarningsAdjustments finishes
+  // loading swaps from Supabase, so swaps was [] and only the current ID was searched.
+  const lastFetchedSwapCount = useRef(0);
+  useEffect(() => {
+    if (!userId || !identityConfirmed || isInitializing || selectedSheets.length === 0) return;
+    if (adjustmentsLoading) return;
+
+    const currentSwapCount = earningsSwaps.length;
+    if (currentSwapCount > 0 && lastFetchedSwapCount.current !== currentSwapCount) {
+      lastFetchedSwapCount.current = currentSwapCount;
+      fetchUserData(true);
+    }
+  }, [earningsSwaps, adjustmentsLoading, userId, identityConfirmed, isInitializing, selectedSheets, fetchUserData]);
 
   // Trigger Cycle Summary Modal when conditions are met
   useEffect(() => {
