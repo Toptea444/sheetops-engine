@@ -4,6 +4,7 @@ import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
 import { IdentityConfirmationModal } from '@/components/dashboard/IdentityConfirmationModal';
 import { SessionPinGate } from '@/components/dashboard/SessionPinGate';
 import { SwapDetectionModal } from '@/components/dashboard/SwapDetectionModal';
+import { PinResetModal } from '@/components/dashboard/PinResetModal';
 import { CycleSelector } from '@/components/dashboard/CycleSelector';
 import { CycleSummaryCard } from '@/components/dashboard/CycleSummaryCard';
 import { SheetBreakdownCards } from '@/components/dashboard/SheetBreakdownCards';
@@ -93,6 +94,7 @@ const Index = () => {
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
   const [swapDetected, setSwapDetected] = useState<{ currentUserId: string; swappedWithId: string; swapId: string } | null>(null);
+  const [pinResetDetected, setPinResetDetected] = useState<{ workerId: string; message: string } | null>(null);
   const RANKING_BONUS_TOTAL_PREF_KEY = 'performanceTracker_includeRankingBonusInTotal';
   const [includeRankingBonusInTotal, setIncludeRankingBonusInTotal] = useState(false);
   const [rankingPreferenceSet, setRankingPreferenceSet] = useState(false);
@@ -453,6 +455,32 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [userId, identityConfirmed, pinVerifiedThisSession]);
 
+  // Background PIN reset detection: check every 30s if admin removed this worker's PIN
+  useEffect(() => {
+    if (!userId || !identityConfirmed || !pinVerifiedThisSession || pinResetDetected) return;
+
+    const checkPinReset = async () => {
+      const { data, error } = await supabase
+        .from('worker_pins')
+        .select('id')
+        .eq('worker_id', userId.toUpperCase())
+        .maybeSingle();
+
+      if (error) return;
+
+      if (!data) {
+        setPinResetDetected({
+          workerId: userId.toUpperCase(),
+          message: 'Heads up — your admin reset your PIN. Tap Okay to go back to the start and enter your worker ID again.',
+        });
+      }
+    };
+
+    checkPinReset();
+    const interval = setInterval(checkPinReset, 30_000);
+    return () => clearInterval(interval);
+  }, [userId, identityConfirmed, pinVerifiedThisSession, pinResetDetected]);
+
   // When switching cycles, try to load cached data for past cycles
   useEffect(() => {
     if (!userId || !identityConfirmed || isInitializing) return;
@@ -618,6 +646,7 @@ const Index = () => {
     clearIdentity();
     setResults([]);
     setDataError(null);
+    setPinResetDetected(null);
     setShowPinGate(false);
     setShowWelcome(true);
   }, [clearIdentity, releaseSession, userId]);
@@ -652,9 +681,22 @@ const Index = () => {
     setResults([]);
     setDataError(null);
     setSwapDetected(null);
+    setPinResetDetected(null);
     setShowPinGate(false);
     setShowWelcome(true);
   }, [clearIdentity, releaseSession, userId, swapDetected]);
+
+  const handlePinResetAcknowledge = useCallback(async () => {
+    if (userId) await releaseSession(userId);
+    localStorage.removeItem(PIN_VERIFIED_KEY);
+    setPinVerifiedThisSession(false);
+    clearIdentity();
+    setResults([]);
+    setDataError(null);
+    setPinResetDetected(null);
+    setShowPinGate(false);
+    setShowWelcome(true);
+  }, [clearIdentity, releaseSession, userId]);
 
   // Cycle Summary Modal handlers
   const handleCycleSummaryAnimatedClose = useCallback(() => {
@@ -698,6 +740,7 @@ const Index = () => {
     setResults([]);
     setDataError(null);
     setShowIdentityConfirmation(false);
+    setPinResetDetected(null);
     setShowWelcome(true);
     toast.info('Logged out. Please log in with your own ID.');
   }, [clearIdentity]);
@@ -709,6 +752,7 @@ const Index = () => {
     clearIdentity();
     setResults([]);
     setDataError(null);
+    setPinResetDetected(null);
     setShowWelcome(true);
   };
 
@@ -967,6 +1011,13 @@ const Index = () => {
         currentUserId={swapDetected?.currentUserId || ''}
         swappedWithId={swapDetected?.swappedWithId || ''}
         onLogout={handleSwapLogout}
+      />
+
+      <PinResetModal
+        open={!!pinResetDetected}
+        workerId={pinResetDetected?.workerId || ''}
+        message={pinResetDetected?.message}
+        onAcknowledge={handlePinResetAcknowledge}
       />
 
 
