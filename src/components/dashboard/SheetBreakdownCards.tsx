@@ -24,19 +24,23 @@ export function SheetBreakdownCards({
 }: SheetBreakdownCardsProps) {
   const sheetBreakdown = useMemo(() => {
     return sheetNames.map((name) => {
-      const result = results.find(r => r.sheetName === name);
-      const isPercent = result?.valueType === 'percent';
+      // Filter (not find) to merge all results for this sheet —
+      // swap users have two entries per sheet (current + old ID)
+      const matchingResults = results.filter(r => r.sheetName === name);
+      const isPercent = matchingResults[0]?.valueType === 'percent';
       
       let total = 0;
       let daysCount = 0;
       
-      result?.dailyBreakdown?.forEach((day) => {
-        if (day.fullDate === undefined) return;
-        const dayDate = new Date(day.fullDate);
-        if (isDateInCycle(dayDate, cycle)) {
-          total += day.value;
-          if (day.value > 0) daysCount++;
-        }
+      matchingResults.forEach(result => {
+        result.dailyBreakdown?.forEach((day) => {
+          if (day.fullDate === undefined) return;
+          const dayDate = new Date(day.fullDate);
+          if (isDateInCycle(dayDate, cycle)) {
+            total += day.value;
+            if (day.value > 0) daysCount++;
+          }
+        });
       });
 
       return { name, total, daysCount, isPercent };
