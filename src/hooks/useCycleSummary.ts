@@ -120,23 +120,38 @@ export function useCycleSummary(
       }
     }
 
-    // Aggregate daily earnings from Daily & Performance sheets for previous cycle
-    const dailyEarningsMap = new Map<string, DayStats>();
+    // Aggregate daily earnings from Daily & Performance sheets for previous cycle.
+    // Key by normalized fullDate (midnight timestamp) to avoid collisions from
+    // formatted date strings (e.g. "Jan 16, Thu") which can differ across results,
+    // and to correctly merge same-day entries across multiple sheets without
+    // double-counting days that appear in two result entries for the same sheet
+    // (which happens for swap users who have one result per worker ID per sheet).
+    const dailyEarningsMap = new Map<number, DayStats>();
 
     for (const result of dailyPerformanceResults) {
+      // Track which normalized dates we've already seen from THIS result entry,
+      // so we don't double-count if the same date somehow appears twice within one result.
+      const seenInThisResult = new Set<number>();
+
       for (const day of result.dailyBreakdown || []) {
         if (!day.fullDate) continue;
         
         const dayDate = new Date(day.fullDate);
         if (!isDateInCycle(dayDate, previousCycle)) continue;
 
-        const dateKey = day.date;
-        const existing = dailyEarningsMap.get(dateKey);
+        // Normalize to midnight for a stable key
+        const normalizedKey = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate()).getTime();
+
+        // Skip duplicate dates within the same result entry
+        if (seenInThisResult.has(normalizedKey)) continue;
+        seenInThisResult.add(normalizedKey);
+
+        const existing = dailyEarningsMap.get(normalizedKey);
         
         if (existing) {
           existing.amount += day.value || 0;
         } else {
-          dailyEarningsMap.set(dateKey, {
+          dailyEarningsMap.set(normalizedKey, {
             date: day.date,
             fullDate: day.fullDate,
             amount: day.value || 0
@@ -147,18 +162,24 @@ export function useCycleSummary(
 
     // Calculate ranking bonus stats for previous cycle
     let rankingBonusTotal = 0;
-    const rankingBonusDaysSet = new Set<string>();
+    const rankingBonusDaysSet = new Set<number>(); // keyed by normalized midnight timestamp
 
     for (const result of rankingBonusResults) {
+      const seenInThisResult = new Set<number>();
+
       for (const day of result.dailyBreakdown || []) {
         if (!day.fullDate) continue;
         
         const dayDate = new Date(day.fullDate);
         if (!isDateInCycle(dayDate, previousCycle)) continue;
 
+        const normalizedKey = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate()).getTime();
+        if (seenInThisResult.has(normalizedKey)) continue;
+        seenInThisResult.add(normalizedKey);
+
         if (day.value > 0) {
           rankingBonusTotal += day.value;
-          rankingBonusDaysSet.add(day.date);
+          rankingBonusDaysSet.add(normalizedKey);
         }
       }
     }
