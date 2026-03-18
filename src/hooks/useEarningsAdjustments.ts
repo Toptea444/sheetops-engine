@@ -76,18 +76,24 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
   const [isLoading, setIsLoading] = useState(false);
 
   const cycleKey = getCycleKey(cycle);
+  const todayLocal = toLocalDateStr(Date.now());
 
   const load = useCallback(async () => {
     if (!userId) return;
     setIsLoading(true);
     try {
       const [swapRes, transferRes] = await Promise.all([
-        supabase.from('id_swaps').select('*').order('effective_date', { ascending: true }),
+        supabase
+          .from('id_swaps')
+          .select('*')
+          .eq('cycle_key', cycleKey)
+          .order('effective_date', { ascending: true }),
         supabase.from('day_transfers').select('*').eq('cycle_key', cycleKey),
       ]);
 
       const allSwaps = (swapRes.data || []) as unknown as IdSwap[];
       const allTransfers = (transferRes.data || []) as unknown as DayTransfer[];
+      const effectiveSwaps = allSwaps.filter(s => s.effective_date <= todayLocal);
 
       setSwaps(allSwaps);
       setTransfers(allTransfers);
@@ -96,7 +102,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       const notes: AdjustmentNote[] = [];
       const uid = userId.toUpperCase();
 
-      allSwaps.forEach(s => {
+      effectiveSwaps.forEach(s => {
         // In a bidirectional swap: two workers exchange IDs
         // Swap record stores: old_worker_id <-> new_worker_id
         // 
@@ -158,7 +164,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     } finally {
       setIsLoading(false);
     }
-  }, [userId, cycleKey]);
+  }, [userId, cycleKey, todayLocal]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -178,7 +184,8 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     let netAdjustment = 0;
 
     // Find swap chains involving this user
-    const relevantSwaps = swaps.filter(s =>
+    const effectiveSwaps = swaps.filter(s => s.effective_date <= todayLocal);
+    const relevantSwaps = effectiveSwaps.filter(s =>
       s.old_worker_id === uid || s.new_worker_id === uid
     );
 
@@ -290,7 +297,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     });
 
     return { adjustedResults, netAdjustment };
-  }, [userId, swaps, transfers]);
+  }, [userId, swaps, transfers, todayLocal]);
 
   /**
    * Get transfer info for a specific worker, date, and sheet for showing +/- indicators
@@ -330,7 +337,8 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     const uid = userId.toUpperCase();
     const ids = new Set<string>([uid]);
 
-    swaps.forEach(s => {
+    const effectiveSwaps = swaps.filter(s => s.effective_date <= todayLocal);
+    effectiveSwaps.forEach(s => {
       if (s.new_worker_id === uid) {
         ids.add(s.old_worker_id);
       }
@@ -340,7 +348,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     });
 
     return Array.from(ids);
-  }, [userId, swaps]);
+  }, [userId, swaps, todayLocal]);
 
   return {
     swaps,
