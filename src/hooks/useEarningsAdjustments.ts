@@ -211,19 +211,19 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
           
           for (const swap of swapsForThisId) {
             const effectiveStr = swap.effective_date;
-            
-// The swap record defines: old_worker_id had the ID before swap,
-            // new_worker_id has the ID after swap.
-            // Regardless of which ID the user is currently logged in as:
-            // - old_worker_id's data is valid BEFORE effective_date
-            // - new_worker_id's data is valid FROM effective_date onward
-            
-            if (resultId === swap.old_worker_id) {
-              // Data from old_worker_id — only keep days BEFORE effective date
+
+            // Determine this specific user's perspective of the swap:
+            // - userOldId: account this user had before swap
+            // - userNewId: account this user has after swap (normally current uid)
+            const userOldId = swap.new_worker_id === uid ? swap.old_worker_id : swap.new_worker_id;
+            const userNewId = swap.new_worker_id === uid ? swap.new_worker_id : swap.old_worker_id;
+
+            if (resultId === userOldId) {
+              // User's old account data is valid only BEFORE effective date
               if (dayStr >= effectiveStr) return false;
             }
-            if (resultId === swap.new_worker_id) {
-              // Data from new_worker_id — only keep days FROM effective date onward
+            if (resultId === userNewId) {
+              // User's new account data is valid only FROM effective date onward
               if (dayStr < effectiveStr) return false;
             }
           }
