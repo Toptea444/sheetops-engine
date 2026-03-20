@@ -83,11 +83,17 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     setIsLoading(true);
     try {
       const [swapRes, transferRes] = await Promise.all([
+        // Fetch ALL swaps for this user across all cycles — a swap on cycle N
+        // affects how data is read when viewing cycle N-1 or any other cycle,
+        // so filtering by cycle_key here would cause double-counting when browsing
+        // historical cycles.
         supabase
           .from('id_swaps')
           .select('*')
-          .eq('cycle_key', cycleKey)
+          .or(`old_worker_id.eq.${userId.toUpperCase()},new_worker_id.eq.${userId.toUpperCase()}`)
           .order('effective_date', { ascending: true }),
+        // Day transfers remain cycle-scoped (they are specific financial corrections
+        // that only apply within the cycle they were recorded for)
         supabase.from('day_transfers').select('*').eq('cycle_key', cycleKey),
       ]);
 
