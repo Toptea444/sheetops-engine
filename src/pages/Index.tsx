@@ -329,9 +329,24 @@ const Index = () => {
 
     // If no live data found, try loading from cache (sheet may have been disabled)
     if (!foundInAnySheet && userId) {
-      const cachedResults = await loadWorkerResults(userId, currentCycleKey);
-      if (cachedResults.length > 0) {
-        setResults(cachedResults);
+      // Load cache for ALL swap-related IDs (not just current userId), since worker
+      // results were saved under whichever ID was active at the time — if a swap
+      // occurred, the old ID's results live under the old ID's cache key.
+      const idsForCache = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
+      const allCachedResults: BonusResult[] = [];
+      const seenKeys = new Set<string>();
+      for (const cacheId of idsForCache) {
+        const rows = await loadWorkerResults(cacheId, currentCycleKey);
+        for (const row of rows) {
+          const key = `${cacheId}:${row.sheetName}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            allCachedResults.push(row);
+          }
+        }
+      }
+      if (allCachedResults.length > 0) {
+        setResults(allCachedResults);
         setIsFetchingData(false);
         // Also load cached sheet snapshots for leaderboard etc.
         const cachedSheets = await loadAllSheetSnapshots(currentCycleKey);
@@ -455,11 +470,17 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [userId, identityConfirmed, pinVerifiedThisSession]);
 
-  // Background PIN reset detection: check every 30s if admin removed this worker's PIN
+  // Background PIN reset detection: check every 30s if admin removed this worker's PIN.
+  // Suppressed when a swap is already detected — the swap modal takes priority, and an
+  // admin-cleared PIN is expected in that scenario (forces re-registration under new ID).
   useEffect(() => {
-    if (!userId || !identityConfirmed || !pinVerifiedThisSession || pinResetDetected) return;
+    if (!userId || !identityConfirmed || !pinVerifiedThisSession || pinResetDetected || swapDetected) return;
 
     const checkPinReset = async () => {
+      // Double-check swap state inside the async callback to handle the case where
+      // a swap was detected between when the interval fired and now.
+      if (swapDetected) return;
+
       const { data, error } = await supabase
         .from('worker_pins')
         .select('id')
@@ -469,6 +490,21 @@ const Index = () => {
       if (error) return;
 
       if (!data) {
+        // Only show pin reset if there's no pending swap for this user
+        const { data: swapRows } = await supabase
+          .from('id_swaps')
+          .select('id, effective_date')
+          .or(`old_worker_id.eq.${userId.toUpperCase()},new_worker_id.eq.${userId.toUpperCase()}`)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const todayLocal = toLocalDateStr(Date.now());
+        const hasPendingSwap = swapRows && swapRows.length > 0 && swapRows[0].effective_date <= todayLocal;
+        if (hasPendingSwap) {
+          // Swap detection loop will handle this — don't show pin reset modal
+          return;
+        }
+
         setPinResetDetected({
           workerId: userId.toUpperCase(),
           message: 'Heads up — your admin reset your PIN. Tap Okay to go back to the start and enter your worker ID again.',
@@ -479,7 +515,7 @@ const Index = () => {
     checkPinReset();
     const interval = setInterval(checkPinReset, 30_000);
     return () => clearInterval(interval);
-  }, [userId, identityConfirmed, pinVerifiedThisSession, pinResetDetected]);
+  }, [userId, identityConfirmed, pinVerifiedThisSession, pinResetDetected, swapDetected]);
 
   // When switching cycles, try to load cached data for past cycles
   useEffect(() => {
@@ -492,12 +528,27 @@ const Index = () => {
     if (cycleKey === currentCycleKey) return;
 
     const loadCachedCycleData = async () => {
-      const cachedResults = await loadWorkerResults(userId, cycleKey);
-      if (cachedResults.length > 0) {
+      // Load for ALL swap-related IDs so old-ID cache entries are included when
+      // sheets are disabled. Results from different IDs may cover different sheets.
+      const idsForCache = getWorkerIdsToFetch();
+      const idsToLoad = idsForCache.length > 0 ? idsForCache : [userId];
+      const allCachedResults: BonusResult[] = [];
+      const seenKeys = new Set<string>();
+      for (const cacheId of idsToLoad) {
+        const rows = await loadWorkerResults(cacheId, cycleKey);
+        for (const row of rows) {
+          const key = `${cacheId}:${row.sheetName}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            allCachedResults.push(row);
+          }
+        }
+      }
+      if (allCachedResults.length > 0) {
         // Merge cached results with any live results (live takes priority)
         setResults(prev => {
           const liveSheets = new Set(prev.map(r => r.sheetName));
-          const cachedOnly = cachedResults.filter(r => !liveSheets.has(r.sheetName));
+          const cachedOnly = allCachedResults.filter(r => !liveSheets.has(r.sheetName));
           return cachedOnly.length > 0 ? [...prev, ...cachedOnly] : prev;
         });
       }
@@ -516,7 +567,7 @@ const Index = () => {
     };
 
     loadCachedCycleData();
-  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots]);
+  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch]);
 
   // Validate ID exists in sheets (used by WelcomeModal before PIN step)
   const handleIdValidation = async (newUserId: string): Promise<{ valid: boolean; userName?: string }> => {
