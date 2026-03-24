@@ -11,17 +11,21 @@ const NO_SUCCESS_AUTO_CLOSE_MS = 3000;
 interface RankingBonusPreferenceModalProps {
   open: boolean;
   isFromSettings?: boolean;
+  isDefaultUpdateNotice?: boolean;
   currentPreference: boolean;
   onClose: () => void;
   onSavePreference: (includeInTotal: boolean) => void;
+  onAcknowledgeDefaultUpdate?: () => void;
 }
 
 export function RankingBonusPreferenceModal({
   open,
   isFromSettings = false,
+  isDefaultUpdateNotice = false,
   currentPreference,
   onClose,
   onSavePreference,
+  onAcknowledgeDefaultUpdate,
 }: RankingBonusPreferenceModalProps) {
   const [fadeIn, setFadeIn] = useState(false);
   const [step, setStep] = useState<PreferenceStep>('question');
@@ -69,6 +73,7 @@ export function RankingBonusPreferenceModal({
 
   useEffect(() => {
     if (!open) return;
+    if (isDefaultUpdateNotice) return;
 
     const duration =
       step === 'yes-confirm'
@@ -84,7 +89,7 @@ export function RankingBonusPreferenceModal({
     }, duration);
 
     return () => clearTimeout(closeTimer);
-  }, [handleDismiss, open, step]);
+  }, [handleDismiss, isDefaultUpdateNotice, open, step]);
 
   const handleInclude = () => {
     onSavePreference(true);
@@ -94,6 +99,11 @@ export function RankingBonusPreferenceModal({
   const handleExclude = () => {
     onSavePreference(false);
     setStep('no-success');
+  };
+
+  const handleDefaultUpdateAcknowledge = () => {
+    onAcknowledgeDefaultUpdate?.();
+    handleDismiss();
   };
 
   if (!open) return null;
@@ -137,32 +147,53 @@ export function RankingBonusPreferenceModal({
             >
               {displayStep === 'question' && (
                 <>
-                  <h2 className="text-lg font-bold text-foreground leading-snug">
-                    Ranking bonus in total earnings?
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                    Some users find the total earnings confusing when ranking bonus is added.
-                    Do you want us to include ranking bonus inside your total earnings card?
-                  </p>
-                  {isFromSettings && (
-                    <p className="text-xs text-muted-foreground mt-3">
-                      Current setting:{' '}
-                      {currentPreference ? 'Included in total earnings' : 'Hidden from total earnings'}.
-                    </p>
-                  )}
+                  {isDefaultUpdateNotice ? (
+                    <>
+                      <h2 className="text-lg font-bold text-foreground leading-snug">
+                        Ranking bonus is now included by default
+                      </h2>
+                      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                        We&apos;ve set ranking bonus in total earnings to <span className="font-semibold text-foreground">ON</span> for all users.
+                        You can click the settings icon beside the sheet selector anytime to change this.
+                      </p>
 
-                  <button
-                    onClick={handleInclude}
-                    className="mt-5 w-full h-12 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all"
-                  >
-                    I'm okay with it
-                  </button>
-                  <button
-                    onClick={handleExclude}
-                    className="mt-2.5 w-full h-11 rounded-2xl border border-border bg-background text-foreground text-sm font-medium hover:bg-muted/60 active:scale-[0.97] transition-all"
-                  >
-                    No, I'd like to change it
-                  </button>
+                      <button
+                        onClick={handleDefaultUpdateAcknowledge}
+                        className="mt-5 w-full h-12 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all"
+                      >
+                        Got it
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-lg font-bold text-foreground leading-snug">
+                        Ranking bonus in total earnings?
+                      </h2>
+                      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                        Some users find the total earnings confusing when ranking bonus is added.
+                        Do you want us to include ranking bonus inside your total earnings card?
+                      </p>
+                      {isFromSettings && (
+                        <p className="text-xs text-muted-foreground mt-3">
+                          Current setting:{' '}
+                          {currentPreference ? 'Included in total earnings' : 'Hidden from total earnings'}.
+                        </p>
+                      )}
+
+                      <button
+                        onClick={handleInclude}
+                        className="mt-5 w-full h-12 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all"
+                      >
+                        I&apos;m okay with it
+                      </button>
+                      <button
+                        onClick={handleExclude}
+                        className="mt-2.5 w-full h-11 rounded-2xl border border-border bg-background text-foreground text-sm font-medium hover:bg-muted/60 active:scale-[0.97] transition-all"
+                      >
+                        No, I&apos;d like to change it
+                      </button>
+                    </>
+                  )}
                 </>
               )}
 
