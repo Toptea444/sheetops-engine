@@ -96,10 +96,11 @@ const Index = () => {
   const [swapDetected, setSwapDetected] = useState<{ currentUserId: string; swappedWithId: string; swapId: string } | null>(null);
   const [pinResetDetected, setPinResetDetected] = useState<{ workerId: string; message: string } | null>(null);
   const RANKING_BONUS_TOTAL_PREF_KEY = 'performanceTracker_includeRankingBonusInTotal';
-  const [includeRankingBonusInTotal, setIncludeRankingBonusInTotal] = useState(false);
-  const [rankingPreferenceSet, setRankingPreferenceSet] = useState(false);
+  const RANKING_BONUS_TOTAL_DEFAULT_UPDATE_KEY = 'performanceTracker_rankingBonusDefaultUpdateSeen_v1';
+  const [includeRankingBonusInTotal, setIncludeRankingBonusInTotal] = useState(true);
   const [showRankingPreferenceModal, setShowRankingPreferenceModal] = useState(false);
   const [rankingPreferenceFromSettings, setRankingPreferenceFromSettings] = useState(false);
+  const [showRankingDefaultUpdateModal, setShowRankingDefaultUpdateModal] = useState(false);
 
   // Cycle Summary Modal states
   const [showCycleSummaryAnimated, setShowCycleSummaryAnimated] = useState(false);
@@ -208,24 +209,33 @@ const Index = () => {
   };
 
   useEffect(() => {
+    const hasSeenDefaultUpdate = localStorage.getItem(RANKING_BONUS_TOTAL_DEFAULT_UPDATE_KEY) === 'true';
     const savedPreference = localStorage.getItem(RANKING_BONUS_TOTAL_PREF_KEY);
+
+    if (!hasSeenDefaultUpdate) {
+      localStorage.setItem(RANKING_BONUS_TOTAL_PREF_KEY, 'true');
+      setIncludeRankingBonusInTotal(true);
+      setShowRankingDefaultUpdateModal(true);
+      return;
+    }
+
     if (savedPreference === 'true' || savedPreference === 'false') {
       setIncludeRankingBonusInTotal(savedPreference === 'true');
-      setRankingPreferenceSet(true);
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    if (identityConfirmed && !isInitializing && !rankingPreferenceSet) {
-      setRankingPreferenceFromSettings(false);
-      setShowRankingPreferenceModal(true);
-    }
-  }, [identityConfirmed, isInitializing, rankingPreferenceSet]);
+    localStorage.setItem(RANKING_BONUS_TOTAL_PREF_KEY, 'true');
+    setIncludeRankingBonusInTotal(true);
+  }, []);
 
   const saveRankingBonusPreference = useCallback((shouldInclude: boolean) => {
     localStorage.setItem(RANKING_BONUS_TOTAL_PREF_KEY, shouldInclude ? 'true' : 'false');
     setIncludeRankingBonusInTotal(shouldInclude);
-    setRankingPreferenceSet(true);
+  }, []);
+
+  const acknowledgeRankingDefaultUpdate = useCallback(() => {
+    localStorage.setItem(RANKING_BONUS_TOTAL_DEFAULT_UPDATE_KEY, 'true');
+    setShowRankingDefaultUpdateModal(false);
   }, []);
 
   const openRankingPreferenceFromSettings = () => {
@@ -1020,6 +1030,16 @@ const Index = () => {
         onClose={() => {
           setShowRankingPreferenceModal(false);
           setRankingPreferenceFromSettings(false);
+        }}
+      />
+      <RankingBonusPreferenceModal
+        open={showRankingDefaultUpdateModal && identityConfirmed && !isInitializing}
+        isDefaultUpdateNotice
+        currentPreference={includeRankingBonusInTotal}
+        onSavePreference={saveRankingBonusPreference}
+        onAcknowledgeDefaultUpdate={acknowledgeRankingDefaultUpdate}
+        onClose={() => {
+          acknowledgeRankingDefaultUpdate();
         }}
       />
 
