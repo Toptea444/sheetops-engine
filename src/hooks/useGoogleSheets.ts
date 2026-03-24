@@ -293,6 +293,7 @@ function parseDailyPerformanceSheet(
   // So we must scan ROWS to find date blocks (not just data.headers).
 
   const dailyData: DailyBonus[] = [];
+  const processedDates = new Set<string>();
   let foundStage = '';
   let foundUserName = '';
 
@@ -307,6 +308,74 @@ function parseDailyPerformanceSheet(
 
   // Build a full matrix including the first header row from the API
   const matrix: string[][] = [data.headers, ...data.rows];
+  const inferColumnsFromRows = (blockStart: number, blockEnd: number, dataStartRow: number) => {
+    const effectiveEnd = Math.min(blockEnd, Math.max(blockStart + 1, matrix[dataStartRow]?.length ?? blockEnd));
+
+    // Typical layout fallback:
+    // STAGES | USERNAMES | RECOVERY RATE | BONUS | RANK | RATE | RANKING BONUS | TOTAL
+    const fallback = {
+      stagesCol: blockStart,
+      usernamesCol: blockStart + 1,
+      bonusCol: blockStart + 3,
+      rankingBonusCol: blockStart + 6,
+      totalCol: blockStart + 7,
+    };
+
+    // Keep fallback indices inside the current block
+    const boundedFallback = {
+      stagesCol: fallback.stagesCol < effectiveEnd ? fallback.stagesCol : -1,
+      usernamesCol: fallback.usernamesCol < effectiveEnd ? fallback.usernamesCol : -1,
+      bonusCol: fallback.bonusCol < effectiveEnd ? fallback.bonusCol : -1,
+      rankingBonusCol: fallback.rankingBonusCol < effectiveEnd ? fallback.rankingBonusCol : -1,
+      totalCol: fallback.totalCol < effectiveEnd ? fallback.totalCol : -1,
+    };
+
+    const looksLikeUserId = (v: string) => {
+      const t = v.trim().toUpperCase();
+      if (!t) return false;
+      // Examples: GHAS-1008, NGDS-1009, GHBS-1002
+      return /^[A-Z]{2,6}-\d{2,6}$/.test(t);
+    };
+
+    const sampleRows = matrix.slice(dataStartRow, Math.min(matrix.length, dataStartRow + 80));
+    // Prefer columns that look like user IDs
+    let inferredUsernamesCol = -1;
+    let userBest = -1;
+    for (let c = blockStart; c < effectiveEnd; c++) {
+      let userLike = 0;
+      for (const row of sampleRows) {
+        if (looksLikeUserId(String(row?.[c] ?? ''))) userLike++;
+      }
+      if (userLike > userBest) {
+        userBest = userLike;
+        inferredUsernamesCol = c;
+      }
+    }
+
+    // If we couldn't infer from data, use structural fallback
+    if (userBest <= 0) inferredUsernamesCol = boundedFallback.usernamesCol;
+
+    const inferredStagesCol =
+      inferredUsernamesCol > blockStart ? inferredUsernamesCol - 1 : boundedFallback.stagesCol;
+    const inferredBonusCol =
+      inferredUsernamesCol + 2 < effectiveEnd ? inferredUsernamesCol + 2 : boundedFallback.bonusCol;
+    const inferredRankingBonusCol =
+      inferredUsernamesCol + 5 < effectiveEnd
+        ? inferredUsernamesCol + 5
+        : (boundedFallback.rankingBonusCol >= 0 ? boundedFallback.rankingBonusCol : -1);
+    const inferredTotalCol =
+      inferredUsernamesCol + 6 < effectiveEnd
+        ? inferredUsernamesCol + 6
+        : (boundedFallback.totalCol >= 0 ? boundedFallback.totalCol : -1);
+
+    return {
+      stagesCol: inferredStagesCol,
+      usernamesCol: inferredUsernamesCol,
+      bonusCol: inferredBonusCol,
+      rankingBonusCol: inferredRankingBonusCol,
+      totalCol: inferredTotalCol,
+    };
+  };
 
   // --------------------------------------------------------------------------
   // PASS 1 (preferred): Find date blocks in ROWS (date row + header row)
@@ -364,8 +433,8 @@ function parseDailyPerformanceSheet(
       if (!blockDate) continue; // Skip if we can't find a date for this block
 
       // The *next* row after the date must contain the required headers
-      const stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage']);
-      const usernamesCol = findLabelInRange(headerRow, blockStart, blockEnd, [
+      let stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage']);
+      let usernamesCol = findLabelInRange(headerRow, blockStart, blockEnd, [
         'usernames',
         'username',
         'user_name',
@@ -374,16 +443,26 @@ function parseDailyPerformanceSheet(
         'product',
         'id',
       ]);
-      const totalCol = findLabelInRange(headerRow, blockStart, blockEnd, ['total']);
+      let totalCol = findLabelInRange(headerRow, blockStart, blockEnd, ['total']);
 
       // Daily & Performance breakdown
-      const bonusCol = findLabelInRangeExact(headerRow, blockStart, blockEnd, ['bonus', 'daily bonus']);
-      const rankingBonusCol = findLabelInRangeExact(headerRow, blockStart, blockEnd, [
+      let bonusCol = findLabelInRangeExact(headerRow, blockStart, blockEnd, ['bonus', 'daily bonus']);
+      let rankingBonusCol = findLabelInRangeExact(headerRow, blockStart, blockEnd, [
         'ranking bonus',
         'rank bonus',
       ]);
 
-      // If we can't find these, this is not a real date block.
+      // Fallback for malformed sheets where header names are blank/missing.
+      if (usernamesCol < 0 || totalCol < 0) {
+        const inferred = inferColumnsFromRows(blockStart, blockEnd, rowIdx + 2);
+        if (usernamesCol < 0) usernamesCol = inferred.usernamesCol;
+        if (stagesCol < 0) stagesCol = inferred.stagesCol;
+        if (bonusCol < 0) bonusCol = inferred.bonusCol;
+        if (rankingBonusCol < 0) rankingBonusCol = inferred.rankingBonusCol;
+        if (totalCol < 0) totalCol = inferred.totalCol;
+      }
+
+      // If still missing critical columns, skip this block.
       if (usernamesCol < 0 || totalCol < 0) continue;
 
       // Scan the data rows under the header for this block
@@ -405,6 +484,13 @@ function parseDailyPerformanceSheet(
           const resolvedStage = stageCell || currentStage;
           if (resolvedStage) foundStage = resolvedStage;
 
+          const dateKey = blockDate.timestamp
+            ? String(blockDate.timestamp)
+            : `${blockDate.formatted}-${blockStart}`;
+          if (processedDates.has(dateKey)) {
+            break;
+          }
+
           const totalValue = parseNumberLike(dataRow[totalCol]);
           const bonusValue = bonusCol >= 0 ? parseNumberLike(dataRow[bonusCol]) : undefined;
           const rankingBonusValue =
@@ -422,6 +508,7 @@ function parseDailyPerformanceSheet(
             bonus: bonusValue,
             rankingBonus: rankingBonusValue,
           });
+          processedDates.add(dateKey);
           break; // found worker for this date block
         }
       }
@@ -464,6 +551,7 @@ function parseDailyPerformanceSheet(
   if (dateBlocks.length === 0) return null;
 
   const fallbackDailyData: DailyBonus[] = [];
+  const fallbackProcessedDates = new Set<string>();
   let fallbackStage = '';
   let fallbackUserName = '';
 
@@ -505,6 +593,10 @@ function parseDailyPerformanceSheet(
 
         // Calculate total as bonus + ranking bonus instead of using sheet total
         const calculatedValue = (bonusValue ?? 0) + (rankingBonusValue ?? 0);
+        const dateKey = block.parsedDate?.timestamp
+          ? String(block.parsedDate.timestamp)
+          : `${block.date}-${blockStart}`;
+        if (fallbackProcessedDates.has(dateKey)) break;
 
         fallbackDailyData.push({
           date: block.parsedDate?.formatted || block.date,
@@ -515,6 +607,7 @@ function parseDailyPerformanceSheet(
           bonus: bonusValue,
           rankingBonus: rankingBonusValue,
         });
+        fallbackProcessedDates.add(dateKey);
 
         break;
       }
