@@ -293,6 +293,7 @@ function parseDailyPerformanceSheet(
   // So we must scan ROWS to find date blocks (not just data.headers).
 
   const dailyData: DailyBonus[] = [];
+  const processedDates = new Set<string>();
   let foundStage = '';
   let foundUserName = '';
 
@@ -483,6 +484,13 @@ function parseDailyPerformanceSheet(
           const resolvedStage = stageCell || currentStage;
           if (resolvedStage) foundStage = resolvedStage;
 
+          const dateKey = blockDate.timestamp
+            ? String(blockDate.timestamp)
+            : `${blockDate.formatted}-${blockStart}`;
+          if (processedDates.has(dateKey)) {
+            break;
+          }
+
           const totalValue = parseNumberLike(dataRow[totalCol]);
           const bonusValue = bonusCol >= 0 ? parseNumberLike(dataRow[bonusCol]) : undefined;
           const rankingBonusValue =
@@ -500,6 +508,7 @@ function parseDailyPerformanceSheet(
             bonus: bonusValue,
             rankingBonus: rankingBonusValue,
           });
+          processedDates.add(dateKey);
           break; // found worker for this date block
         }
       }
@@ -542,6 +551,7 @@ function parseDailyPerformanceSheet(
   if (dateBlocks.length === 0) return null;
 
   const fallbackDailyData: DailyBonus[] = [];
+  const fallbackProcessedDates = new Set<string>();
   let fallbackStage = '';
   let fallbackUserName = '';
 
@@ -583,6 +593,10 @@ function parseDailyPerformanceSheet(
 
         // Calculate total as bonus + ranking bonus instead of using sheet total
         const calculatedValue = (bonusValue ?? 0) + (rankingBonusValue ?? 0);
+        const dateKey = block.parsedDate?.timestamp
+          ? String(block.parsedDate.timestamp)
+          : `${block.date}-${blockStart}`;
+        if (fallbackProcessedDates.has(dateKey)) break;
 
         fallbackDailyData.push({
           date: block.parsedDate?.formatted || block.date,
@@ -593,6 +607,7 @@ function parseDailyPerformanceSheet(
           bonus: bonusValue,
           rankingBonus: rankingBonusValue,
         });
+        fallbackProcessedDates.add(dateKey);
 
         break;
       }
