@@ -46,6 +46,9 @@ export function DailyEarningsTable({
   isLoading,
   getTransferInfo,
   currentUserId,
+  subsidyData,
+  subsidyOptedIn,
+  subsidyKId,
 }: DailyEarningsTableProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showAll, setShowAll] = useState(false);
