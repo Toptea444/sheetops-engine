@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Bus, User, CalendarDays, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -15,15 +15,18 @@ import {
 import type { BonusResult } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { isDateInCycle } from '@/lib/cycleUtils';
+import type { TransportSubsidyData } from '@/hooks/useTransportSubsidy';
 
 interface DailyEarningsTableProps {
   results: BonusResult[];
   sheetNames: string[];
   cycle: CyclePeriod;
   isLoading?: boolean;
-  /** Function to get transfer info for a date+sheet (returns credit/debit indicator) */
   getTransferInfo?: (workerId: string, dateStr: string, sheetName?: string) => { type: 'credit' | 'debit'; amount: number } | null;
   currentUserId?: string | null;
+  subsidyData?: TransportSubsidyData | null;
+  subsidyOptedIn?: boolean;
+  subsidyKId?: string | null;
 }
 
 interface DayData {
