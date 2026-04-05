@@ -1293,6 +1293,8 @@ const Index = () => {
                 cycle={selectedCycle}
                 isLoading={isLoading}
                 displayMode={earningsDisplay}
+                subsidyData={subsidyData}
+                subsidyOptedIn={subsidyOptedIn}
               />
             </div>
 
