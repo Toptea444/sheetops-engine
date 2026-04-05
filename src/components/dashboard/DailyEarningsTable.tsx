@@ -55,10 +55,14 @@ export function DailyEarningsTable({
   const [activeTab, setActiveTab] = useState(sheetNames[0] || '');
 
   useEffect(() => {
-    if (!sheetNames.includes(activeTab) && sheetNames.length > 0) {
+    const availableTabs = subsidyOptedIn
+      ? [...sheetNames, '__transport_subsidy__']
+      : sheetNames;
+
+    if (!availableTabs.includes(activeTab) && sheetNames.length > 0) {
       setActiveTab(sheetNames[0]);
     }
-  }, [sheetNames, activeTab]);
+  }, [sheetNames, activeTab, subsidyOptedIn]);
 
   const sheetData = useMemo(() => {
     // Merge ALL results for this sheet (handles swap scenario where there are
