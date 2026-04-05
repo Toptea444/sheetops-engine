@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import type { BonusResult } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { isDateInCycle } from '@/lib/cycleUtils';
+import type { TransportSubsidyData } from '@/hooks/useTransportSubsidy';
 
 import type { EarningsDisplayMode } from '@/hooks/useDisplayMode';
 
@@ -13,6 +14,8 @@ interface SheetBreakdownCardsProps {
   cycle: CyclePeriod;
   isLoading?: boolean;
   displayMode?: EarningsDisplayMode;
+  subsidyData?: TransportSubsidyData | null;
+  subsidyOptedIn?: boolean;
 }
 
 export function SheetBreakdownCards({
@@ -21,11 +24,11 @@ export function SheetBreakdownCards({
   cycle,
   isLoading,
   displayMode = 'amount',
+  subsidyData,
+  subsidyOptedIn,
 }: SheetBreakdownCardsProps) {
   const sheetBreakdown = useMemo(() => {
     return sheetNames.map((name) => {
-      // Filter (not find) to merge all results for this sheet —
-      // swap users have two entries per sheet (current + old ID)
       const matchingResults = results.filter(r => r.sheetName === name);
       const isPercent = matchingResults[0]?.valueType === 'percent';
       
@@ -57,7 +60,7 @@ export function SheetBreakdownCards({
     );
   }
 
-  if (sheetBreakdown.length === 0) return null;
+  if (sheetBreakdown.length === 0 && !subsidyOptedIn) return null;
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
@@ -86,6 +89,24 @@ export function SheetBreakdownCards({
           )}
         </div>
       ))}
+
+      {/* Transport Subsidy card */}
+      {subsidyOptedIn && (
+        <div className="shrink-0 px-3 py-2.5 rounded-lg border bg-card/70 min-w-[132px]">
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-xs text-muted-foreground truncate max-w-[110px]">
+              Transport
+            </p>
+          </div>
+          {displayMode === 'dots' ? (
+            <div className="h-5 w-16 rounded-md bg-muted animate-pulse mt-0.5" />
+          ) : (
+            <p className="text-base font-semibold">
+              {subsidyData ? `₦${subsidyData.actualSubsidy.toLocaleString()}` : '—'}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
