@@ -148,7 +148,36 @@ const Index = () => {
     loadAllSheetSnapshots,
   } = useCycleCache();
 
-  // Earnings Adjustments (swap/transfer correction layer)
+  // Transport Subsidy
+  const {
+    isLoading: subsidyLoading,
+    subsidyData,
+    error: subsidyError,
+    isSetupDone: subsidySetupDone,
+    isOptedIn: subsidyOptedIn,
+    savedKId: subsidyKId,
+    markSetupDone: markSubsidySetupDone,
+    fetchSubsidyData,
+    setError: setSubsidyError,
+  } = useTransportSubsidy();
+
+  const [showSubsidyModal, setShowSubsidyModal] = useState(false);
+
+  // Show subsidy modal after identity is confirmed + PIN verified + data loaded, if setup not done
+  useEffect(() => {
+    if (identityConfirmed && pinVerifiedThisSession && !subsidySetupDone && !isInitializing) {
+      // Delay to let other modals (earnings reveal etc.) show first
+      const timer = setTimeout(() => setShowSubsidyModal(true), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [identityConfirmed, pinVerifiedThisSession, subsidySetupDone, isInitializing]);
+
+  const handleSubsidyComplete = useCallback((optedIn: boolean, kId?: string) => {
+    markSubsidySetupDone(optedIn, kId);
+    setShowSubsidyModal(false);
+  }, [markSubsidySetupDone]);
+
+
   const {
     swaps: earningsSwaps,
     adjustmentNotes,
