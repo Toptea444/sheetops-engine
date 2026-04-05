@@ -1289,7 +1289,8 @@ const Index = () => {
                   <TransportSubsidyCard
                     kId={subsidyKId}
                     subsidyData={subsidyData}
-                    isLoading={subsidyLoading}
+                    isLoading={isLoading || subsidyLoading}
+                    isFetching={subsidyLoading}
                     onFetch={(id) => fetchSubsidyData(id)}
                   />
                 </div>

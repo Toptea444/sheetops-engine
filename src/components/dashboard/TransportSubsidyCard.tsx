@@ -7,15 +7,16 @@ interface TransportSubsidyCardProps {
   kId: string;
   subsidyData: TransportSubsidyData | null;
   isLoading: boolean;
+  isFetching: boolean;
   onFetch: (kId: string) => void;
 }
 
-export function TransportSubsidyCard({ kId, subsidyData, isLoading, onFetch }: TransportSubsidyCardProps) {
+export function TransportSubsidyCard({ kId, subsidyData, isLoading, isFetching, onFetch }: TransportSubsidyCardProps) {
   useEffect(() => {
-    if (kId && !subsidyData && !isLoading) {
+    if (kId && !subsidyData && !isFetching) {
       onFetch(kId);
     }
-  }, [kId, subsidyData, isLoading, onFetch]);
+  }, [kId, subsidyData, isFetching, onFetch]);
 
   if (isLoading) {
     return (
