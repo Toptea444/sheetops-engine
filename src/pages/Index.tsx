@@ -1226,7 +1226,7 @@ const Index = () => {
               </div>
               <div className="min-w-0 flex items-center gap-2">
                 <SheetSelector
-                  sheets={sheets}
+                  sheets={sheets.filter(s => !isTransportSubsidySheet(s.name))}
                   selectedSheets={selectedSheets}
                   onSelectionChange={handleSheetSelectionChange}
                   isLoading={isLoading}
