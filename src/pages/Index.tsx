@@ -208,6 +208,11 @@ const Index = () => {
 
   const isIdentityLocked = !!userId && !identityConfirmed;
 
+  // Helper to check if a sheet is the transport subsidy sheet (uses different IDs)
+  const isTransportSubsidySheet = (name: string): boolean => {
+    return name.trim().toUpperCase().includes('TRANSPORT') && name.trim().toUpperCase().includes('SUBSIDY');
+  };
+
   // Helper to check if a sheet should be unchecked by default
   const isDefaultUncheckedSheet = (name: string): boolean => {
     const n = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
