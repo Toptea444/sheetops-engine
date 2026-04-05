@@ -1264,6 +1264,20 @@ const Index = () => {
               </div>
             </div>
 
+            {/* Transport Subsidy Card */}
+            {subsidyOptedIn && subsidyKId && (
+              <div className="mb-8">
+                <div className="bg-card border border-border rounded-2xl p-6">
+                  <TransportSubsidyCard
+                    kId={subsidyKId}
+                    subsidyData={subsidyData}
+                    isLoading={subsidyLoading}
+                    onFetch={(id) => fetchSubsidyData(id)}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Removed standalone AdjustmentsPanel — now shown inside Daily Earnings section */}
 
             {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
