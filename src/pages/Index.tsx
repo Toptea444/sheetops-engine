@@ -286,7 +286,7 @@ const Index = () => {
       if (sheetsList.length > 0) {
         // Exclude disabled sheets AND the Weekly Bonus GH sheet
         const enabledSheets = sheetsList.filter(s => 
-          !s.disabled && !isDefaultUncheckedSheet(s.name)
+          !s.disabled && !isDefaultUncheckedSheet(s.name) && !isTransportSubsidySheet(s.name)
         );
         setSelectedSheets(enabledSheets.map(s => s.name));
       }
