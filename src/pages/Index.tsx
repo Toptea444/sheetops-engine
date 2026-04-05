@@ -23,6 +23,8 @@ import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
+import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
+import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCard';
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
@@ -39,6 +41,7 @@ import { useStreaksAndAchievements } from '@/hooks/useStreaksAndAchievements';
 import { useTheme } from '@/hooks/useTheme';
 import { useDisplayMode } from '@/hooks/useDisplayMode';
 import { useEarningsAdjustments } from '@/hooks/useEarningsAdjustments';
+import { useTransportSubsidy } from '@/hooks/useTransportSubsidy';
 import { useNotifications, generateDataHash, NOTIFICATION_POLL_INTERVAL_MS } from '@/hooks/useNotifications';
 import { useCycleCache } from '@/hooks/useCycleCache';
 import { getCycleOptions, isDateInCycle, getCycleKey, getPreviousCycle } from '@/lib/cycleUtils';
@@ -145,7 +148,36 @@ const Index = () => {
     loadAllSheetSnapshots,
   } = useCycleCache();
 
-  // Earnings Adjustments (swap/transfer correction layer)
+  // Transport Subsidy
+  const {
+    isLoading: subsidyLoading,
+    subsidyData,
+    error: subsidyError,
+    isSetupDone: subsidySetupDone,
+    isOptedIn: subsidyOptedIn,
+    savedKId: subsidyKId,
+    markSetupDone: markSubsidySetupDone,
+    fetchSubsidyData,
+    setError: setSubsidyError,
+  } = useTransportSubsidy();
+
+  const [showSubsidyModal, setShowSubsidyModal] = useState(false);
+
+  // Show subsidy modal after identity is confirmed + PIN verified + data loaded, if setup not done
+  useEffect(() => {
+    if (identityConfirmed && pinVerifiedThisSession && !subsidySetupDone && !isInitializing) {
+      // Delay to let other modals (earnings reveal etc.) show first
+      const timer = setTimeout(() => setShowSubsidyModal(true), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [identityConfirmed, pinVerifiedThisSession, subsidySetupDone, isInitializing]);
+
+  const handleSubsidyComplete = useCallback((optedIn: boolean, kId?: string) => {
+    markSubsidySetupDone(optedIn, kId);
+    setShowSubsidyModal(false);
+  }, [markSubsidySetupDone]);
+
+
   const {
     swaps: earningsSwaps,
     adjustmentNotes,
@@ -1022,6 +1054,15 @@ const Index = () => {
         openRequestId={downloadModalRequestId}
       />
 
+      {/* Transport Subsidy Modal */}
+      <TransportSubsidyModal
+        open={showSubsidyModal}
+        onComplete={handleSubsidyComplete}
+        onFetchSubsidy={fetchSubsidyData}
+        isLoading={subsidyLoading}
+        error={subsidyError}
+      />
+
       <RankingBonusPreferenceModal
         open={showRankingPreferenceModal}
         isFromSettings={rankingPreferenceFromSettings}
@@ -1222,6 +1263,20 @@ const Index = () => {
                 />
               </div>
             </div>
+
+            {/* Transport Subsidy Card */}
+            {subsidyOptedIn && subsidyKId && (
+              <div className="mb-8">
+                <div className="bg-card border border-border rounded-2xl p-6">
+                  <TransportSubsidyCard
+                    kId={subsidyKId}
+                    subsidyData={subsidyData}
+                    isLoading={subsidyLoading}
+                    onFetch={(id) => fetchSubsidyData(id)}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Removed standalone AdjustmentsPanel — now shown inside Daily Earnings section */}
 
