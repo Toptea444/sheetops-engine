@@ -41,7 +41,7 @@ export function useSessionLock(): UseSessionLockResult {
   const [isChecking, setIsChecking] = useState(false);
   const [lockError, setLockError] = useState<string | null>(null);
   const [deviceBinding, setDeviceBinding] = useState<DeviceBinding>({ isBound: false, boundWorkerId: null });
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const deviceFingerprint = useRef(getDeviceFingerprint());
 
   /**

@@ -21,8 +21,8 @@ function getDeviceFingerprint(): string {
  * Handles heartbeats, force-logout detection, and re-claiming sessions after login.
  */
 export function GlobalSessionMonitor() {
-  const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
-  const userPollRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const userPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const deviceFingerprint = useRef(getDeviceFingerprint());
   const trackedUserId = useRef<string | null>(null);
   const isClaimingRef = useRef(false);
