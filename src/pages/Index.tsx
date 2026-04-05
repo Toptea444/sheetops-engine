@@ -1269,6 +1269,19 @@ const Index = () => {
               </div>
             </div>
 
+            {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
+            <div className="mb-8">
+              <SheetBreakdownCards
+                results={adjustedResults}
+                sheetNames={selectedSheets}
+                cycle={selectedCycle}
+                isLoading={isLoading}
+                displayMode={earningsDisplay}
+                subsidyData={subsidyData}
+                subsidyOptedIn={subsidyOptedIn}
+              />
+            </div>
+
             {/* Transport Subsidy Card */}
             {subsidyOptedIn && subsidyKId && (
               <div className="mb-8">
@@ -1284,19 +1297,6 @@ const Index = () => {
             )}
 
             {/* Removed standalone AdjustmentsPanel — now shown inside Daily Earnings section */}
-
-            {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
-            <div className="mb-8">
-              <SheetBreakdownCards
-                results={adjustedResults}
-                sheetNames={selectedSheets}
-                cycle={selectedCycle}
-                isLoading={isLoading}
-                displayMode={earningsDisplay}
-                subsidyData={subsidyData}
-                subsidyOptedIn={subsidyOptedIn}
-              />
-            </div>
 
             {/* Weekly Breakdown */}
             <div className="mb-8">
