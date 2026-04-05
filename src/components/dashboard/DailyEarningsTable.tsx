@@ -153,6 +153,15 @@ export function DailyEarningsTable({
                 {tabLabel(name)}
               </TabsTrigger>
             ))}
+            {subsidyOptedIn && (
+              <TabsTrigger 
+                value="__transport_subsidy__"
+                title="Transport Subsidy"
+                className="text-sm h-8 px-3 text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+              >
+                TRANSPORT
+              </TabsTrigger>
+            )}
           </TabsList>
           <Button 
             variant="ghost" 
