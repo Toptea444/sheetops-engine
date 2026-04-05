@@ -1054,6 +1054,15 @@ const Index = () => {
         openRequestId={downloadModalRequestId}
       />
 
+      {/* Transport Subsidy Modal */}
+      <TransportSubsidyModal
+        open={showSubsidyModal}
+        onComplete={handleSubsidyComplete}
+        onFetchSubsidy={fetchSubsidyData}
+        isLoading={subsidyLoading}
+        error={subsidyError}
+      />
+
       <RankingBonusPreferenceModal
         open={showRankingPreferenceModal}
         isFromSettings={rankingPreferenceFromSettings}
