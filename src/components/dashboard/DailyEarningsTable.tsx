@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Bus, User, CalendarDays, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -15,15 +15,18 @@ import {
 import type { BonusResult } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { isDateInCycle } from '@/lib/cycleUtils';
+import type { TransportSubsidyData } from '@/hooks/useTransportSubsidy';
 
 interface DailyEarningsTableProps {
   results: BonusResult[];
   sheetNames: string[];
   cycle: CyclePeriod;
   isLoading?: boolean;
-  /** Function to get transfer info for a date+sheet (returns credit/debit indicator) */
   getTransferInfo?: (workerId: string, dateStr: string, sheetName?: string) => { type: 'credit' | 'debit'; amount: number } | null;
   currentUserId?: string | null;
+  subsidyData?: TransportSubsidyData | null;
+  subsidyOptedIn?: boolean;
+  subsidyKId?: string | null;
 }
 
 interface DayData {
@@ -43,6 +46,9 @@ export function DailyEarningsTable({
   isLoading,
   getTransferInfo,
   currentUserId,
+  subsidyData,
+  subsidyOptedIn,
+  subsidyKId,
 }: DailyEarningsTableProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showAll, setShowAll] = useState(false);
@@ -147,6 +153,15 @@ export function DailyEarningsTable({
                 {tabLabel(name)}
               </TabsTrigger>
             ))}
+            {subsidyOptedIn && (
+              <TabsTrigger 
+                value="__transport_subsidy__"
+                title="Transport Subsidy"
+                className="text-sm h-8 px-3 text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+              >
+                TRANSPORT
+              </TabsTrigger>
+            )}
           </TabsList>
           <Button 
             variant="ghost" 
@@ -297,6 +312,94 @@ export function DailyEarningsTable({
             )}
           </TabsContent>
         ))}
+
+        {/* Transport Subsidy tab content */}
+        {subsidyOptedIn && (
+          <TabsContent value="__transport_subsidy__" className="mt-3">
+            <p className="text-sm font-medium text-foreground mb-3">Transport Subsidy</p>
+            {subsidyData ? (
+              <div className="space-y-4">
+                {/* Summary stats */}
+                <div className="grid grid-cols-2 gap-3 p-4 bg-muted/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Name</p>
+                      <p className="text-sm font-semibold truncate">{subsidyData.name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Bus className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">K ID</p>
+                      <p className="text-sm font-semibold font-mono">{subsidyKId?.toUpperCase()}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detailed breakdown */}
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent bg-muted/20">
+                        <TableHead className="text-sm font-medium h-10">Metric</TableHead>
+                        <TableHead className="text-sm font-medium h-10 text-right">Value</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="text-sm py-3">
+                          <div className="flex items-center gap-2">
+                            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                            Working Days
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm py-3 text-right font-semibold">{subsidyData.workingDays}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="text-sm py-3">
+                          <div className="flex items-center gap-2">
+                            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                            Days Present
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm py-3 text-right font-semibold">{subsidyData.daysPresent}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="text-sm py-3">
+                          <div className="flex items-center gap-2">
+                            <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+                            Attendance Rate
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm py-3 text-right font-semibold">{subsidyData.attendanceRate}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="text-sm py-3">
+                          <div className="flex items-center gap-2">
+                            <Bus className="h-3.5 w-3.5 text-muted-foreground" />
+                            Subsidy Standard
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm py-3 text-right font-semibold">₦{subsidyData.subsidyStandard.toLocaleString()}</TableCell>
+                      </TableRow>
+                      <TableRow className="bg-primary/5">
+                        <TableCell className="text-sm py-3 font-semibold">
+                          Actual Subsidy
+                        </TableCell>
+                        <TableCell className="text-sm py-3 text-right font-bold text-primary">₦{subsidyData.actualSubsidy.toLocaleString()}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            ) : (
+              <p className="text-center text-sm text-muted-foreground py-6">
+                No transport subsidy data available
+              </p>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

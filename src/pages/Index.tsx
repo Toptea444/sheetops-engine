@@ -208,6 +208,11 @@ const Index = () => {
 
   const isIdentityLocked = !!userId && !identityConfirmed;
 
+  // Helper to check if a sheet is the transport subsidy sheet (uses different IDs)
+  const isTransportSubsidySheet = (name: string): boolean => {
+    return name.trim().toUpperCase().includes('TRANSPORT') && name.trim().toUpperCase().includes('SUBSIDY');
+  };
+
   // Helper to check if a sheet should be unchecked by default
   const isDefaultUncheckedSheet = (name: string): boolean => {
     const n = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -281,7 +286,7 @@ const Index = () => {
       if (sheetsList.length > 0) {
         // Exclude disabled sheets AND the Weekly Bonus GH sheet
         const enabledSheets = sheetsList.filter(s => 
-          !s.disabled && !isDefaultUncheckedSheet(s.name)
+          !s.disabled && !isDefaultUncheckedSheet(s.name) && !isTransportSubsidySheet(s.name)
         );
         setSelectedSheets(enabledSheets.map(s => s.name));
       }
@@ -1221,7 +1226,7 @@ const Index = () => {
               </div>
               <div className="min-w-0 flex items-center gap-2">
                 <SheetSelector
-                  sheets={sheets}
+                  sheets={sheets.filter(s => !isTransportSubsidySheet(s.name))}
                   selectedSheets={selectedSheets}
                   onSelectionChange={handleSheetSelectionChange}
                   isLoading={isLoading}
@@ -1288,6 +1293,8 @@ const Index = () => {
                 cycle={selectedCycle}
                 isLoading={isLoading}
                 displayMode={earningsDisplay}
+                subsidyData={subsidyData}
+                subsidyOptedIn={subsidyOptedIn}
               />
             </div>
 
@@ -1313,6 +1320,9 @@ const Index = () => {
                   isLoading={isLoading}
                   getTransferInfo={getTransferInfoForDate}
                   currentUserId={userId}
+                  subsidyData={subsidyData}
+                  subsidyOptedIn={subsidyOptedIn}
+                  subsidyKId={subsidyKId}
                 />
                 {/* Adjustments info — collapsed inside the daily view */}
                 {adjustmentNotes.length > 0 && (
