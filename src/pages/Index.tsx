@@ -278,14 +278,14 @@ const Index = () => {
   }, []);
 
   const openRankingPreferenceFromSettings = () => {
-    setShowSheetSettingsModal(false);
     setRankingPreferenceFromSettings(true);
     setShowRankingPreferenceModal(true);
+    setShowSheetSettingsModal(false);
   };
 
   const openTransportSubsidyFromSettings = () => {
-    setShowSheetSettingsModal(false);
     setShowSubsidyModal(true);
+    setShowSheetSettingsModal(false);
   };
   
   useEffect(() => {
@@ -1070,6 +1070,7 @@ const Index = () => {
       {/* Transport Subsidy Modal */}
       <TransportSubsidyModal
         open={showSubsidyModal}
+        hasExistingLink={subsidyOptedIn}
         onComplete={handleSubsidyComplete}
         onFetchSubsidy={fetchSubsidyData}
         isLoading={subsidyLoading}

@@ -6,6 +6,7 @@ import type { TransportSubsidyData } from '@/hooks/useTransportSubsidy';
 
 interface TransportSubsidyModalProps {
   open: boolean;
+  hasExistingLink?: boolean;
   onComplete: (optedIn: boolean, kId?: string) => void;
   onFetchSubsidy: (kId: string) => Promise<TransportSubsidyData | null>;
   isLoading: boolean;
@@ -16,6 +17,7 @@ type Step = 'ask' | 'input' | 'declined';
 
 export function TransportSubsidyModal({
   open,
+  hasExistingLink = false,
   onComplete,
   onFetchSubsidy,
   isLoading,
@@ -33,10 +35,8 @@ export function TransportSubsidyModal({
     setKId('');
     setLocalError(null);
     setVisible(true);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => setFadeIn(true));
-    });
-  }, [open]);
+    setFadeIn(true);
+  }, [open, hasExistingLink]);
 
   const dismiss = useCallback(() => {
     setFadeIn(false);
@@ -46,6 +46,10 @@ export function TransportSubsidyModal({
   const handleYes = () => setStep('input');
 
   const handleNo = () => {
+    if (hasExistingLink) {
+      dismiss();
+      return;
+    }
     setStep('declined');
   };
 
@@ -123,14 +127,16 @@ export function TransportSubsidyModal({
                     Transport Subsidy
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed max-w-[260px] mx-auto">
-                    Would you like to see your transport subsidy details in the app?
+                    {hasExistingLink
+                      ? 'Your transport subsidy ID is already linked. Do you want to change it?'
+                      : 'Would you like to see your transport subsidy details in the app?'}
                   </p>
 
                   <button
                     onClick={handleYes}
                     className="mt-5 w-full h-12 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.97] transition-all"
                   >
-                    Yes, set it up
+                    {hasExistingLink ? 'Yes, change ID' : 'Yes, set it up'}
                     <ChevronRight className="h-4 w-4" />
                   </button>
 
