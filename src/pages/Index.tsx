@@ -26,6 +26,7 @@ import { DownloadAppBanner } from '@/components/DownloadAppBanner';
 import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
 import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCard';
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
+import { SheetSettingsModal } from '@/components/dashboard/SheetSettingsModal';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
@@ -103,6 +104,7 @@ const Index = () => {
   const [includeRankingBonusInTotal, setIncludeRankingBonusInTotal] = useState(true);
   const [showRankingPreferenceModal, setShowRankingPreferenceModal] = useState(false);
   const [rankingPreferenceFromSettings, setRankingPreferenceFromSettings] = useState(false);
+  const [showSheetSettingsModal, setShowSheetSettingsModal] = useState(false);
   const [showRankingDefaultUpdateModal, setShowRankingDefaultUpdateModal] = useState(false);
 
   // Cycle Summary Modal states
@@ -276,8 +278,14 @@ const Index = () => {
   }, []);
 
   const openRankingPreferenceFromSettings = () => {
+    setShowSheetSettingsModal(false);
     setRankingPreferenceFromSettings(true);
     setShowRankingPreferenceModal(true);
+  };
+
+  const openTransportSubsidyFromSettings = () => {
+    setShowSheetSettingsModal(false);
+    setShowSubsidyModal(true);
   };
   
   useEffect(() => {
@@ -1089,6 +1097,16 @@ const Index = () => {
         }}
       />
 
+      <SheetSettingsModal
+        open={showSheetSettingsModal}
+        onClose={() => setShowSheetSettingsModal(false)}
+        onOpenRankingBonus={openRankingPreferenceFromSettings}
+        onOpenTransportSubsidy={openTransportSubsidyFromSettings}
+        rankingIncludedInTotal={includeRankingBonusInTotal}
+        subsidyOptedIn={subsidyOptedIn}
+        subsidyKId={subsidyKId}
+      />
+
       {/* Admin Alerts Display */}
       <AlertsDisplay />
       
@@ -1232,10 +1250,10 @@ const Index = () => {
                   isLoading={isLoading}
                 />
                 <button
-                  onClick={openRankingPreferenceFromSettings}
+                  onClick={() => setShowSheetSettingsModal(true)}
                   className="h-8 w-8 rounded-md border border-border bg-background/90 hover:bg-muted/60 transition-colors flex items-center justify-center"
-                  aria-label="Ranking bonus total settings"
-                  title="Ranking bonus total settings"
+                  aria-label="Open sheet settings"
+                  title="Open sheet settings"
                 >
                   <Settings className="h-4 w-4 text-muted-foreground" />
                 </button>
