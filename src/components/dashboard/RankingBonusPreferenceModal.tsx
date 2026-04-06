@@ -51,12 +51,8 @@ export function RankingBonusPreferenceModal({
     setStep('question');
     setDisplayStep('question');
     setStepVisible(false);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setFadeIn(true);
-        setStepVisible(true);
-      });
-    });
+    setFadeIn(true);
+    setStepVisible(true);
   }, [open]);
 
   useEffect(() => {

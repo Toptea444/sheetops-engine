@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { ChevronRight, Bus, SlidersHorizontal } from 'lucide-react';
 
 interface SheetSettingsModalProps {
@@ -19,16 +20,34 @@ export function SheetSettingsModal({
   subsidyOptedIn,
   subsidyKId,
 }: SheetSettingsModalProps) {
+  const [fadeIn, setFadeIn] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setFadeIn(false);
+      return;
+    }
+
+    setFadeIn(true);
+  }, [open]);
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[105] flex items-center justify-center px-4">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-250"
+        style={{ opacity: fadeIn ? 1 : 0 }}
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xl">
+      <div
+        className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xl transition-all duration-250 ease-out"
+        style={{
+          opacity: fadeIn ? 1 : 0,
+          transform: fadeIn ? 'scale(1) translateY(0)' : 'scale(0.97) translateY(8px)',
+        }}
+      >
         <div className="mb-4">
           <h2 className="text-base font-semibold text-foreground">Sheet settings</h2>
           <p className="text-xs text-muted-foreground mt-1">
