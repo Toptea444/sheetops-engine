@@ -175,8 +175,74 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
   useEffect(() => { load(); }, [load]);
 
   /**
+   * Build a list of date windows during which `uid` owned `workerId`.
+   *
+   * Swaps are processed in chronological order. Each swap toggles ownership:
+   * before the first swap the original owner has [start, swap1), the other
+   * side has [swap1, swap2), the first owner again [swap2, swap3), etc.
+   *
+   * Returns an array of [from, to) string pairs (inclusive from, exclusive to).
+   * `null` means open-ended (i.e. "until today / forever").
+   *
+   * Example — A and B swap twice in a cycle:
+   *   Swap 1 effective Mar 20: A→B, B→A  (user B now uses A's old ID)
+   *   Swap 2 effective Apr 01: A→B, B→A  (swapped back)
+   *
+   * For a user currently logged in as B:
+   *   workerId A windows: [Mar 20, Apr 01)   ← B was "A" during that window
+   *   workerId B windows: [start, Mar 20) ∪ [Apr 01, ∞)
+   */
+  const buildOwnershipWindows = useCallback((
+    uid: string,
+    workerId: string,
+    sortedEffectiveSwaps: IdSwap[],
+  ): Array<{ from: string | null; to: string | null }> => {
+    // Collect only swaps that involve BOTH uid and workerId
+    const relevantSwaps = sortedEffectiveSwaps.filter(s =>
+      (s.old_worker_id === uid || s.new_worker_id === uid) &&
+      (s.old_worker_id === workerId || s.new_worker_id === workerId)
+    );
+
+    if (relevantSwaps.length === 0) {
+      // No swaps between uid and workerId at all
+      // uid owns workerId only if they are the same
+      if (uid === workerId) return [{ from: null, to: null }];
+      return [];
+    }
+
+    // Walk the timeline: at each swap, ownership of workerId toggles between uid and the other party.
+    // Determine whether uid owned workerId just BEFORE the first swap.
+    const firstSwap = relevantSwaps[0];
+    // Before the first swap: uid owned workerId iff uid === workerId
+    let uidOwnsIt = uid === workerId;
+
+    const windows: Array<{ from: string | null; to: string | null }> = [];
+    let windowStart: string | null = uidOwnsIt ? null : undefined as any;
+
+    for (const swap of relevantSwaps) {
+      // Ownership flips at this swap's effective_date
+      if (uidOwnsIt) {
+        // uid was owning workerId up to (exclusive) this swap — close the window
+        windows.push({ from: windowStart, to: swap.effective_date });
+        uidOwnsIt = false;
+      } else {
+        // uid gains ownership of workerId from this swap's effective_date
+        windowStart = swap.effective_date;
+        uidOwnsIt = true;
+      }
+    }
+
+    // If uid still owns workerId after all swaps, the window is open-ended
+    if (uidOwnsIt) {
+      windows.push({ from: windowStart, to: null });
+    }
+
+    return windows;
+  }, []);
+
+  /**
    * Apply corrections to results:
-   * 1. ID Swaps: filter daily data based on date ownership
+   * 1. ID Swaps: filter daily data based on ownership windows (handles multiple swaps)
    * 2. Day Transfers: debit/credit the per-sheet amount on the correct date
    * Returns adjusted results + net adjustment amount.
    */
@@ -189,10 +255,14 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     const uid = userId.toUpperCase();
     let netAdjustment = 0;
 
-    // Find swap chains involving this user
-    const effectiveSwaps = swaps.filter(s => s.effective_date <= todayLocal);
-    const relevantSwaps = effectiveSwaps.filter(s =>
-      s.old_worker_id === uid || s.new_worker_id === uid
+    // Swaps sorted ascending by effective_date (already ordered from DB query)
+    const effectiveSwaps = swaps
+      .filter(s => s.effective_date <= todayLocal)
+      .sort((a, b) => a.effective_date.localeCompare(b.effective_date));
+
+    // Check if any swaps involve this user at all
+    const userInvolvedInAnySwap = effectiveSwaps.some(
+      s => s.old_worker_id === uid || s.new_worker_id === uid
     );
 
     // Find transfers involving this user
@@ -205,38 +275,28 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       const adjusted = { ...result };
       const resultSheet = result.sheetName || '';
       
-      // ── Swaps: filter daily breakdown based on ownership periods ──
-      const swapsForThisId = relevantSwaps.filter(s => 
-        s.old_worker_id === resultId || s.new_worker_id === resultId
-      );
-      
-      if (swapsForThisId.length > 0) {
-        adjusted.dailyBreakdown = result.dailyBreakdown.filter(day => {
-          if (!day.fullDate) return true;
-          const dayStr = toLocalDateStr(day.fullDate);
-          
-          for (const swap of swapsForThisId) {
-            const effectiveStr = swap.effective_date;
+      // ── Swaps: filter daily breakdown based on ownership windows ──
+      if (userInvolvedInAnySwap) {
+        // Build ownership windows: when did uid own this resultId?
+        const windows = buildOwnershipWindows(uid, resultId, effectiveSwaps);
 
-            // Determine this specific user's perspective of the swap:
-            // - userOldId: account this user had before swap
-            // - userNewId: account this user has after swap (normally current uid)
-            const userOldId = swap.new_worker_id === uid ? swap.old_worker_id : swap.new_worker_id;
-            const userNewId = swap.new_worker_id === uid ? swap.new_worker_id : swap.old_worker_id;
+        if (windows.length === 0) {
+          // uid never owned this resultId — drop all days
+          adjusted.dailyBreakdown = [];
+        } else {
+          adjusted.dailyBreakdown = result.dailyBreakdown.filter(day => {
+            if (!day.fullDate) return true;
+            const dayStr = toLocalDateStr(day.fullDate);
+            // Keep the day if it falls within ANY ownership window
+            return windows.some(w => {
+              const afterFrom = w.from === null || dayStr >= w.from;
+              const beforeTo  = w.to   === null || dayStr <  w.to;
+              return afterFrom && beforeTo;
+            });
+          });
+        }
 
-            if (resultId === userOldId) {
-              // User's old account data is valid only BEFORE effective date
-              if (dayStr >= effectiveStr) return false;
-            }
-            if (resultId === userNewId) {
-              // User's new account data is valid only FROM effective date onward
-              if (dayStr < effectiveStr) return false;
-            }
-          }
-          return true;
-        });
-
-        // Tag kept days with their source worker ID if it differs from the user's current ID
+        // Tag kept days with their source worker ID if it differs from current ID
         if (resultId !== uid) {
           adjusted.dailyBreakdown = adjusted.dailyBreakdown.map(day => ({
             ...day,
@@ -336,25 +396,37 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
 
   /**
    * For swap scenarios: get the list of ALL worker IDs this user
-   * should fetch data for (current + any previous IDs from swaps)
+   * should fetch data for (current + any IDs they ever owned, per swap history).
+   * Uses ownership windows so double-swaps on the same pair don't incorrectly
+   * include IDs the user no longer owns (though we still fetch all historically
+   * owned IDs since applyAdjustments will filter to the correct windows).
    */
   const getWorkerIdsToFetch = useCallback((): string[] => {
     if (!userId) return [];
     const uid = userId.toUpperCase();
     const ids = new Set<string>([uid]);
 
-    const effectiveSwaps = swaps.filter(s => s.effective_date <= todayLocal);
+    const effectiveSwaps = swaps
+      .filter(s => s.effective_date <= todayLocal)
+      .sort((a, b) => a.effective_date.localeCompare(b.effective_date));
+
+    // Collect all IDs that uid has ever been involved in swapping with
+    const counterpartIds = new Set<string>();
     effectiveSwaps.forEach(s => {
-      if (s.new_worker_id === uid) {
-        ids.add(s.old_worker_id);
-      }
-      if (s.old_worker_id === uid) {
-        ids.add(s.new_worker_id);
+      if (s.new_worker_id === uid) counterpartIds.add(s.old_worker_id);
+      if (s.old_worker_id === uid) counterpartIds.add(s.new_worker_id);
+    });
+
+    // For each counterpart ID, check if uid has any ownership windows for it
+    counterpartIds.forEach(otherId => {
+      const windows = buildOwnershipWindows(uid, otherId, effectiveSwaps);
+      if (windows.length > 0) {
+        ids.add(otherId);
       }
     });
 
     return Array.from(ids);
-  }, [userId, swaps, todayLocal]);
+  }, [userId, swaps, todayLocal, buildOwnershipWindows]);
 
   return {
     swaps,
