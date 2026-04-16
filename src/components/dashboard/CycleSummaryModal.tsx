@@ -436,7 +436,7 @@ function AverageConsistencyScreen({
   );
 }
 
-
+function ActivityScreen({ 
   activeDays, 
   inactiveDays,
   totalDays 
