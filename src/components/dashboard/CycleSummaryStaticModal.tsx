@@ -65,6 +65,11 @@ export function CycleSummaryStaticModal({
     ? Math.round((summaryData.activeDays / summaryData.totalCycleDays) * 100) 
     : 0;
 
+  const formatDateShort = (d: Date) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[d.getMonth()]} ${d.getDate()}`;
+  };
+
   // Get top 3 best and worst days
   const topBest = summaryData.bestDays.slice(0, 3);
   const bottomWorst = summaryData.worstDays.slice(0, 3);
