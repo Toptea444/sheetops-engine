@@ -137,7 +137,24 @@ function WelcomeScreen({ userName, cycleLabel }: { userName: string | null; cycl
   );
 }
 
-function TotalBonusScreen({ total, isAnimating }: { total: number; isAnimating: boolean }) {
+function TotalBonusScreen({ 
+  total, 
+  isAnimating,
+  latestDataDate,
+  isDataComplete,
+  cycleEndDate
+}: { 
+  total: number; 
+  isAnimating: boolean;
+  latestDataDate: Date | null;
+  isDataComplete: boolean;
+  cycleEndDate: Date;
+}) {
+  const formatDate = (d: Date) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[d.getMonth()]} ${d.getDate()}`;
+  };
+
   return (
     <motion.div 
       className="flex flex-col items-center justify-center text-center px-6 h-full"
@@ -150,7 +167,7 @@ function TotalBonusScreen({ total, isAnimating }: { total: number; isAnimating: 
         animate={{ y: 0, opacity: 1, letterSpacing: '0.25em' }}
         transition={{ delay: 0.2, duration: 0.6 }}
       >
-        Total Bonus Earned
+        {isDataComplete ? 'Total Bonus Earned' : 'Total Earnings So Far'}
       </motion.p>
       
       <motion.div
@@ -187,6 +204,26 @@ function TotalBonusScreen({ total, isAnimating }: { total: number; isAnimating: 
       >
         from your Daily & Performance sheets
       </motion.p>
+
+      {/* Data freshness indicator */}
+      <motion.div
+        className={`mt-4 rounded-full px-4 py-1.5 text-xs font-medium ${
+          isDataComplete 
+            ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/25' 
+            : 'bg-amber-500/15 text-amber-500 border border-amber-500/25'
+        }`}
+        initial={{ y: 15, opacity: 0, scale: 0.9 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ delay: 1.0, type: 'spring' }}
+      >
+        {isDataComplete ? (
+          <>✓ Bonus data updated completely (to {formatDate(cycleEndDate)})</>
+        ) : latestDataDate ? (
+          <>Data updated to {formatDate(latestDataDate)} — awaiting remaining days</>
+        ) : (
+          <>Waiting for data updates</>
+        )}
+      </motion.div>
     </motion.div>
   );
 }
