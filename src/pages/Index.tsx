@@ -439,7 +439,7 @@ const Index = () => {
     if (!foundInAnySheet && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch]);
+  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, cycleOptions]);
 
   useEffect(() => {
     if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
