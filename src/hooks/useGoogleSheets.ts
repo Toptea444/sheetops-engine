@@ -402,7 +402,7 @@ function parseDailyPerformanceSheet(
     return null;
   };
 
-  for (let rowIdx = 0; rowIdx < matrix.length - 2; rowIdx++) {
+  for (let rowIdx = 0; rowIdx < matrix.length - 1; rowIdx++) {
     const row = matrix[rowIdx] || [];
 
     // Collect all date-like cells on this row (each is a block start)
