@@ -355,8 +355,14 @@ const Index = () => {
         data = await fetchSheetData(sheetName);
         if (data) {
           newCache[sheetName] = data;
-          // Cache the sheet snapshot for this cycle
+          // Cache the sheet snapshot for the selected cycle
           saveSheetSnapshot(sheetName, selectedCycle, data);
+          // Also cache for previous cycles the sheet data may cover
+          for (const cycle of cycleOptions) {
+            if (getCycleKey(cycle) !== currentCycleKey) {
+              saveSheetSnapshot(sheetName, cycle, data);
+            }
+          }
         }
       }
       
