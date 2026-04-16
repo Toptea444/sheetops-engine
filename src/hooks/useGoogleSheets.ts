@@ -164,12 +164,12 @@ export function useGoogleSheets() {
     // Helper to normalize a timestamp to midnight UTC for consistent comparison
     const normalizeToMidnight = (timestamp: number): number => {
       const d = new Date(timestamp);
-      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
     };
 
-    // Normalize start/end dates to midnight for comparison
-    const startTime = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime();
-    const endTime = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime();
+    // Normalize start/end dates to midnight UTC for comparison
+    const startTime = Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const endTime = Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
 
     // Get available full dates from worker data, normalized to midnight
     const availableDates = worker.dailyData
@@ -692,7 +692,8 @@ function parseDateFromHeader(header: string, sheetName: string): { day: number; 
     const month = parseInt(slashMatch[1], 10);
     const day = parseInt(slashMatch[2], 10);
     const year = parseInt(slashMatch[3], 10);
-    const date = new Date(year, month - 1, day);
+    // Create date using UTC to ensure consistent timestamps across timezones
+    const date = new Date(Date.UTC(year, month - 1, day));
     return {
       day,
       formatted: formatDateWithDay(date),
@@ -708,7 +709,8 @@ function parseDateFromHeader(header: string, sheetName: string): { day: number; 
     const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
     const month = months.indexOf(monthStr);
     const year = ordinalMatch[4] ? parseInt(ordinalMatch[4], 10) : new Date().getFullYear();
-    const date = new Date(year, month, day);
+    // Create date using UTC to ensure consistent timestamps across timezones
+    const date = new Date(Date.UTC(year, month, day));
     return {
       day,
       formatted: formatDateWithDay(date),
