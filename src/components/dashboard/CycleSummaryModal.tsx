@@ -13,7 +13,7 @@ interface CycleSummaryModalProps {
   peopleOutperformedInStage?: number | null;
 }
 
-type Screen = 'welcome' | 'total' | 'doubleBonus' | 'highlights' | 'activity' | 'ranking' | 'stageOutperform' | 'motivation' | 'closing';
+type Screen = 'welcome' | 'total' | 'doubleBonus' | 'highlights' | 'averageConsistency' | 'activity' | 'ranking' | 'stageOutperform' | 'motivation' | 'closing';
 
 // ─── Particle System ─────────────────────────────────────────
 interface Particle {
