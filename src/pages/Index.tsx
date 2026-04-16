@@ -373,8 +373,19 @@ const Index = () => {
             const result = calculateBonus(worker, allTimeStart, endDate);
             const resultWithSheet = { ...result, sheetName: sheetName };
             newResults.push(resultWithSheet);
-            // Cache the worker result for this cycle
+            // Cache the worker result for the selected cycle
             saveWorkerResult(workerId, sheetName, selectedCycle, resultWithSheet);
+            
+            // Also cache for all cycles that this data spans (ensures historical access)
+            for (const cycle of cycleOptions) {
+              if (getCycleKey(cycle) === currentCycleKey) continue;
+              const hasDaysInCycle = result.dailyBreakdown?.some(d => 
+                d.fullDate && isDateInCycle(new Date(d.fullDate), cycle)
+              );
+              if (hasDaysInCycle) {
+                saveWorkerResult(workerId, sheetName, cycle, resultWithSheet);
+              }
+            }
           }
         }
       }
