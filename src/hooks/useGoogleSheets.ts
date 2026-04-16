@@ -164,12 +164,12 @@ export function useGoogleSheets() {
     // Helper to normalize a timestamp to midnight UTC for consistent comparison
     const normalizeToMidnight = (timestamp: number): number => {
       const d = new Date(timestamp);
-      return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     };
 
-    // Normalize start/end dates to midnight UTC for comparison
-    const startTime = Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-    const endTime = Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+    // Normalize start/end dates to midnight for comparison
+    const startTime = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime();
+    const endTime = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime();
 
     // Get available full dates from worker data, normalized to midnight
     const availableDates = worker.dailyData
@@ -402,33 +402,7 @@ function parseDailyPerformanceSheet(
     return null;
   };
 
-  const findHeaderRowIndex = (startRowIdx: number, blockStart: number, blockEnd: number): number => {
-    const maxLookahead = 4; // supports a few spacer rows between date and labels
-
-    for (let offset = 1; offset <= maxLookahead; offset++) {
-      const candidateIdx = startRowIdx + offset;
-      if (candidateIdx >= matrix.length) break;
-      const candidate = matrix[candidateIdx] || [];
-
-      const usernameCol = findLabelInRange(candidate, blockStart, blockEnd, [
-        'usernames',
-        'username',
-        'user_name',
-        'user name',
-        'product',
-        'id',
-      ]);
-      const totalCol = findLabelInRange(candidate, blockStart, blockEnd, ['total']);
-
-      // Require the same minimum set we use later to consider a row as headers
-      if (usernameCol >= 0 || totalCol >= 0) return candidateIdx;
-    }
-
-    // Fallback to the row immediately after date (current behavior)
-    return startRowIdx + 1;
-  };
-
-  for (let rowIdx = 0; rowIdx < matrix.length - 1; rowIdx++) {
+  for (let rowIdx = 0; rowIdx < matrix.length - 2; rowIdx++) {
     const row = matrix[rowIdx] || [];
 
     // Collect all date-like cells on this row (each is a block start)
@@ -448,22 +422,15 @@ function parseDailyPerformanceSheet(
     if (starts.length === 0) continue;
     starts.sort((a, b) => a.col - b.col);
 
+    const headerRow = matrix[rowIdx + 1] || [];
+
     for (let sIdx = 0; sIdx < starts.length; sIdx++) {
       const blockStart = starts[sIdx].col;
-      const nextBlockStart = starts[sIdx + 1]?.col ?? -1;
-      const trailingWidth = Math.max(
-        row.length,
-        matrix[rowIdx + 1]?.length ?? 0,
-        matrix[rowIdx + 2]?.length ?? 0,
-      );
-      const blockEnd = nextBlockStart >= 0 ? nextBlockStart : trailingWidth;
+      const blockEnd = starts[sIdx + 1]?.col ?? Math.max(row.length, headerRow.length);
 
       // Get the date for this block using primary location + fallback to scanning upward
       const blockDate = getBlockDate(blockStart, rowIdx, matrix);
       if (!blockDate) continue; // Skip if we can't find a date for this block
-
-      const headerRowIdx = findHeaderRowIndex(rowIdx, blockStart, blockEnd);
-      const headerRow = matrix[headerRowIdx] || [];
 
       // The *next* row after the date must contain the required headers
       let stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage']);
@@ -487,7 +454,7 @@ function parseDailyPerformanceSheet(
 
       // Fallback for malformed sheets where header names are blank/missing.
       if (usernamesCol < 0 || totalCol < 0) {
-        const inferred = inferColumnsFromRows(blockStart, blockEnd, headerRowIdx + 1);
+        const inferred = inferColumnsFromRows(blockStart, blockEnd, rowIdx + 2);
         if (usernamesCol < 0) usernamesCol = inferred.usernamesCol;
         if (stagesCol < 0) stagesCol = inferred.stagesCol;
         if (bonusCol < 0) bonusCol = inferred.bonusCol;
@@ -501,7 +468,7 @@ function parseDailyPerformanceSheet(
       // Scan the data rows under the header for this block
       let currentStage = '';
 
-      for (let r = headerRowIdx + 1; r < matrix.length; r++) {
+      for (let r = rowIdx + 2; r < matrix.length; r++) {
         const dataRow = matrix[r] || [];
         const stageCell = String(dataRow[stagesCol] ?? '').trim();
         const userCell = String(dataRow[usernamesCol] ?? '').trim();
@@ -692,8 +659,7 @@ function parseDateFromHeader(header: string, sheetName: string): { day: number; 
     const month = parseInt(slashMatch[1], 10);
     const day = parseInt(slashMatch[2], 10);
     const year = parseInt(slashMatch[3], 10);
-    // Create date using UTC to ensure consistent timestamps across timezones
-    const date = new Date(Date.UTC(year, month - 1, day));
+    const date = new Date(year, month - 1, day);
     return {
       day,
       formatted: formatDateWithDay(date),
@@ -709,8 +675,7 @@ function parseDateFromHeader(header: string, sheetName: string): { day: number; 
     const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
     const month = months.indexOf(monthStr);
     const year = ordinalMatch[4] ? parseInt(ordinalMatch[4], 10) : new Date().getFullYear();
-    // Create date using UTC to ensure consistent timestamps across timezones
-    const date = new Date(Date.UTC(year, month, day));
+    const date = new Date(year, month, day);
     return {
       day,
       formatted: formatDateWithDay(date),

@@ -65,11 +65,6 @@ export function CycleSummaryStaticModal({
     ? Math.round((summaryData.activeDays / summaryData.totalCycleDays) * 100) 
     : 0;
 
-  const formatDateShort = (d: Date) => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${months[d.getMonth()]} ${d.getDate()}`;
-  };
-
   // Get top 3 best and worst days
   const topBest = summaryData.bestDays.slice(0, 3);
   const bottomWorst = summaryData.worstDays.slice(0, 3);
@@ -99,7 +94,7 @@ export function CycleSummaryStaticModal({
           <div className="relative overflow-hidden bg-card border rounded-xl p-5">
             <div className="relative">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                {summaryData.isDataComplete ? 'Total Bonus' : 'Total Bonus So Far'}
+                Total Bonus
               </p>
               <p className="text-3xl font-bold text-emerald-600 tabular-nums">
                 {'\u20A6'}{summaryData.totalBonus.toLocaleString()}
@@ -107,18 +102,6 @@ export function CycleSummaryStaticModal({
               <p className="text-xs text-muted-foreground mt-1">
                 Daily + Performance sheets
               </p>
-              {/* Data freshness badge */}
-              <div className={`mt-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-medium ${
-                summaryData.isDataComplete
-                  ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
-                  : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
-              }`}>
-                {summaryData.isDataComplete
-                  ? `✓ Complete`
-                  : summaryData.latestDataDate
-                    ? `Updated to ${formatDateShort(summaryData.latestDataDate)}`
-                    : 'Awaiting data'}
-              </div>
             </div>
             <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-emerald-500/5" />
           </div>

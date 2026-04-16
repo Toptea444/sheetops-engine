@@ -355,14 +355,8 @@ const Index = () => {
         data = await fetchSheetData(sheetName);
         if (data) {
           newCache[sheetName] = data;
-          // Cache the sheet snapshot for the selected cycle
+          // Cache the sheet snapshot for this cycle
           saveSheetSnapshot(sheetName, selectedCycle, data);
-          // Also cache for previous cycles the sheet data may cover
-          for (const cycle of cycleOptions) {
-            if (getCycleKey(cycle) !== currentCycleKey) {
-              saveSheetSnapshot(sheetName, cycle, data);
-            }
-          }
         }
       }
       
@@ -379,19 +373,8 @@ const Index = () => {
             const result = calculateBonus(worker, allTimeStart, endDate);
             const resultWithSheet = { ...result, sheetName: sheetName };
             newResults.push(resultWithSheet);
-            // Cache the worker result for the selected cycle
+            // Cache the worker result for this cycle
             saveWorkerResult(workerId, sheetName, selectedCycle, resultWithSheet);
-            
-            // Also cache for all cycles that this data spans (ensures historical access)
-            for (const cycle of cycleOptions) {
-              if (getCycleKey(cycle) === currentCycleKey) continue;
-              const hasDaysInCycle = result.dailyBreakdown?.some(d => 
-                d.fullDate && isDateInCycle(new Date(d.fullDate), cycle)
-              );
-              if (hasDaysInCycle) {
-                saveWorkerResult(workerId, sheetName, cycle, resultWithSheet);
-              }
-            }
           }
         }
       }
@@ -439,7 +422,7 @@ const Index = () => {
     if (!foundInAnySheet && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, cycleOptions]);
+  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch]);
 
   useEffect(() => {
     if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
@@ -826,9 +809,7 @@ const Index = () => {
     setShowCycleSummaryAnimated(false);
     markCycleSummaryAsShown();
     
-    // Always show the cycle selector highlight after the animated summary closes,
-    // unless the user has already dismissed it this cycle. The highlight key is
-    // scoped per-cycle so it resets on every new cycle (every 16th).
+    // Show the cycle selector highlight if user hasn't seen it before
     if (!hasSeenCycleSelectorHighlight()) {
       // Small delay to let the modal close animation finish
       setTimeout(() => {
