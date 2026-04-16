@@ -1204,6 +1204,15 @@ export function CycleSummaryModal({
             worstDays={summaryData.worstDays}
           />
         );
+      case 'averageConsistency':
+        return (
+          <AverageConsistencyScreen
+            averageDailyEarnings={summaryData.averageDailyEarnings}
+            aboveAveragePercent={summaryData.aboveAveragePercent}
+            activeDays={summaryData.activeDays}
+            isAnimating={isAnimating}
+          />
+        );
       case 'activity':
         return (
           <ActivityScreen 
@@ -1296,9 +1305,10 @@ export function CycleSummaryModal({
             const isPast = i < currentIndex;
             const screenTimings: Record<Screen, number> = {
               welcome: 3000,
-              total: 4000,
+              total: 4500,
               doubleBonus: 6000,
               highlights: 5000,
+              averageConsistency: 4500,
               activity: 4500,
               ranking: 4000,
               stageOutperform: 4500,
