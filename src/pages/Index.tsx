@@ -826,7 +826,9 @@ const Index = () => {
     setShowCycleSummaryAnimated(false);
     markCycleSummaryAsShown();
     
-    // Show the cycle selector highlight if user hasn't seen it before
+    // Always show the cycle selector highlight after the animated summary closes,
+    // unless the user has already dismissed it this cycle. The highlight key is
+    // scoped per-cycle so it resets on every new cycle (every 16th).
     if (!hasSeenCycleSelectorHighlight()) {
       // Small delay to let the modal close animation finish
       setTimeout(() => {

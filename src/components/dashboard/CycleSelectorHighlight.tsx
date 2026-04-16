@@ -8,11 +8,21 @@ interface CycleSelectorHighlightProps {
   targetRef: React.RefObject<HTMLElement | null>;
 }
 
-const HIGHLIGHT_SEEN_KEY = 'performanceTracker_cycleSelectorHighlightSeen';
+const HIGHLIGHT_SEEN_KEY_PREFIX = 'performanceTracker_cycleSelectorHighlightSeen_';
+
+/** Returns the current cycle key as YYYY-MM based on the 16th-start rule. */
+function getCurrentCycleKey(): string {
+  const now = new Date();
+  const day = now.getDate();
+  // If before the 16th, the current cycle started on the 16th of the previous month
+  const year = day < 16 ? (now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()) : now.getFullYear();
+  const month = day < 16 ? (now.getMonth() === 0 ? 12 : now.getMonth()) : now.getMonth() + 1;
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
 
 export function hasSeenCycleSelectorHighlight(): boolean {
   try {
-    return localStorage.getItem(HIGHLIGHT_SEEN_KEY) === 'true';
+    return localStorage.getItem(HIGHLIGHT_SEEN_KEY_PREFIX + getCurrentCycleKey()) === 'true';
   } catch {
     return false;
   }
@@ -20,7 +30,7 @@ export function hasSeenCycleSelectorHighlight(): boolean {
 
 export function markCycleSelectorHighlightAsSeen(): void {
   try {
-    localStorage.setItem(HIGHLIGHT_SEEN_KEY, 'true');
+    localStorage.setItem(HIGHLIGHT_SEEN_KEY_PREFIX + getCurrentCycleKey(), 'true');
   } catch {
     // ignore
   }
