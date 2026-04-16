@@ -286,6 +286,10 @@ export function useCycleSummary(
         progressPercent: doubleBonusProgress,
         attemptStatus: doubleBonusAttemptStatus,
       },
+      latestDataDate,
+      isDataComplete,
+      averageDailyEarnings,
+      aboveAveragePercent,
     };
   }, [results, previousCycle]);
 
