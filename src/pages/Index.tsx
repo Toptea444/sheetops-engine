@@ -355,8 +355,14 @@ const Index = () => {
         data = await fetchSheetData(sheetName);
         if (data) {
           newCache[sheetName] = data;
-          // Cache the sheet snapshot for this cycle
+          // Cache the sheet snapshot for the selected cycle
           saveSheetSnapshot(sheetName, selectedCycle, data);
+          // Also cache for previous cycles the sheet data may cover
+          for (const cycle of cycleOptions) {
+            if (getCycleKey(cycle) !== currentCycleKey) {
+              saveSheetSnapshot(sheetName, cycle, data);
+            }
+          }
         }
       }
       
@@ -373,8 +379,19 @@ const Index = () => {
             const result = calculateBonus(worker, allTimeStart, endDate);
             const resultWithSheet = { ...result, sheetName: sheetName };
             newResults.push(resultWithSheet);
-            // Cache the worker result for this cycle
+            // Cache the worker result for the selected cycle
             saveWorkerResult(workerId, sheetName, selectedCycle, resultWithSheet);
+            
+            // Also cache for all cycles that this data spans (ensures historical access)
+            for (const cycle of cycleOptions) {
+              if (getCycleKey(cycle) === currentCycleKey) continue;
+              const hasDaysInCycle = result.dailyBreakdown?.some(d => 
+                d.fullDate && isDateInCycle(new Date(d.fullDate), cycle)
+              );
+              if (hasDaysInCycle) {
+                saveWorkerResult(workerId, sheetName, cycle, resultWithSheet);
+              }
+            }
           }
         }
       }
@@ -422,7 +439,7 @@ const Index = () => {
     if (!foundInAnySheet && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch]);
+  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, cycleOptions]);
 
   useEffect(() => {
     if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {

@@ -13,7 +13,7 @@ interface CycleSummaryModalProps {
   peopleOutperformedInStage?: number | null;
 }
 
-type Screen = 'welcome' | 'total' | 'doubleBonus' | 'highlights' | 'activity' | 'ranking' | 'stageOutperform' | 'motivation' | 'closing';
+type Screen = 'welcome' | 'total' | 'doubleBonus' | 'highlights' | 'averageConsistency' | 'activity' | 'ranking' | 'stageOutperform' | 'motivation' | 'closing';
 
 // ─── Particle System ─────────────────────────────────────────
 interface Particle {
@@ -137,7 +137,24 @@ function WelcomeScreen({ userName, cycleLabel }: { userName: string | null; cycl
   );
 }
 
-function TotalBonusScreen({ total, isAnimating }: { total: number; isAnimating: boolean }) {
+function TotalBonusScreen({ 
+  total, 
+  isAnimating,
+  latestDataDate,
+  isDataComplete,
+  cycleEndDate
+}: { 
+  total: number; 
+  isAnimating: boolean;
+  latestDataDate: Date | null;
+  isDataComplete: boolean;
+  cycleEndDate: Date;
+}) {
+  const formatDate = (d: Date) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[d.getMonth()]} ${d.getDate()}`;
+  };
+
   return (
     <motion.div 
       className="flex flex-col items-center justify-center text-center px-6 h-full"
@@ -150,7 +167,7 @@ function TotalBonusScreen({ total, isAnimating }: { total: number; isAnimating: 
         animate={{ y: 0, opacity: 1, letterSpacing: '0.25em' }}
         transition={{ delay: 0.2, duration: 0.6 }}
       >
-        Total Bonus Earned
+        {isDataComplete ? 'Total Bonus Earned' : 'Total Earnings So Far'}
       </motion.p>
       
       <motion.div
@@ -187,6 +204,26 @@ function TotalBonusScreen({ total, isAnimating }: { total: number; isAnimating: 
       >
         from your Daily & Performance sheets
       </motion.p>
+
+      {/* Data freshness indicator */}
+      <motion.div
+        className={`mt-4 rounded-full px-4 py-1.5 text-xs font-medium ${
+          isDataComplete 
+            ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/25' 
+            : 'bg-amber-500/15 text-amber-500 border border-amber-500/25'
+        }`}
+        initial={{ y: 15, opacity: 0, scale: 0.9 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ delay: 1.0, type: 'spring' }}
+      >
+        {isDataComplete ? (
+          <>✓ Bonus data updated completely (to {formatDate(cycleEndDate)})</>
+        ) : latestDataDate ? (
+          <>Data updated to {formatDate(latestDataDate)} — awaiting remaining days</>
+        ) : (
+          <>Waiting for data updates</>
+        )}
+      </motion.div>
     </motion.div>
   );
 }
@@ -313,6 +350,88 @@ function HighlightsScreen({
           )}
         </motion.div>
       </div>
+    </motion.div>
+  );
+}
+
+function AverageConsistencyScreen({
+  averageDailyEarnings,
+  aboveAveragePercent,
+  activeDays,
+  isAnimating,
+}: {
+  averageDailyEarnings: number;
+  aboveAveragePercent: number;
+  activeDays: number;
+  isAnimating: boolean;
+}) {
+  const consistencyLabel =
+    aboveAveragePercent >= 70 ? 'Very Consistent' :
+    aboveAveragePercent >= 50 ? 'Fairly Consistent' :
+    aboveAveragePercent >= 30 ? 'Mixed Results' : 'Inconsistent';
+
+  const consistencyColor =
+    aboveAveragePercent >= 70 ? 'text-emerald-500' :
+    aboveAveragePercent >= 50 ? 'text-blue-500' :
+    aboveAveragePercent >= 30 ? 'text-amber-500' : 'text-orange-500';
+
+  return (
+    <motion.div
+      className="flex flex-col items-center justify-center text-center px-6 h-full"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      <motion.p
+        className="text-sm uppercase tracking-widest text-muted-foreground mb-6"
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+      >
+        Daily Average & Consistency
+      </motion.p>
+
+      <motion.div
+        className="relative mb-6"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.4, type: 'spring', stiffness: 120 }}
+      >
+        <h2 className="text-5xl sm:text-6xl font-bold text-primary">
+          {isAnimating ? (
+            <AnimatedNumber value={averageDailyEarnings} prefix={'\u20A6'} />
+          ) : (
+            <span className="tabular-nums">{'\u20A6'}{averageDailyEarnings.toLocaleString()}</span>
+          )}
+        </h2>
+        <p className="text-sm text-muted-foreground mt-2">average per active day</p>
+      </motion.div>
+
+      <motion.div
+        className="w-full max-w-xs mb-6"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.6, type: 'spring' }}
+      >
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+          <span>Consistency</span>
+          <span className={`font-semibold ${consistencyColor}`}>{consistencyLabel}</span>
+        </div>
+        <div className="h-3 rounded-full bg-muted overflow-hidden">
+          <motion.div
+            className={`h-full rounded-full ${
+              aboveAveragePercent >= 70 ? 'bg-emerald-500' :
+              aboveAveragePercent >= 50 ? 'bg-blue-500' :
+              aboveAveragePercent >= 30 ? 'bg-amber-500' : 'bg-orange-500'
+            }`}
+            initial={{ width: 0 }}
+            animate={{ width: `${aboveAveragePercent}%` }}
+            transition={{ delay: 0.8, duration: 1, ease: 'easeOut' }}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          {aboveAveragePercent}% of your {activeDays} active days were at or above average
+        </p>
+      </motion.div>
     </motion.div>
   );
 }
@@ -851,7 +970,7 @@ export function CycleSummaryModal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
 
-  const screens: Screen[] = ['welcome', 'total', 'doubleBonus', 'highlights', 'activity'];
+  const screens: Screen[] = ['welcome', 'total', 'doubleBonus', 'highlights', 'averageConsistency', 'activity'];
   if (summaryData.hasRankingBonusData) {
     screens.push('ranking');
   }
@@ -911,14 +1030,15 @@ export function CycleSummaryModal({
     // Different timings for different screens for better pacing
     const screenTimings: Record<Screen, number> = {
       welcome: 3000,
-      total: 4000,
+      total: 4500,
       doubleBonus: 6000,
       highlights: 5000,
+      averageConsistency: 4500,
       activity: 4500,
       ranking: 4000,
       stageOutperform: 4500,
       motivation: 5000,
-      closing: 0, // Don't auto-advance
+      closing: 0,
     };
     
     const timing = screenTimings[currentScreen] || 4000;
@@ -1065,6 +1185,9 @@ export function CycleSummaryModal({
           <TotalBonusScreen 
             total={summaryData.totalBonus} 
             isAnimating={isAnimating}
+            latestDataDate={summaryData.latestDataDate}
+            isDataComplete={summaryData.isDataComplete}
+            cycleEndDate={summaryData.previousCycle.endDate}
           />
         );
       case 'doubleBonus':
@@ -1079,6 +1202,15 @@ export function CycleSummaryModal({
           <HighlightsScreen 
             bestDays={summaryData.bestDays}
             worstDays={summaryData.worstDays}
+          />
+        );
+      case 'averageConsistency':
+        return (
+          <AverageConsistencyScreen
+            averageDailyEarnings={summaryData.averageDailyEarnings}
+            aboveAveragePercent={summaryData.aboveAveragePercent}
+            activeDays={summaryData.activeDays}
+            isAnimating={isAnimating}
           />
         );
       case 'activity':
@@ -1173,9 +1305,10 @@ export function CycleSummaryModal({
             const isPast = i < currentIndex;
             const screenTimings: Record<Screen, number> = {
               welcome: 3000,
-              total: 4000,
+              total: 4500,
               doubleBonus: 6000,
               highlights: 5000,
+              averageConsistency: 4500,
               activity: 4500,
               ranking: 4000,
               stageOutperform: 4500,

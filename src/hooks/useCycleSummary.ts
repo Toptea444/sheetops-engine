@@ -42,6 +42,14 @@ export interface CycleSummaryData {
   hasRankingBonusData: boolean;
   hasDailyPerformanceData: boolean;
   doubleBonusPeriod: DoubleBonusPeriodData;
+  /** The latest date that has earnings data in the previous cycle */
+  latestDataDate: Date | null;
+  /** Whether data covers the full cycle up to the 15th */
+  isDataComplete: boolean;
+  /** Average daily earnings (only counting active days) */
+  averageDailyEarnings: number;
+  /** Consistency: percentage of days with above-average earnings */
+  aboveAveragePercent: number;
 }
 
 // ─── Sheet Type Detection ────────────────────────────────────
@@ -222,8 +230,29 @@ export function useCycleSummary(
     const totalCycleDays = getTotalDaysInCycle(previousCycle);
     const inactiveDays = totalCycleDays - activeDays;
 
-    // Sort for best/worst days (only consider days with data)
+    // Find the latest date in the data
+    let latestDataDate: Date | null = null;
+    for (const day of dailyEarnings) {
+      if (day.fullDate) {
+        const d = new Date(day.fullDate);
+        if (!latestDataDate || d > latestDataDate) latestDataDate = d;
+      }
+    }
+
+    // Check if data is complete (latest date is the 15th = cycle end)
+    const isDataComplete = latestDataDate
+      ? latestDataDate.getDate() >= 15 && latestDataDate.getMonth() === previousCycle.endDate.getMonth()
+      : false;
+
+    // Average and consistency
     const daysWithEarnings = dailyEarnings.filter(d => d.amount > 0);
+    const averageDailyEarnings = daysWithEarnings.length > 0
+      ? Math.round(totalBonus / daysWithEarnings.length)
+      : 0;
+    const aboveAverageCount = daysWithEarnings.filter(d => d.amount >= averageDailyEarnings).length;
+    const aboveAveragePercent = daysWithEarnings.length > 0
+      ? Math.round((aboveAverageCount / daysWithEarnings.length) * 100)
+      : 0;
     
     // Get top 3 best days (highest amounts, then by date descending for consistent ordering)
     const bestDays = [...daysWithEarnings]
@@ -257,6 +286,10 @@ export function useCycleSummary(
         progressPercent: doubleBonusProgress,
         attemptStatus: doubleBonusAttemptStatus,
       },
+      latestDataDate,
+      isDataComplete,
+      averageDailyEarnings,
+      aboveAveragePercent,
     };
   }, [results, previousCycle]);
 
