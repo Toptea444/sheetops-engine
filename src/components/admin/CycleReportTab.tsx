@@ -213,6 +213,8 @@ export function CycleReportTab({ adminSecret }: Props) {
     <div className="space-y-4">
       <CycleDropdown cycleOptions={cycleOptions} selectedIdx={selectedCycleIdx} onSelect={setSelectedCycleIdx} />
 
+      <BulkSnapshotButton cycle={cycleOptions[selectedCycleIdx]} />
+
       {data && (
         <Tabs defaultValue="overview" className="space-y-3">
           <TabsList className="grid w-full grid-cols-3 h-8">
