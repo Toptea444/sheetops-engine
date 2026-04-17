@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAdminData } from '@/hooks/useAdminData';
 import { formatNaira } from '@/utils/currencyUtils';
 import { getCycleOptions, getCycleKey } from '@/lib/cycleUtils';
+import { BulkSnapshotButton } from './BulkSnapshotButton';
 
 interface Props {
   adminSecret: string;
