@@ -11,6 +11,7 @@ import TL from "./pages/TL";
 import AdminPinReset from "./pages/AdminPinReset";
 import Install from "./pages/Install";
 import SalaryBreakdown from "./pages/SalaryBreakdown";
+import AdoptionStory from "./pages/AdoptionStory";
 import NotFound from "./pages/NotFound";
 import { GlobalSessionMonitor } from "./components/GlobalSessionMonitor";
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/" element={<RestrictedRoute><Index /></RestrictedRoute>} />
           <Route path="/tl" element={<RestrictedRoute><TL /></RestrictedRoute>} />
           <Route path="/salary-breakdown" element={<RestrictedRoute><SalaryBreakdown /></RestrictedRoute>} />
+          <Route path="/adoption-story" element={<AdoptionStory />} />
           <Route path="/install" element={<Install />} />
           <Route path="/admin/pin-reset" element={<AdminPinReset />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
