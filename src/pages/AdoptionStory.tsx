@@ -1,48 +1,59 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Share2, Heart, Zap, Users } from "lucide-react";
 
-interface UserCard {
+// Real user IDs - replace with actual data from your backend
+const REAL_USER_IDS = [
+  "user_001", "user_002", "user_003", "user_004", "user_005",
+  "user_006", "user_007", "user_008", "user_009", "user_010",
+  "user_011", "user_012", "user_013", "user_014", "user_015",
+  "user_016", "user_017", "user_018", "user_019", "user_020",
+  "user_021", "user_022", "user_023", "user_024", "user_025",
+  "user_026", "user_027", "user_028", "user_029", "user_030",
+  "user_031", "user_032", "user_033", "user_034", "user_035",
+  "user_036", "user_037", "user_038", "user_039", "user_040",
+  "user_041", "user_042", "user_043", "user_044", "user_045",
+  "user_046", "user_047", "user_048", "user_049", "user_050",
+  "user_051", "user_052", "user_053", "user_054", "user_055",
+  "user_056", "user_057", "user_058", "user_059", "user_060",
+  "user_061", "user_062", "user_063", "user_064", "user_065",
+  "user_066",
+];
+
+interface FlyingCard {
   id: string;
-  name: string;
-  delay: number;
-  duration: number;
   startX: number;
   startY: number;
+  delay: number;
+  duration: number;
 }
 
-const generateUserCards = (): UserCard[] => {
-  const userIds = Array.from({ length: 66 }, (_, i) => ({
-    id: `user_${String(i + 1).padStart(3, "0")}`,
-    name: `User ${i + 1}`,
-    delay: Math.random() * 2,
-    duration: 1.8 + Math.random() * 1.2,
-    startX: (Math.random() - 0.5) * 1000,
-    startY: (Math.random() - 0.5) * 800,
+const generateFlyingCards = (): FlyingCard[] => {
+  return REAL_USER_IDS.map((id, index) => ({
+    id,
+    startX: (Math.random() - 0.5) * window.innerWidth * 1.5,
+    startY: (Math.random() - 0.5) * window.innerHeight * 1.5,
+    delay: (index % 12) * 0.08, // Stagger them nicely
+    duration: 2.2 + Math.random() * 0.8,
   }));
-  return userIds;
 };
 
-const UserCard = ({ user, index }: { user: UserCard; index: number }) => {
-  const gradients = [
-    "from-blue-600 via-cyan-500 to-blue-400",
-    "from-purple-600 via-pink-500 to-purple-400",
-    "from-emerald-600 via-teal-500 to-emerald-400",
-    "from-orange-600 via-amber-500 to-orange-400",
-    "from-indigo-600 via-blue-500 to-indigo-400",
-    "from-rose-600 via-pink-500 to-rose-400",
-    "from-cyan-600 via-blue-500 to-cyan-400",
-    "from-green-600 via-emerald-500 to-green-400",
+const FlyingUserCard = ({ card, index }: { card: FlyingCard; index: number }) => {
+  const colors = [
+    "from-cyan-500 to-blue-600",
+    "from-blue-500 to-purple-600",
+    "from-purple-500 to-pink-600",
+    "from-pink-500 to-rose-600",
+    "from-green-500 to-cyan-600",
+    "from-yellow-500 to-orange-600",
   ];
 
   return (
     <motion.div
-      key={user.id}
       initial={{
-        x: user.startX,
-        y: user.startY,
+        x: card.startX,
+        y: card.startY,
         opacity: 0,
-        scale: 0,
+        scale: 0.2,
         rotate: Math.random() * 360,
       }}
       animate={{
@@ -50,470 +61,289 @@ const UserCard = ({ user, index }: { user: UserCard; index: number }) => {
         y: 0,
         opacity: 1,
         scale: 1,
-        rotate: Math.random() * 6 - 3,
+        rotate: 0,
+      }}
+      exit={{
+        opacity: 0,
+        scale: 0,
       }}
       transition={{
-        delay: user.delay,
-        duration: user.duration,
+        delay: card.delay,
+        duration: card.duration,
         ease: "easeOut",
-        type: "spring",
-        stiffness: 50,
-        damping: 20,
       }}
-      whileHover={{
-        scale: 1.15,
-        rotate: 0,
-        zIndex: 50,
-        transition: { duration: 0.2 },
+      className={`fixed w-24 h-24 rounded-2xl bg-gradient-to-br ${colors[index % colors.length]} shadow-2xl flex items-center justify-center border border-white/20 backdrop-blur-sm`}
+      style={{
+        left: "50%",
+        top: "50%",
+        marginLeft: "-48px",
+        marginTop: "-48px",
       }}
-      className={`absolute w-20 h-24 rounded-xl bg-gradient-to-br ${
-        gradients[index % gradients.length]
-      } shadow-2xl flex flex-col items-center justify-center cursor-pointer backdrop-blur-sm border border-white/20 overflow-hidden group`}
     >
-      {/* Shine effect */}
+      <div className="text-center">
+        <p className="text-white font-bold text-sm">{card.id}</p>
+      </div>
+    </motion.div>
+  );
+};
+
+// Scene 1: Fade in with atmosphere
+const Scene1 = ({ onComplete }: { onComplete: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onComplete, 3500);
+    return () => clearTimeout(timer);
+  }, [onComplete]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 1.5 }}
+      className="fixed inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center overflow-hidden"
+    >
+      {/* Atmospheric background */}
       <motion.div
-        className="absolute inset-0 bg-gradient-to-tr from-transparent via-white to-transparent opacity-0 group-hover:opacity-20"
-        animate={{ x: ["0%", "100%"] }}
-        transition={{ duration: 2, repeat: Infinity }}
+        animate={{
+          opacity: [0.3, 0.6, 0.3],
+        }}
+        transition={{ duration: 6, repeat: Infinity }}
+        className="absolute inset-0 bg-gradient-radial from-blue-900/30 to-transparent"
       />
 
       <motion.div
-        animate={{ y: [0, -6, 0] }}
-        transition={{ duration: 2.5, repeat: Infinity, delay: user.delay }}
-        className="text-center relative z-10"
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.5, duration: 1.5 }}
+        className="relative z-10 text-center"
       >
-        <div className="text-white text-xs font-black px-2 leading-tight">
-          {user.id}
-        </div>
-        <motion.div
-          animate={{ opacity: [0.6, 1, 0.6] }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            delay: user.delay * 0.5,
-          }}
-          className="text-white text-[9px] mt-1.5 font-semibold tracking-wide uppercase"
+        <motion.h1
+          className="text-6xl md:text-8xl font-black text-white mb-6"
+          animate={{ opacity: [0, 1, 1, 0] }}
+          transition={{ duration: 3.5 }}
         >
-          ✨ Active
-        </motion.div>
+          something extraordinary
+        </motion.h1>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// Scene 2: Flying user cards
+const Scene2 = ({ onComplete }: { onComplete: () => void }) => {
+  const [cards, setCards] = useState<FlyingCard[]>([]);
+
+  useEffect(() => {
+    setCards(generateFlyingCards());
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(onComplete, 5500);
+    return () => clearTimeout(timer);
+  }, [onComplete]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 1 }}
+      className="fixed inset-0 bg-gradient-to-b from-slate-950 via-blue-900/20 to-slate-950 flex items-center justify-center overflow-hidden"
+    >
+      {/* Animated background */}
+      <motion.div
+        animate={{
+          opacity: [0.2, 0.5, 0.2],
+        }}
+        transition={{ duration: 8, repeat: Infinity }}
+        className="absolute inset-0 bg-gradient-radial from-cyan-500/20 to-transparent"
+      />
+
+      {cards.map((card, index) => (
+        <FlyingUserCard key={card.id} card={card} index={index} />
+      ))}
+
+      {/* Text overlay that appears near the end */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 3.5, duration: 1.5 }}
+        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+      >
+        <div className="text-center">
+          <p className="text-5xl md:text-7xl font-black text-white drop-shadow-2xl">
+            66 people
+          </p>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// Scene 3: Growing together
+const Scene3 = ({ onComplete }: { onComplete: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onComplete, 4000);
+    return () => clearTimeout(timer);
+  }, [onComplete]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 1 }}
+      className="fixed inset-0 bg-gradient-to-b from-slate-950 to-slate-950 flex items-center justify-center overflow-hidden"
+    >
+      <motion.div
+        animate={{
+          opacity: [0.1, 0.3, 0.1],
+        }}
+        transition={{ duration: 10, repeat: Infinity }}
+        className="absolute inset-0 bg-gradient-to-br from-green-900/30 via-transparent to-cyan-900/30"
+      />
+
+      <motion.div
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1, delay: 0.5 }}
+        className="relative z-10 text-center max-w-3xl px-4"
+      >
+        <motion.h2
+          className="text-5xl md:text-7xl font-black text-white mb-8"
+          animate={{ opacity: [0, 1, 1, 0] }}
+          transition={{ duration: 4 }}
+        >
+          getting widely adopted
+        </motion.h2>
+        <motion.p
+          className="text-xl md:text-2xl text-gray-400"
+          animate={{ opacity: [0, 1, 1, 0] }}
+          transition={{ duration: 4, delay: 0.3 }}
+        >
+          And they keep coming
+        </motion.p>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// Scene 4: Gratitude
+const Scene4 = ({ onComplete }: { onComplete: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onComplete, 4500);
+    return () => clearTimeout(timer);
+  }, [onComplete]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 1 }}
+      className="fixed inset-0 bg-gradient-to-b from-slate-950 to-slate-950 flex items-center justify-center overflow-hidden"
+    >
+      <motion.div
+        animate={{
+          opacity: [0.1, 0.4, 0.1],
+        }}
+        transition={{ duration: 12, repeat: Infinity }}
+        className="absolute inset-0 bg-gradient-to-br from-rose-900/30 via-transparent to-purple-900/30"
+      />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 1, delay: 0.5 }}
+        className="relative z-10 text-center max-w-3xl px-4"
+      >
+        <motion.h2
+          className="text-6xl md:text-8xl font-black text-white"
+          animate={{ opacity: [0, 1, 1, 0] }}
+          transition={{ duration: 4.5 }}
+        >
+          thank you
+        </motion.h2>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// Scene 5: Call to action
+const Scene5 = () => {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 1 }}
+      className="fixed inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center overflow-hidden"
+    >
+      <motion.div
+        animate={{
+          opacity: [0.15, 0.35, 0.15],
+        }}
+        transition={{ duration: 12, repeat: Infinity }}
+        className="absolute inset-0 bg-gradient-to-br from-emerald-900/25 via-transparent to-cyan-900/25"
+      />
+
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1, delay: 0.3 }}
+        className="relative z-10 text-center max-w-3xl px-4"
+      >
+        <motion.h2
+          className="text-5xl md:text-7xl font-black text-white mb-8"
+          animate={{ opacity: [0, 1] }}
+          transition={{ duration: 1.5 }}
+        >
+          keep spreading
+        </motion.h2>
+
+        <motion.p
+          className="text-xl md:text-2xl text-gray-300 mb-12"
+          animate={{ opacity: [0, 1] }}
+          transition={{ duration: 1.5, delay: 0.3 }}
+        >
+          Tell one more person. Show them what we&apos;re building.
+        </motion.p>
+
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="px-12 py-4 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold text-lg rounded-xl shadow-2xl hover:shadow-emerald-500/50 transition-all"
+          animate={{ opacity: [0, 1] }}
+          transition={{ duration: 1.5, delay: 0.6 }}
+        >
+          Share The Story
+        </motion.button>
+
+        <motion.p
+          className="text-sm text-gray-500 mt-12"
+          animate={{ opacity: [0, 1] }}
+          transition={{ duration: 1.5, delay: 0.9 }}
+        >
+          From 66 to infinity. It starts with you.
+        </motion.p>
       </motion.div>
     </motion.div>
   );
 };
 
 export default function AdoptionStory() {
-  const [userCards, setUserCards] = useState<UserCard[]>([]);
+  const [scene, setScene] = useState(1);
 
-  useEffect(() => {
-    setUserCards(generateUserCards());
-  }, []);
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.3,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 1, ease: "easeOut" },
-    },
-  };
-
-  const scaleVariants = {
-    hidden: { opacity: 0, scale: 0.8 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: { duration: 0.8, ease: "easeOut" },
-    },
+  const handleSceneComplete = () => {
+    setScene((prev) => prev + 1);
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 overflow-hidden relative">
-      {/* Animated background orbs */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Top-left blue glow */}
-        <motion.div
-          animate={{
-            opacity: [0.15, 0.4, 0.15],
-            scale: [0.8, 1.2, 0.8],
-            x: [0, 30, 0],
-            y: [0, 40, 0],
-          }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-32 -left-32 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
-        />
-
-        {/* Bottom-right purple glow */}
-        <motion.div
-          animate={{
-            opacity: [0.15, 0.4, 0.15],
-            scale: [1.2, 0.8, 1.2],
-            x: [0, -30, 0],
-            y: [0, -40, 0],
-          }}
-          transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute -bottom-32 -right-32 w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
-        />
-
-        {/* Center cyan accent */}
-        <motion.div
-          animate={{
-            opacity: [0.1, 0.25, 0.1],
-            scale: [1, 1.15, 1],
-          }}
-          transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", delay: 4 }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-cyan-500 rounded-full mix-blend-color-dodge filter blur-3xl opacity-20"
-        />
-      </div>
-
-      {/* Hero Section */}
-      <motion.section
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1.2 }}
-        className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-12 pb-20 overflow-hidden"
-      >
-        {/* Flying user cards background - contained */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 1.5 }}
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-        >
-          <div className="relative w-full h-full max-w-4xl">
-            {userCards.slice(0, 35).map((user, idx) => (
-              <UserCard key={user.id} user={user} index={idx} />
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Main content */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="relative z-10 text-center max-w-4xl mx-auto px-4"
-        >
-          {/* Badge */}
-          <motion.div
-            variants={itemVariants}
-            className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm"
-          >
-            <Zap className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs font-semibold text-cyan-300 uppercase tracking-widest">
-              Milestone Reached
-            </span>
-            <Zap className="w-4 h-4 text-cyan-400" />
-          </motion.div>
-
-          {/* Main number */}
-          <motion.h1
-            variants={scaleVariants}
-            className="text-8xl md:text-9xl font-black text-white mb-8 leading-tight tracking-tighter"
-          >
-            <motion.span
-              initial={{ opacity: 0, scale: 0.5, y: 50 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{
-                delay: 0.8,
-                duration: 1,
-                type: "spring",
-                stiffness: 100,
-                damping: 20,
-              }}
-              className="inline-block bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-300 bg-clip-text text-transparent drop-shadow-2xl"
-            >
-              66
-            </motion.span>
-          </motion.h1>
-
-          {/* Subtitle */}
-          <motion.p
-            variants={itemVariants}
-            className="text-2xl md:text-4xl font-bold text-white mb-6 leading-tight"
-          >
-            people are reshaping their workflow
-          </motion.p>
-
-          {/* Decorative line */}
-          <motion.div
-            variants={itemVariants}
-            className="h-1.5 w-32 bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500 mx-auto mb-10 rounded-full shadow-lg shadow-cyan-500/50"
-          />
-
-          {/* Description */}
-          <motion.p
-            variants={itemVariants}
-            className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed font-light"
-          >
-            Each one discovered something extraordinary. They found the power to work smarter, move faster, and build together. Your adoption is our mission.
-          </motion.p>
-        </motion.div>
-      </motion.section>
-
-      {/* Gratitude Section */}
-      <motion.section
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 1.2 }}
-        viewport={{ once: true, amount: 0.3 }}
-        className="relative min-h-screen flex flex-col items-center justify-center px-4 py-20 overflow-hidden"
-      >
-        {/* More floating cards */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 1.5 }}
-          viewport={{ once: true, amount: 0.5 }}
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-        >
-          <div className="relative w-full h-full max-w-4xl">
-            {userCards.slice(30).map((user, idx) => (
-              <UserCard key={user.id} user={user} index={idx + 30} />
-            ))}
-          </div>
-        </motion.div>
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.8 }}
-          className="relative z-10 text-center max-w-4xl mx-auto px-4"
-        >
-          {/* Heart badge */}
-          <motion.div
-            variants={itemVariants}
-            className="flex items-center justify-center gap-3 mb-8"
-          >
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            >
-              <Heart className="w-6 h-6 text-rose-500 fill-rose-500" />
-            </motion.div>
-            <span className="text-xs font-semibold text-rose-400 uppercase tracking-widest">
-              Deep Gratitude
-            </span>
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
-            >
-              <Heart className="w-6 h-6 text-rose-500 fill-rose-500" />
-            </motion.div>
-          </motion.div>
-
-          {/* Main heading */}
-          <motion.h2
-            variants={scaleVariants}
-            className="text-6xl md:text-8xl font-black text-white mb-8 leading-tight"
-          >
-            Thank you for{" "}
-            <motion.span
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.8 }}
-              viewport={{ once: true }}
-              className="inline-block bg-gradient-to-r from-rose-400 via-pink-400 to-rose-400 bg-clip-text text-transparent"
-            >
-              believing
-            </motion.span>
-          </motion.h2>
-
-          {/* Subheading */}
-          <motion.p
-            variants={itemVariants}
-            className="text-xl md:text-2xl text-gray-400 mb-8 font-light"
-          >
-            in what we&apos;re building together
-          </motion.p>
-
-          {/* Description */}
-          <motion.p
-            variants={itemVariants}
-            className="text-lg text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed"
-          >
-            You&apos;re not just users. You&apos;re pioneers, dreamers, and partners in this incredible journey. You&apos;ve seen the vision and brought it to life through your unwavering support.
-          </motion.p>
-
-          {/* Decorative line */}
-          <motion.div
-            variants={itemVariants}
-            className="h-1.5 w-32 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-500 mx-auto rounded-full shadow-lg shadow-rose-500/50"
-          />
-        </motion.div>
-      </motion.section>
-
-      {/* Call to Action Section */}
-      <motion.section
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 1.2 }}
-        viewport={{ once: true, amount: 0.3 }}
-        className="relative min-h-screen flex flex-col items-center justify-center px-4 py-20 overflow-hidden"
-      >
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.8 }}
-          className="text-center max-w-4xl mx-auto z-10 px-4"
-        >
-          {/* Badge */}
-          <motion.div
-            variants={itemVariants}
-            className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm"
-          >
-            <Users className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs font-semibold text-emerald-300 uppercase tracking-widest">
-              Keep the Momentum
-            </span>
-            <Users className="w-4 h-4 text-emerald-400" />
-          </motion.div>
-
-          {/* Main heading */}
-          <motion.h2
-            variants={scaleVariants}
-            className="text-6xl md:text-8xl font-black text-white mb-8 leading-tight"
-          >
-            Spread the{" "}
-            <motion.span
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.8 }}
-              viewport={{ once: true }}
-              className="inline-block bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent"
-            >
-              word
-            </motion.span>
-          </motion.h2>
-
-          {/* Description */}
-          <motion.p
-            variants={itemVariants}
-            className="text-xl md:text-2xl text-gray-300 mb-8 font-light leading-relaxed"
-          >
-            Bring one more person into this movement. Show them how this software transforms work. Together, we&apos;re building something that lasts.
-          </motion.p>
-
-          {/* Decorative line */}
-          <motion.div
-            variants={itemVariants}
-            className="h-1.5 w-32 bg-gradient-to-r from-emerald-500 via-cyan-500 to-emerald-500 mx-auto mb-12 rounded-full shadow-lg shadow-emerald-500/50"
-          />
-
-          {/* CTA Buttons */}
-          <motion.div
-            variants={itemVariants}
-            className="flex flex-col sm:flex-row gap-6 justify-center mb-12"
-          >
-            <motion.button
-              whileHover={{ scale: 1.08, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-8 py-4 bg-gradient-to-r from-emerald-500 via-cyan-500 to-emerald-500 text-white font-bold rounded-xl shadow-2xl shadow-emerald-500/40 hover:shadow-emerald-500/60 transition-all flex items-center justify-center gap-3 text-lg"
-            >
-              <Share2 className="w-5 h-5" />
-              Share The Story
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.08, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-8 py-4 border-2 border-cyan-400/30 hover:border-cyan-400 text-white font-bold rounded-xl hover:bg-white/5 transition-all text-lg"
-            >
-              Copy Invite Link
-            </motion.button>
-          </motion.div>
-
-          {/* Secondary text */}
-          <motion.p
-            variants={itemVariants}
-            className="text-base text-gray-400 max-w-2xl mx-auto leading-relaxed mb-8"
-          >
-            Every invite multiplies impact. Every story shared extends the reach. Your voice matters—this is your story too.
-          </motion.p>
-
-          {/* Stats teaser */}
-          <motion.div
-            variants={itemVariants}
-            className="inline-block px-6 py-3 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm"
-          >
-            <p className="text-sm text-gray-400">
-              From 66 to 67. Then 100. Then 1000. <span className="text-emerald-400 font-semibold">It starts with you.</span>
-            </p>
-          </motion.div>
-        </motion.div>
-
-        {/* Animated accent particles */}
-        <div className="absolute inset-0 pointer-events-none">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <motion.div
-              key={i}
-              animate={{
-                y: [0, -40, 0],
-                opacity: [0, 1, 0],
-                x: [0, Math.cos(i * Math.PI / 4) * 50, 0],
-              }}
-              transition={{
-                duration: 4 + i * 0.5,
-                repeat: Infinity,
-                delay: i * 0.3,
-                ease: "easeInOut",
-              }}
-              className="absolute w-1.5 h-1.5 bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full blur-sm"
-              style={{
-                left: `${15 + i * 11}%`,
-                top: `${40 + (i % 2) * 20}%`,
-              }}
-            />
-          ))}
-        </div>
-      </motion.section>
-
-      {/* Footer */}
-      <motion.footer
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 0.8 }}
-        viewport={{ once: true }}
-        className="relative py-16 text-center bg-gradient-to-t from-slate-950 to-slate-900/50 border-t border-white/5"
-      >
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          whileInView={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          className="space-y-4"
-        >
-          <p className="text-base text-gray-300 flex items-center justify-center gap-2">
-            Crafted with{" "}
-            <motion.span
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="text-rose-500 inline-block"
-            >
-              <Heart className="w-5 h-5 fill-rose-500" />
-            </motion.span>{" "}
-            for our incredible community
-          </p>
-          <p className="text-sm text-gray-500">
-            <span className="font-semibold text-cyan-400">66</span> innovators reshaping the future
-          </p>
-          <p className="text-xs text-gray-600 pt-2">
-            ✨ And the journey has just begun...
-          </p>
-        </motion.div>
-      </motion.footer>
+    <div className="w-full h-screen overflow-hidden bg-slate-950">
+      {scene === 1 && <Scene1 onComplete={handleSceneComplete} />}
+      {scene === 2 && <Scene2 onComplete={handleSceneComplete} />}
+      {scene === 3 && <Scene3 onComplete={handleSceneComplete} />}
+      {scene === 4 && <Scene4 onComplete={handleSceneComplete} />}
+      {scene === 5 && <Scene5 />}
     </div>
   );
 }
