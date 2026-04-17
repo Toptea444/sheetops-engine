@@ -424,9 +424,21 @@ function parseDailyPerformanceSheet(
 
     const headerRow = matrix[rowIdx + 1] || [];
 
+    // Compute the widest data row width within the block scan area. The Google
+    // Sheets API trims trailing empty cells per row, so the date row and header
+    // row can be shorter than the actual data rows below. Without this, the
+    // LAST date block ends prematurely and gets skipped (e.g. April 15th column
+    // is at col 126 but date/header rows are truncated, while data rows extend
+    // to col 134).
+    let widestDataRow = Math.max(row.length, headerRow.length);
+    for (let r = rowIdx + 2; r < Math.min(matrix.length, rowIdx + 80); r++) {
+      const len = matrix[r]?.length ?? 0;
+      if (len > widestDataRow) widestDataRow = len;
+    }
+
     for (let sIdx = 0; sIdx < starts.length; sIdx++) {
       const blockStart = starts[sIdx].col;
-      const blockEnd = starts[sIdx + 1]?.col ?? Math.max(row.length, headerRow.length);
+      const blockEnd = starts[sIdx + 1]?.col ?? widestDataRow;
 
       // Get the date for this block using primary location + fallback to scanning upward
       const blockDate = getBlockDate(blockStart, rowIdx, matrix);
