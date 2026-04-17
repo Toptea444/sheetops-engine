@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAdminData } from '@/hooks/useAdminData';
 import { formatNaira } from '@/utils/currencyUtils';
 import { getCycleOptions, getCycleKey } from '@/lib/cycleUtils';
+import { BulkSnapshotButton } from './BulkSnapshotButton';
 
 interface Props {
   adminSecret: string;
@@ -211,6 +212,8 @@ export function CycleReportTab({ adminSecret }: Props) {
   return (
     <div className="space-y-4">
       <CycleDropdown cycleOptions={cycleOptions} selectedIdx={selectedCycleIdx} onSelect={setSelectedCycleIdx} />
+
+      <BulkSnapshotButton cycle={cycleOptions[selectedCycleIdx]} />
 
       {data && (
         <Tabs defaultValue="overview" className="space-y-3">
