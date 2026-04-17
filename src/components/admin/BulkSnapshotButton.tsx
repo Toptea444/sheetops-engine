@@ -208,7 +208,7 @@ export function BulkSnapshotButton({ cycle }: Props) {
 
         {!running && lastResult && (
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground pt-1 border-t">
-            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+            <CheckCircle2 className="h-3 w-3 text-primary" />
             <span>
               {lastResult.snapshots} results saved · {lastResult.workers} workers · {lastResult.sheets} sheets
             </span>
