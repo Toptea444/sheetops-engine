@@ -412,8 +412,11 @@ const Index = () => {
       : selectedSheets;
 
     for (const sheetName of effectiveSelectedSheets) {
-      let data = forceRefetch ? null : sheetDataCache[sheetName];
-      if (!data) {
+      let data = forceRefetch ? null : (sheetDataCache[sheetName] ?? newCache[sheetName]);
+
+      // PAST CYCLES: use cached snapshots only — never call the live API,
+      // because past-cycle sheets may have been disabled/removed (would 400).
+      if (!data && !isPastCycle) {
         data = await fetchSheetData(sheetName);
         if (data) {
           newCache[sheetName] = data;
@@ -444,9 +447,12 @@ const Index = () => {
 
             if (inCycleDays.length > 0) {
               newResults.push(resultWithSheet);
-              // Cache the snapshot only when it has real in-cycle data.
-              saveSheetSnapshot(sheetName, selectedCycle, data);
-              saveWorkerResult(workerId, sheetName, selectedCycle, resultWithSheet);
+              // Cache the snapshot only when it has real in-cycle data —
+              // and only for the live cycle (past cycles are read-only).
+              if (!isPastCycle) {
+                saveSheetSnapshot(sheetName, selectedCycle, data);
+                saveWorkerResult(workerId, sheetName, selectedCycle, resultWithSheet);
+              }
             } else if (!isPastCycle) {
               // For the current cycle, keep zero-value rows so the UI
               // shows "no data yet" cleanly.
