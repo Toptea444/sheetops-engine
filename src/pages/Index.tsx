@@ -674,6 +674,15 @@ const Index = () => {
         });
       }
 
+      const cachedSheetNames = Array.from(new Set([
+        ...allCachedResults.map((row) => row.sheetName).filter(Boolean) as string[],
+        ...Object.keys(await loadAllSheetSnapshots(cycleKey)),
+      ])).filter((name) => sheetMatchesCycle(name, selectedCycle));
+
+      if (cachedSheetNames.length > 0) {
+        setSelectedSheets(cachedSheetNames);
+      }
+
       // Load cached sheet snapshots for leaderboard
       const cachedSheets = await loadAllSheetSnapshots(cycleKey);
       if (Object.keys(cachedSheets).length > 0) {
@@ -688,7 +697,7 @@ const Index = () => {
     };
 
     loadCachedCycleData();
-  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch]);
+  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle]);
 
   // Validate ID exists in sheets (used by WelcomeModal before PIN step)
   const handleIdValidation = async (newUserId: string): Promise<{ valid: boolean; userName?: string }> => {
