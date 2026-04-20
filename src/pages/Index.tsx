@@ -215,6 +215,24 @@ const Index = () => {
     return name.trim().toUpperCase().includes('TRANSPORT') && name.trim().toUpperCase().includes('SUBSIDY');
   };
 
+  const sheetMatchesCycle = useCallback((sheetName: string, cycle: CyclePeriod) => {
+    const nameUpper = sheetName.toUpperCase();
+    const monthTokens = Array.from(new Set([
+      cycle.startDate.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+      cycle.endDate.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+      cycle.startDate.toLocaleString('en-US', { month: 'long' }).toUpperCase(),
+      cycle.endDate.toLocaleString('en-US', { month: 'long' }).toUpperCase(),
+    ]));
+
+    return monthTokens.some((token) => nameUpper.includes(token));
+  }, []);
+
+  const areSameSheetSelection = useCallback((a: string[], b: string[]) => {
+    if (a.length !== b.length) return false;
+    const setA = new Set(a);
+    return b.every((item) => setA.has(item));
+  }, []);
+
   // Helper to check if a sheet should be unchecked by default
   const isDefaultUncheckedSheet = (name: string): boolean => {
     const n = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -355,6 +373,7 @@ const Index = () => {
     // have moved on to next month's data which would zero out the breakdown).
     const idsForCache = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
     const cachedResults: BonusResult[] = [];
+    let cachedSheetNamesFromSnapshots: string[] = [];
     if (isPastCycle) {
       const seen = new Set<string>();
       for (const cacheId of idsForCache) {
@@ -373,14 +392,26 @@ const Index = () => {
       }
       // Also pre-load cached sheet snapshots so leaderboard / breakdowns work.
       const cachedSheets = await loadAllSheetSnapshots(currentCycleKey);
+      cachedSheetNamesFromSnapshots = Object.keys(cachedSheets).filter((name) => sheetMatchesCycle(name, selectedCycle));
       for (const [name, data] of Object.entries(cachedSheets)) {
         if (!newCache[name]) newCache[name] = data;
       }
     }
 
-    const cachedSheetNames = new Set(cachedResults.map((r) => r.sheetName));
+    const cachedSheetNamesFromResults = cachedResults
+      .map((r) => r.sheetName)
+      .filter((name): name is string => Boolean(name));
 
-    for (const sheetName of selectedSheets) {
+    const historicalSheetNames = Array.from(new Set([
+      ...cachedSheetNamesFromResults,
+      ...cachedSheetNamesFromSnapshots,
+    ]));
+
+    const effectiveSelectedSheets = isPastCycle && historicalSheetNames.length > 0
+      ? historicalSheetNames
+      : selectedSheets;
+
+    for (const sheetName of effectiveSelectedSheets) {
       let data = forceRefetch ? null : sheetDataCache[sheetName];
       if (!data) {
         data = await fetchSheetData(sheetName);
@@ -390,6 +421,9 @@ const Index = () => {
       }
 
       if (data) {
+        if (isPastCycle && !sheetMatchesCycle(sheetName, selectedCycle)) {
+          continue;
+        }
         // Search for all worker IDs (current + any pre-swap IDs)
         for (const workerId of idsToSearch) {
           const worker = searchWorker(data, workerId);
@@ -457,6 +491,9 @@ const Index = () => {
     }
 
     setResults(mergedResults);
+    if (!areSameSheetSelection(effectiveSelectedSheets, selectedSheets)) {
+      setSelectedSheets(effectiveSelectedSheets);
+    }
     setIsFetchingData(false);
 
     // Check for data updates (notifications)
@@ -468,7 +505,7 @@ const Index = () => {
     if (!foundInAnySheet && cachedResults.length === 0 && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch]);
+  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle, areSameSheetSelection]);
 
   useEffect(() => {
     if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
@@ -633,6 +670,7 @@ const Index = () => {
       // sheets are disabled. Results from different IDs may cover different sheets.
       const idsForCache = getWorkerIdsToFetch();
       const idsToLoad = idsForCache.length > 0 ? idsForCache : [userId];
+      const cachedSheets = await loadAllSheetSnapshots(cycleKey);
       const allCachedResults: BonusResult[] = [];
       const seenKeys = new Set<string>();
       for (const cacheId of idsToLoad) {
@@ -654,8 +692,16 @@ const Index = () => {
         });
       }
 
+      const cachedSheetNames = Array.from(new Set([
+        ...allCachedResults.map((row) => row.sheetName).filter(Boolean) as string[],
+        ...Object.keys(cachedSheets),
+      ])).filter((name) => sheetMatchesCycle(name, selectedCycle));
+
+      if (cachedSheetNames.length > 0 && !areSameSheetSelection(cachedSheetNames, selectedSheets)) {
+        setSelectedSheets(cachedSheetNames);
+      }
+
       // Load cached sheet snapshots for leaderboard
-      const cachedSheets = await loadAllSheetSnapshots(cycleKey);
       if (Object.keys(cachedSheets).length > 0) {
         setSheetDataCache(prev => {
           const merged = { ...prev };
@@ -668,7 +714,7 @@ const Index = () => {
     };
 
     loadCachedCycleData();
-  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch]);
+  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle, areSameSheetSelection, selectedSheets]);
 
   // Validate ID exists in sheets (used by WelcomeModal before PIN step)
   const handleIdValidation = async (newUserId: string): Promise<{ valid: boolean; userName?: string }> => {
