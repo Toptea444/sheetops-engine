@@ -66,7 +66,8 @@ const Index = () => {
     fetchSheets, 
     fetchSheetData,
     searchWorker,
-    calculateBonus 
+    calculateBonus,
+    clearError,
   } = useGoogleSheets();
 
   const {
