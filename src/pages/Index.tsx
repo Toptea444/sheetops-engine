@@ -343,11 +343,42 @@ const Index = () => {
     const allTimeStart = new Date(2020, 0, 1);
     const endDate = new Date();
     const currentCycleKey = getCycleKey(selectedCycle);
+    const liveCycleKey = getCycleKey(getCycleOptions(0)[0]);
+    const isPastCycle = currentCycleKey !== liveCycleKey;
 
     // Get all worker IDs to fetch (includes swap-related IDs)
     const workerIdsToFetch = getWorkerIdsToFetch();
     // If no swaps, just use the current userId
     const idsToSearch = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
+
+    // For past cycles, prefer cached results first (sheets may be disabled or
+    // have moved on to next month's data which would zero out the breakdown).
+    const idsForCache = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
+    const cachedResults: BonusResult[] = [];
+    if (isPastCycle) {
+      const seen = new Set<string>();
+      for (const cacheId of idsForCache) {
+        const rows = await loadWorkerResults(cacheId, currentCycleKey);
+        for (const row of rows) {
+          const key = `${cacheId}:${row.sheetName}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          // Only trust cached rows that actually have in-cycle daily data.
+          const hasInCycleData = row.dailyBreakdown?.some((d) => {
+            if (d.fullDate === undefined) return false;
+            return isDateInCycle(new Date(d.fullDate), selectedCycle);
+          });
+          if (hasInCycleData) cachedResults.push(row);
+        }
+      }
+      // Also pre-load cached sheet snapshots so leaderboard / breakdowns work.
+      const cachedSheets = await loadAllSheetSnapshots(currentCycleKey);
+      for (const [name, data] of Object.entries(cachedSheets)) {
+        if (!newCache[name]) newCache[name] = data;
+      }
+    }
+
+    const cachedSheetNames = new Set(cachedResults.map((r) => r.sheetName));
 
     for (const sheetName of selectedSheets) {
       let data = forceRefetch ? null : sheetDataCache[sheetName];
@@ -355,11 +386,9 @@ const Index = () => {
         data = await fetchSheetData(sheetName);
         if (data) {
           newCache[sheetName] = data;
-          // Cache the sheet snapshot for this cycle
-          saveSheetSnapshot(sheetName, selectedCycle, data);
         }
       }
-      
+
       if (data) {
         // Search for all worker IDs (current + any pre-swap IDs)
         for (const workerId of idsToSearch) {
@@ -372,9 +401,25 @@ const Index = () => {
             }
             const result = calculateBonus(worker, allTimeStart, endDate);
             const resultWithSheet = { ...result, sheetName: sheetName };
-            newResults.push(resultWithSheet);
-            // Cache the worker result for this cycle
-            saveWorkerResult(workerId, sheetName, selectedCycle, resultWithSheet);
+
+            // Does this live result actually contain days inside the selected cycle?
+            const inCycleDays = (result.dailyBreakdown || []).filter((d) => {
+              if (d.fullDate === undefined) return false;
+              return isDateInCycle(new Date(d.fullDate), selectedCycle);
+            });
+
+            if (inCycleDays.length > 0) {
+              newResults.push(resultWithSheet);
+              // Cache the snapshot only when it has real in-cycle data.
+              saveSheetSnapshot(sheetName, selectedCycle, data);
+              saveWorkerResult(workerId, sheetName, selectedCycle, resultWithSheet);
+            } else if (!isPastCycle) {
+              // For the current cycle, keep zero-value rows so the UI
+              // shows "no data yet" cleanly.
+              newResults.push(resultWithSheet);
+            }
+            // For past cycles with no in-cycle data: drop the live result
+            // and DO NOT overwrite any existing cached snapshot.
           }
         }
       }
@@ -382,14 +427,18 @@ const Index = () => {
 
     setSheetDataCache(newCache);
 
-    // If no live data found, try loading from cache (sheet may have been disabled)
-    if (!foundInAnySheet && userId) {
-      // Load cache for ALL swap-related IDs (not just current userId), since worker
-      // results were saved under whichever ID was active at the time — if a swap
-      // occurred, the old ID's results live under the old ID's cache key.
-      const idsForCache = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
-      const allCachedResults: BonusResult[] = [];
+    // Merge cached results in (cache wins for sheets we couldn't reproduce live).
+    const liveSheetNames = new Set(newResults.map((r) => r.sheetName));
+    const mergedResults = [
+      ...newResults,
+      ...cachedResults.filter((r) => !liveSheetNames.has(r.sheetName)),
+    ];
+
+    // Legacy fallback: if nothing live AND we somehow have no cached rows yet,
+    // try loading any cache (in case dates were missing on cached rows).
+    if (mergedResults.length === 0 && userId) {
       const seenKeys = new Set<string>();
+      const allCachedResults: BonusResult[] = [];
       for (const cacheId of idsForCache) {
         const rows = await loadWorkerResults(cacheId, currentCycleKey);
         for (const row of rows) {
@@ -403,23 +452,20 @@ const Index = () => {
       if (allCachedResults.length > 0) {
         setResults(allCachedResults);
         setIsFetchingData(false);
-        // Also load cached sheet snapshots for leaderboard etc.
-        const cachedSheets = await loadAllSheetSnapshots(currentCycleKey);
-        setSheetDataCache(prev => ({ ...prev, ...cachedSheets }));
         return;
       }
     }
 
-    setResults(newResults);
+    setResults(mergedResults);
     setIsFetchingData(false);
 
     // Check for data updates (notifications)
-    if (newResults.length > 0) {
-      const dataHash = generateDataHash(newResults);
+    if (mergedResults.length > 0) {
+      const dataHash = generateDataHash(mergedResults);
       checkForUpdates(dataHash);
     }
 
-    if (!foundInAnySheet && userId) {
+    if (!foundInAnySheet && cachedResults.length === 0 && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
   }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch]);
