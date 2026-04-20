@@ -259,6 +259,8 @@ export function useGoogleSheets() {
     };
   }, []);
 
+  const clearError = useCallback(() => setError(null), []);
+
   return {
     isLoading,
     error,
@@ -269,6 +271,7 @@ export function useGoogleSheets() {
     searchWorker,
     calculateBonus,
     getAvailableDays,
+    clearError,
   };
 }
 
