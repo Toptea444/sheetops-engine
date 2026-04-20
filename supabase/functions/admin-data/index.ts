@@ -84,7 +84,7 @@ function parseStageWorkerCoverageFromSnapshots(snapshots: Array<{ sheet_name: st
 
 // ─── Audit Logger ────────────────────────────────────────────
 async function logAudit(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   action: string,
   details?: Record<string, unknown>,
   targetType?: string,
