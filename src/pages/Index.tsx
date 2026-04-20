@@ -215,6 +215,18 @@ const Index = () => {
     return name.trim().toUpperCase().includes('TRANSPORT') && name.trim().toUpperCase().includes('SUBSIDY');
   };
 
+  const sheetMatchesCycle = useCallback((sheetName: string, cycle: CyclePeriod) => {
+    const nameUpper = sheetName.toUpperCase();
+    const monthTokens = Array.from(new Set([
+      cycle.startDate.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+      cycle.endDate.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+      cycle.startDate.toLocaleString('en-US', { month: 'long' }).toUpperCase(),
+      cycle.endDate.toLocaleString('en-US', { month: 'long' }).toUpperCase(),
+    ]));
+
+    return monthTokens.some((token) => nameUpper.includes(token));
+  }, []);
+
   // Helper to check if a sheet should be unchecked by default
   const isDefaultUncheckedSheet = (name: string): boolean => {
     const n = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -378,9 +390,11 @@ const Index = () => {
       }
     }
 
-    const cachedSheetNames = new Set(cachedResults.map((r) => r.sheetName));
+    const effectiveSelectedSheets = isPastCycle && cachedResults.length > 0
+      ? Array.from(new Set(cachedResults.map((r) => r.sheetName).filter(Boolean)))
+      : selectedSheets;
 
-    for (const sheetName of selectedSheets) {
+    for (const sheetName of effectiveSelectedSheets) {
       let data = forceRefetch ? null : sheetDataCache[sheetName];
       if (!data) {
         data = await fetchSheetData(sheetName);
@@ -390,6 +404,9 @@ const Index = () => {
       }
 
       if (data) {
+        if (isPastCycle && !sheetMatchesCycle(sheetName, selectedCycle)) {
+          continue;
+        }
         // Search for all worker IDs (current + any pre-swap IDs)
         for (const workerId of idsToSearch) {
           const worker = searchWorker(data, workerId);
@@ -457,6 +474,9 @@ const Index = () => {
     }
 
     setResults(mergedResults);
+    if (effectiveSelectedSheets !== selectedSheets) {
+      setSelectedSheets(effectiveSelectedSheets);
+    }
     setIsFetchingData(false);
 
     // Check for data updates (notifications)
@@ -468,7 +488,7 @@ const Index = () => {
     if (!foundInAnySheet && cachedResults.length === 0 && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch]);
+  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle]);
 
   useEffect(() => {
     if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
