@@ -672,6 +672,11 @@ const Index = () => {
     // Only use cache fallback for past cycles
     if (cycleKey === currentCycleKey) return;
 
+    // Clear any sticky error from a previous live-fetch attempt — past cycles
+    // are served entirely from the cache and should not surface fetch errors.
+    clearError();
+    setDataError(null);
+
     const loadCachedCycleData = async () => {
       // Load for ALL swap-related IDs so old-ID cache entries are included when
       // sheets are disabled. Results from different IDs may cover different sheets.
