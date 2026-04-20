@@ -670,6 +670,7 @@ const Index = () => {
       // sheets are disabled. Results from different IDs may cover different sheets.
       const idsForCache = getWorkerIdsToFetch();
       const idsToLoad = idsForCache.length > 0 ? idsForCache : [userId];
+      const cachedSheets = await loadAllSheetSnapshots(cycleKey);
       const allCachedResults: BonusResult[] = [];
       const seenKeys = new Set<string>();
       for (const cacheId of idsToLoad) {
@@ -693,15 +694,14 @@ const Index = () => {
 
       const cachedSheetNames = Array.from(new Set([
         ...allCachedResults.map((row) => row.sheetName).filter(Boolean) as string[],
-        ...Object.keys(await loadAllSheetSnapshots(cycleKey)),
+        ...Object.keys(cachedSheets),
       ])).filter((name) => sheetMatchesCycle(name, selectedCycle));
 
-      if (cachedSheetNames.length > 0) {
+      if (cachedSheetNames.length > 0 && !areSameSheetSelection(cachedSheetNames, selectedSheets)) {
         setSelectedSheets(cachedSheetNames);
       }
 
       // Load cached sheet snapshots for leaderboard
-      const cachedSheets = await loadAllSheetSnapshots(cycleKey);
       if (Object.keys(cachedSheets).length > 0) {
         setSheetDataCache(prev => {
           const merged = { ...prev };
@@ -714,7 +714,7 @@ const Index = () => {
     };
 
     loadCachedCycleData();
-  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle]);
+  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle, areSameSheetSelection, selectedSheets]);
 
   // Validate ID exists in sheets (used by WelcomeModal before PIN step)
   const handleIdValidation = async (newUserId: string): Promise<{ valid: boolean; userName?: string }> => {
