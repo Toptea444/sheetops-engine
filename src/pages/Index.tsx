@@ -216,11 +216,10 @@ const Index = () => {
     return name.trim().toUpperCase().includes('TRANSPORT') && name.trim().toUpperCase().includes('SUBSIDY');
   };
 
-  // Strict cycle matching: a sheet belongs to a cycle ONLY if its name explicitly
-  // mentions the cycle's start month with a "16" marker, or end month with a "15" /
-  // "1ST"/"30"/"31" marker. This prevents adjacent-cycle sheets (e.g. "APRIL 16-30",
-  // which belongs to Apr 16–May 15) from polluting the Mar 16–Apr 15 view.
-  const sheetMatchesCycle = useCallback((sheetName: string, cycle: CyclePeriod) => {
+  // Strict cycle matching by name: a sheet belongs to a cycle if its name
+  // explicitly mentions the start month + 16 marker, or end month + 1st/15th
+  // marker. This handles dated sheets like "DAILY GH 16TH MAR - 31ST MAR".
+  const sheetNameMatchesCycle = useCallback((sheetName: string, cycle: CyclePeriod) => {
     const nameUpper = sheetName.toUpperCase();
     const startMonthShort = cycle.startDate.toLocaleString('en-US', { month: 'short' }).toUpperCase();
     const startMonthLong = cycle.startDate.toLocaleString('en-US', { month: 'long' }).toUpperCase();
@@ -230,19 +229,99 @@ const Index = () => {
     const hasStartMonth = nameUpper.includes(startMonthShort) || nameUpper.includes(startMonthLong);
     const hasEndMonth = nameUpper.includes(endMonthShort) || nameUpper.includes(endMonthLong);
 
-    // Start-half marker: "16" appears (start of cycle is the 16th).
     const hasStartHalfMarker = /\b16(TH)?\b/.test(nameUpper);
-    // End-half marker: 1st, 15th. We DO NOT accept 30/31 as that often belongs to
-    // the *previous* cycle's first half (e.g. "MARCH 16TH - 31ST" is start-half).
     const hasEndHalfMarker = /\b(1ST|15(TH)?)\b/.test(nameUpper);
 
-    // Sheet matches if it explicitly references the start month + start-half,
-    // OR the end month + end-half. Anything else (e.g. "APRIL 16th - 30th") is
-    // a different cycle's sheet and must be excluded.
     if (hasStartMonth && hasStartHalfMarker) return true;
     if (hasEndMonth && hasEndHalfMarker) return true;
     return false;
   }, []);
+
+  // Robust date parser: handles "MM/DD/YYYY", "M/D/YYYY", "1ST JAN 2026",
+  // "16-MAR-2026", "Mar 16 2026", and ISO. Returns timestamp or null.
+  const parseAnyDate = useCallback((raw: string): number | null => {
+    const trimmed = String(raw ?? '').trim();
+    if (!trimmed) return null;
+    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+    // M/D/YYYY or MM/DD/YYYY (or with - or .)
+    const slash = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (slash) {
+      const m = parseInt(slash[1], 10);
+      const d = parseInt(slash[2], 10);
+      let y = parseInt(slash[3], 10);
+      if (y < 100) y += 2000;
+      if (m >= 1 && m <= 12 && d >= 1 && d <= 31) return new Date(y, m - 1, d).getTime();
+    }
+
+    // "1ST JAN 2026" / "16 MAR 2026" / "Mar 16 2026"
+    const ordinal = trimmed.match(/(\d{1,2})(?:st|nd|rd|th)?\s*[-\s]\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s*[-,\s]?\s*(\d{4})?/i);
+    if (ordinal) {
+      const d = parseInt(ordinal[1], 10);
+      const m = months.indexOf(ordinal[2].toLowerCase());
+      const y = ordinal[3] ? parseInt(ordinal[3], 10) : new Date().getFullYear();
+      if (m >= 0 && d >= 1 && d <= 31) return new Date(y, m, d).getTime();
+    }
+    const monthFirst = trimmed.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2})(?:st|nd|rd|th)?[,\s]+(\d{4})?/i);
+    if (monthFirst) {
+      const m = months.indexOf(monthFirst[1].toLowerCase());
+      const d = parseInt(monthFirst[2], 10);
+      const y = monthFirst[3] ? parseInt(monthFirst[3], 10) : new Date().getFullYear();
+      if (m >= 0 && d >= 1 && d <= 31) return new Date(y, m, d).getTime();
+    }
+
+    // ISO YYYY-MM-DD
+    const iso = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (iso) {
+      const y = parseInt(iso[1], 10);
+      const m = parseInt(iso[2], 10);
+      const d = parseInt(iso[3], 10);
+      if (m >= 1 && m <= 12 && d >= 1 && d <= 31) return new Date(y, m - 1, d).getTime();
+    }
+
+    return null;
+  }, []);
+
+  // Content-based cycle matching: scan headers + a sample of cells for any
+  // date that lands inside the cycle. This rescues sheets whose names don't
+  // include cycle dates (e.g. "RANKING BONUS GH") but whose data is for it.
+  // Returns: 'match' | 'mismatch' | 'no-dates'
+  const sheetContentCycleMatch = useCallback(
+    (sheetData: SheetData | undefined, cycle: CyclePeriod): 'match' | 'mismatch' | 'no-dates' => {
+      if (!sheetData) return 'no-dates';
+      let foundAnyDate = false;
+      const cells: string[] = [];
+      for (const c of sheetData.headers) cells.push(String(c ?? ''));
+      // Sample first 3 rows (label / first-data rows often hold date headers)
+      for (let r = 0; r < Math.min(3, sheetData.rows.length); r++) {
+        for (const c of sheetData.rows[r]) cells.push(String(c ?? ''));
+      }
+      for (const cell of cells) {
+        const ts = parseAnyDate(cell);
+        if (ts !== null) {
+          foundAnyDate = true;
+          if (isDateInCycle(new Date(ts), cycle)) return 'match';
+        }
+      }
+      return foundAnyDate ? 'mismatch' : 'no-dates';
+    },
+    [parseAnyDate]
+  );
+
+  // Combined matcher used everywhere: name match wins; otherwise fall back to
+  // content. If neither name nor content tells us anything (no dates at all),
+  // we accept it — these are usually undated aggregate sheets that were
+  // intentionally snapshotted under this cycle key.
+  const sheetMatchesCycle = useCallback(
+    (sheetName: string, cycle: CyclePeriod, sheetData?: SheetData) => {
+      if (sheetNameMatchesCycle(sheetName, cycle)) return true;
+      const verdict = sheetContentCycleMatch(sheetData, cycle);
+      if (verdict === 'match') return true;
+      if (verdict === 'no-dates') return true; // accept aggregate / undated sheets
+      return false; // 'mismatch' — sheet has dates and none belong to this cycle
+    },
+    [sheetNameMatchesCycle, sheetContentCycleMatch]
+  );
 
   const areSameSheetSelection = useCallback((a: string[], b: string[]) => {
     if (a.length !== b.length) return false;
