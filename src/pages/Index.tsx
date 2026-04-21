@@ -488,7 +488,9 @@ const Index = () => {
       }
       // Also pre-load cached sheet snapshots so leaderboard / breakdowns work.
       const cachedSheets = await loadAllSheetSnapshots(currentCycleKey);
-      cachedSheetNamesFromSnapshots = Object.keys(cachedSheets).filter((name) => sheetMatchesCycle(name, selectedCycle));
+      cachedSheetNamesFromSnapshots = Object.keys(cachedSheets).filter((name) =>
+        sheetMatchesCycle(name, selectedCycle, cachedSheets[name])
+      );
       for (const [name, data] of Object.entries(cachedSheets)) {
         if (!newCache[name]) newCache[name] = data;
       }
@@ -501,7 +503,7 @@ const Index = () => {
     const historicalSheetNames = Array.from(new Set([
       ...cachedSheetNamesFromResults,
       ...cachedSheetNamesFromSnapshots,
-    ])).filter((name) => sheetMatchesCycle(name, selectedCycle));
+    ])).filter((name) => sheetMatchesCycle(name, selectedCycle, newCache[name]));
 
     const effectiveSelectedSheets = isPastCycle && historicalSheetNames.length > 0
       ? historicalSheetNames
@@ -520,7 +522,7 @@ const Index = () => {
       }
 
       if (data) {
-        if (isPastCycle && !sheetMatchesCycle(sheetName, selectedCycle)) {
+        if (isPastCycle && !sheetMatchesCycle(sheetName, selectedCycle, data)) {
           continue;
         }
         // Search for all worker IDs (current + any pre-swap IDs)
