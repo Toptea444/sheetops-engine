@@ -216,16 +216,32 @@ const Index = () => {
     return name.trim().toUpperCase().includes('TRANSPORT') && name.trim().toUpperCase().includes('SUBSIDY');
   };
 
+  // Strict cycle matching: a sheet belongs to a cycle ONLY if its name explicitly
+  // mentions the cycle's start month with a "16" marker, or end month with a "15" /
+  // "1ST"/"30"/"31" marker. This prevents adjacent-cycle sheets (e.g. "APRIL 16-30",
+  // which belongs to Apr 16–May 15) from polluting the Mar 16–Apr 15 view.
   const sheetMatchesCycle = useCallback((sheetName: string, cycle: CyclePeriod) => {
     const nameUpper = sheetName.toUpperCase();
-    const monthTokens = Array.from(new Set([
-      cycle.startDate.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
-      cycle.endDate.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
-      cycle.startDate.toLocaleString('en-US', { month: 'long' }).toUpperCase(),
-      cycle.endDate.toLocaleString('en-US', { month: 'long' }).toUpperCase(),
-    ]));
+    const startMonthShort = cycle.startDate.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+    const startMonthLong = cycle.startDate.toLocaleString('en-US', { month: 'long' }).toUpperCase();
+    const endMonthShort = cycle.endDate.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+    const endMonthLong = cycle.endDate.toLocaleString('en-US', { month: 'long' }).toUpperCase();
 
-    return monthTokens.some((token) => nameUpper.includes(token));
+    const hasStartMonth = nameUpper.includes(startMonthShort) || nameUpper.includes(startMonthLong);
+    const hasEndMonth = nameUpper.includes(endMonthShort) || nameUpper.includes(endMonthLong);
+
+    // Start-half marker: "16" appears (start of cycle is the 16th).
+    const hasStartHalfMarker = /\b16(TH)?\b/.test(nameUpper);
+    // End-half marker: 1st, 15th. We DO NOT accept 30/31 as that often belongs to
+    // the *previous* cycle's first half (e.g. "MARCH 16TH - 31ST" is start-half).
+    const hasEndHalfMarker = /\b(1ST|15(TH)?)\b/.test(nameUpper);
+
+    // Sheet matches if it explicitly references the start month + start-half,
+    // OR the end month + end-half. Anything else (e.g. "APRIL 16th - 30th") is
+    // a different cycle's sheet and must be excluded.
+    if (hasStartMonth && hasStartHalfMarker) return true;
+    if (hasEndMonth && hasEndHalfMarker) return true;
+    return false;
   }, []);
 
   const areSameSheetSelection = useCallback((a: string[], b: string[]) => {
@@ -662,18 +678,37 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [userId, identityConfirmed, pinVerifiedThisSession, pinResetDetected, swapDetected]);
 
-  // When switching cycles, try to load cached data for past cycles
+  // When switching cycles, try to load cached data for past cycles.
+  // When switching BACK to the current cycle, restore the live enabled-sheet
+  // list so fetchUserData queries the right sheets again (otherwise selectedSheets
+  // stays stuck on the historical filtered list and the dashboard shows nothing
+  // until a manual refresh).
   useEffect(() => {
     if (!userId || !identityConfirmed || isInitializing) return;
 
     const cycleKey = getCycleKey(selectedCycle);
     const currentCycleKey = getCycleKey(getCycleOptions(0)[0]);
+    const isPast = cycleKey !== currentCycleKey;
 
-    // Only use cache fallback for past cycles
-    if (cycleKey === currentCycleKey) return;
+    if (!isPast) {
+      // Returning to the live cycle — restore the default live sheet selection
+      // and clear stale results so fetchUserData can repopulate cleanly.
+      const liveEnabled = sheets
+        .filter((s) => !s.disabled && !isDefaultUncheckedSheet(s.name) && !isTransportSubsidySheet(s.name))
+        .map((s) => s.name);
 
-    // Clear any sticky error from a previous live-fetch attempt — past cycles
-    // are served entirely from the cache and should not surface fetch errors.
+      if (liveEnabled.length > 0 && !areSameSheetSelection(liveEnabled, selectedSheets)) {
+        setSelectedSheets(liveEnabled);
+      }
+      // Drop any past-cycle results so the live cycle doesn't show stale rows
+      // while fetchUserData is running.
+      setResults([]);
+      clearError();
+      setDataError(null);
+      return;
+    }
+
+    // Past cycle: clear any sticky error from a prior live-fetch attempt.
     clearError();
     setDataError(null);
 
@@ -695,29 +730,40 @@ const Index = () => {
           }
         }
       }
-      if (allCachedResults.length > 0) {
-        // Merge cached results with any live results (live takes priority)
-        setResults(prev => {
-          const liveSheets = new Set(prev.map(r => r.sheetName));
-          const cachedOnly = allCachedResults.filter(r => !liveSheets.has(r.sheetName));
-          return cachedOnly.length > 0 ? [...prev, ...cachedOnly] : prev;
-        });
+
+      // Strict cycle filter: only keep sheets whose name truly matches THIS cycle.
+      // This prevents adjacent-cycle snapshots (e.g. "APRIL 16th - 30th" stored
+      // under the Mar 16–Apr 15 cycle from earlier buggy snapshots) from showing.
+      const filteredCachedResults = allCachedResults.filter((r) =>
+        r.sheetName ? sheetMatchesCycle(r.sheetName, selectedCycle) : false
+      );
+
+      if (filteredCachedResults.length > 0) {
+        // Replace results outright for past cycles — we trust the cache and don't
+        // want any leftover live rows from the previous cycle to bleed through.
+        setResults(filteredCachedResults);
+      } else {
+        setResults([]);
       }
 
       const cachedSheetNames = Array.from(new Set([
-        ...allCachedResults.map((row) => row.sheetName).filter(Boolean) as string[],
-        ...Object.keys(cachedSheets),
-      ])).filter((name) => sheetMatchesCycle(name, selectedCycle));
+        ...filteredCachedResults.map((row) => row.sheetName).filter(Boolean) as string[],
+        ...Object.keys(cachedSheets).filter((name) => sheetMatchesCycle(name, selectedCycle)),
+      ]));
 
       if (cachedSheetNames.length > 0 && !areSameSheetSelection(cachedSheetNames, selectedSheets)) {
         setSelectedSheets(cachedSheetNames);
       }
 
-      // Load cached sheet snapshots for leaderboard
-      if (Object.keys(cachedSheets).length > 0) {
-        setSheetDataCache(prev => {
+      // Load cached sheet snapshots for leaderboard — but only the ones that
+      // actually belong to this cycle.
+      const filteredCachedSheets = Object.fromEntries(
+        Object.entries(cachedSheets).filter(([name]) => sheetMatchesCycle(name, selectedCycle))
+      );
+      if (Object.keys(filteredCachedSheets).length > 0) {
+        setSheetDataCache((prev) => {
           const merged = { ...prev };
-          for (const [name, data] of Object.entries(cachedSheets)) {
+          for (const [name, data] of Object.entries(filteredCachedSheets)) {
             if (!merged[name]) merged[name] = data;
           }
           return merged;
@@ -726,7 +772,7 @@ const Index = () => {
     };
 
     loadCachedCycleData();
-  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle, areSameSheetSelection, selectedSheets]);
+  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle, areSameSheetSelection, selectedSheets, sheets, clearError]);
 
   // Validate ID exists in sheets (used by WelcomeModal before PIN step)
   const handleIdValidation = async (newUserId: string): Promise<{ valid: boolean; userName?: string }> => {
