@@ -114,6 +114,11 @@ const Index = () => {
   const [cycleSummaryShownThisSession, setCycleSummaryShownThisSession] = useState(false);
   const [showCycleSelectorHighlight, setShowCycleSelectorHighlight] = useState(false);
   const cycleSelectorRef = useRef<HTMLDivElement>(null);
+  // Tracks the last cycle key we ran the cycle-change effect for, so it only
+  // fires once per actual cycle switch (not on every selectedSheets/sheets
+  // dependency change). Without this guard the effect re-runs in a loop and
+  // wipes results to [] on the live cycle.
+  const lastHandledCycleKeyRef = useRef<string | null>(null);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
