@@ -678,18 +678,37 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [userId, identityConfirmed, pinVerifiedThisSession, pinResetDetected, swapDetected]);
 
-  // When switching cycles, try to load cached data for past cycles
+  // When switching cycles, try to load cached data for past cycles.
+  // When switching BACK to the current cycle, restore the live enabled-sheet
+  // list so fetchUserData queries the right sheets again (otherwise selectedSheets
+  // stays stuck on the historical filtered list and the dashboard shows nothing
+  // until a manual refresh).
   useEffect(() => {
     if (!userId || !identityConfirmed || isInitializing) return;
 
     const cycleKey = getCycleKey(selectedCycle);
     const currentCycleKey = getCycleKey(getCycleOptions(0)[0]);
+    const isPast = cycleKey !== currentCycleKey;
 
-    // Only use cache fallback for past cycles
-    if (cycleKey === currentCycleKey) return;
+    if (!isPast) {
+      // Returning to the live cycle — restore the default live sheet selection
+      // and clear stale results so fetchUserData can repopulate cleanly.
+      const liveEnabled = sheets
+        .filter((s) => !s.disabled && !isDefaultUncheckedSheet(s.name) && !isTransportSubsidySheet(s.name))
+        .map((s) => s.name);
 
-    // Clear any sticky error from a previous live-fetch attempt — past cycles
-    // are served entirely from the cache and should not surface fetch errors.
+      if (liveEnabled.length > 0 && !areSameSheetSelection(liveEnabled, selectedSheets)) {
+        setSelectedSheets(liveEnabled);
+      }
+      // Drop any past-cycle results so the live cycle doesn't show stale rows
+      // while fetchUserData is running.
+      setResults([]);
+      clearError();
+      setDataError(null);
+      return;
+    }
+
+    // Past cycle: clear any sticky error from a prior live-fetch attempt.
     clearError();
     setDataError(null);
 
@@ -711,29 +730,40 @@ const Index = () => {
           }
         }
       }
-      if (allCachedResults.length > 0) {
-        // Merge cached results with any live results (live takes priority)
-        setResults(prev => {
-          const liveSheets = new Set(prev.map(r => r.sheetName));
-          const cachedOnly = allCachedResults.filter(r => !liveSheets.has(r.sheetName));
-          return cachedOnly.length > 0 ? [...prev, ...cachedOnly] : prev;
-        });
+
+      // Strict cycle filter: only keep sheets whose name truly matches THIS cycle.
+      // This prevents adjacent-cycle snapshots (e.g. "APRIL 16th - 30th" stored
+      // under the Mar 16–Apr 15 cycle from earlier buggy snapshots) from showing.
+      const filteredCachedResults = allCachedResults.filter((r) =>
+        r.sheetName ? sheetMatchesCycle(r.sheetName, selectedCycle) : false
+      );
+
+      if (filteredCachedResults.length > 0) {
+        // Replace results outright for past cycles — we trust the cache and don't
+        // want any leftover live rows from the previous cycle to bleed through.
+        setResults(filteredCachedResults);
+      } else {
+        setResults([]);
       }
 
       const cachedSheetNames = Array.from(new Set([
-        ...allCachedResults.map((row) => row.sheetName).filter(Boolean) as string[],
-        ...Object.keys(cachedSheets),
-      ])).filter((name) => sheetMatchesCycle(name, selectedCycle));
+        ...filteredCachedResults.map((row) => row.sheetName).filter(Boolean) as string[],
+        ...Object.keys(cachedSheets).filter((name) => sheetMatchesCycle(name, selectedCycle)),
+      ]));
 
       if (cachedSheetNames.length > 0 && !areSameSheetSelection(cachedSheetNames, selectedSheets)) {
         setSelectedSheets(cachedSheetNames);
       }
 
-      // Load cached sheet snapshots for leaderboard
-      if (Object.keys(cachedSheets).length > 0) {
-        setSheetDataCache(prev => {
+      // Load cached sheet snapshots for leaderboard — but only the ones that
+      // actually belong to this cycle.
+      const filteredCachedSheets = Object.fromEntries(
+        Object.entries(cachedSheets).filter(([name]) => sheetMatchesCycle(name, selectedCycle))
+      );
+      if (Object.keys(filteredCachedSheets).length > 0) {
+        setSheetDataCache((prev) => {
           const merged = { ...prev };
-          for (const [name, data] of Object.entries(cachedSheets)) {
+          for (const [name, data] of Object.entries(filteredCachedSheets)) {
             if (!merged[name]) merged[name] = data;
           }
           return merged;
@@ -742,7 +772,7 @@ const Index = () => {
     };
 
     loadCachedCycleData();
-  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle, areSameSheetSelection, selectedSheets]);
+  }, [selectedCycle, userId, identityConfirmed, isInitializing, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle, areSameSheetSelection, selectedSheets, sheets, clearError]);
 
   // Validate ID exists in sheets (used by WelcomeModal before PIN step)
   const handleIdValidation = async (newUserId: string): Promise<{ valid: boolean; userName?: string }> => {
