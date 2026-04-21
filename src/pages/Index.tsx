@@ -406,7 +406,7 @@ const Index = () => {
     const historicalSheetNames = Array.from(new Set([
       ...cachedSheetNamesFromResults,
       ...cachedSheetNamesFromSnapshots,
-    ]));
+    ])).filter((name) => sheetMatchesCycle(name, selectedCycle));
 
     const effectiveSelectedSheets = isPastCycle && historicalSheetNames.length > 0
       ? historicalSheetNames
