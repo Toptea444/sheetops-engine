@@ -766,13 +766,17 @@ const Index = () => {
 
   // When switching cycles, try to load cached data for past cycles.
   // When switching BACK to the current cycle, restore the live enabled-sheet
-  // list so fetchUserData queries the right sheets again (otherwise selectedSheets
-  // stays stuck on the historical filtered list and the dashboard shows nothing
-  // until a manual refresh).
+  // list so fetchUserData queries the right sheets again.
+  // IMPORTANT: this effect must only run when the cycle key actually changes,
+  // not on every selectedSheets / sheets update — otherwise it loops and
+  // repeatedly resets results to [] on the live cycle (blank dashboard).
   useEffect(() => {
     if (!userId || !identityConfirmed || isInitializing) return;
 
     const cycleKey = getCycleKey(selectedCycle);
+    if (lastHandledCycleKeyRef.current === cycleKey) return;
+    lastHandledCycleKeyRef.current = cycleKey;
+
     const currentCycleKey = getCycleKey(getCycleOptions(0)[0]);
     const isPast = cycleKey !== currentCycleKey;
 
@@ -817,16 +821,14 @@ const Index = () => {
         }
       }
 
-      // Strict cycle filter: only keep sheets whose name truly matches THIS cycle.
-      // This prevents adjacent-cycle snapshots (e.g. "APRIL 16th - 30th" stored
-      // under the Mar 16–Apr 15 cycle from earlier buggy snapshots) from showing.
+      // Cycle filter: name match OR content match (parses dates from sheet
+      // cells). This rescues sheets like "RANKING BONUS GH" whose names
+      // don't include cycle dates but whose snapshot data is for it.
       const filteredCachedResults = allCachedResults.filter((r) =>
-        r.sheetName ? sheetMatchesCycle(r.sheetName, selectedCycle) : false
+        r.sheetName ? sheetMatchesCycle(r.sheetName, selectedCycle, cachedSheets[r.sheetName]) : false
       );
 
       if (filteredCachedResults.length > 0) {
-        // Replace results outright for past cycles — we trust the cache and don't
-        // want any leftover live rows from the previous cycle to bleed through.
         setResults(filteredCachedResults);
       } else {
         setResults([]);
@@ -834,17 +836,15 @@ const Index = () => {
 
       const cachedSheetNames = Array.from(new Set([
         ...filteredCachedResults.map((row) => row.sheetName).filter(Boolean) as string[],
-        ...Object.keys(cachedSheets).filter((name) => sheetMatchesCycle(name, selectedCycle)),
+        ...Object.keys(cachedSheets).filter((name) => sheetMatchesCycle(name, selectedCycle, cachedSheets[name])),
       ]));
 
       if (cachedSheetNames.length > 0 && !areSameSheetSelection(cachedSheetNames, selectedSheets)) {
         setSelectedSheets(cachedSheetNames);
       }
 
-      // Load cached sheet snapshots for leaderboard — but only the ones that
-      // actually belong to this cycle.
       const filteredCachedSheets = Object.fromEntries(
-        Object.entries(cachedSheets).filter(([name]) => sheetMatchesCycle(name, selectedCycle))
+        Object.entries(cachedSheets).filter(([name, data]) => sheetMatchesCycle(name, selectedCycle, data))
       );
       if (Object.keys(filteredCachedSheets).length > 0) {
         setSheetDataCache((prev) => {
