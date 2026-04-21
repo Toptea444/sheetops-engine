@@ -216,16 +216,32 @@ const Index = () => {
     return name.trim().toUpperCase().includes('TRANSPORT') && name.trim().toUpperCase().includes('SUBSIDY');
   };
 
+  // Strict cycle matching: a sheet belongs to a cycle ONLY if its name explicitly
+  // mentions the cycle's start month with a "16" marker, or end month with a "15" /
+  // "1ST"/"30"/"31" marker. This prevents adjacent-cycle sheets (e.g. "APRIL 16-30",
+  // which belongs to Apr 16–May 15) from polluting the Mar 16–Apr 15 view.
   const sheetMatchesCycle = useCallback((sheetName: string, cycle: CyclePeriod) => {
     const nameUpper = sheetName.toUpperCase();
-    const monthTokens = Array.from(new Set([
-      cycle.startDate.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
-      cycle.endDate.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
-      cycle.startDate.toLocaleString('en-US', { month: 'long' }).toUpperCase(),
-      cycle.endDate.toLocaleString('en-US', { month: 'long' }).toUpperCase(),
-    ]));
+    const startMonthShort = cycle.startDate.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+    const startMonthLong = cycle.startDate.toLocaleString('en-US', { month: 'long' }).toUpperCase();
+    const endMonthShort = cycle.endDate.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+    const endMonthLong = cycle.endDate.toLocaleString('en-US', { month: 'long' }).toUpperCase();
 
-    return monthTokens.some((token) => nameUpper.includes(token));
+    const hasStartMonth = nameUpper.includes(startMonthShort) || nameUpper.includes(startMonthLong);
+    const hasEndMonth = nameUpper.includes(endMonthShort) || nameUpper.includes(endMonthLong);
+
+    // Start-half marker: "16" appears (start of cycle is the 16th).
+    const hasStartHalfMarker = /\b16(TH)?\b/.test(nameUpper);
+    // End-half marker: 1st, 15th. We DO NOT accept 30/31 as that often belongs to
+    // the *previous* cycle's first half (e.g. "MARCH 16TH - 31ST" is start-half).
+    const hasEndHalfMarker = /\b(1ST|15(TH)?)\b/.test(nameUpper);
+
+    // Sheet matches if it explicitly references the start month + start-half,
+    // OR the end month + end-half. Anything else (e.g. "APRIL 16th - 30th") is
+    // a different cycle's sheet and must be excluded.
+    if (hasStartMonth && hasStartHalfMarker) return true;
+    if (hasEndMonth && hasEndHalfMarker) return true;
+    return false;
   }, []);
 
   const areSameSheetSelection = useCallback((a: string[], b: string[]) => {
