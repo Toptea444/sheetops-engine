@@ -16,6 +16,7 @@ interface CycleSummaryCardProps {
   onDisplayModeChange?: (mode: EarningsDisplayMode) => void;
   tooltipDismissed?: boolean;
   onDismissTooltip?: () => void;
+  includesRankingBonus?: boolean;
 }
 
 export function CycleSummaryCard({
@@ -27,6 +28,7 @@ export function CycleSummaryCard({
   onDisplayModeChange,
   tooltipDismissed = false,
   onDismissTooltip,
+  includesRankingBonus = false,
 }: CycleSummaryCardProps) {
   const [showTooltip, setShowTooltip] = useState(!tooltipDismissed);
   const daysElapsed = getDaysElapsedInCycle(cycle);
@@ -62,8 +64,15 @@ export function CycleSummaryCard({
   return (
     <div className="space-y-4">
       {/* Header with toggle */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Total Earnings</p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <p className="text-sm text-muted-foreground">Total Earnings</p>
+          {includesRankingBonus && (
+            <span className="text-[11px] font-medium text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+              + ranking bonus
+            </span>
+          )}
+        </div>
         <div className="relative">
           {showTooltip && (
             <div className="absolute bottom-full right-0 mb-3 z-10 animate-in fade-in slide-in-from-bottom-1 duration-200">

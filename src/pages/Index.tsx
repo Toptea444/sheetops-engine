@@ -1365,8 +1365,8 @@ const Index = () => {
       {/* Admin Alerts Display */}
       <AlertsDisplay />
       
-      {/* Weekly Bonus Alert */}
-      <WeeklyBonusAlert />
+      {/* Weekly Bonus Alert — only relevant for the current cycle */}
+      {!isViewingPastCycle && <WeeklyBonusAlert />}
       
       <WelcomeModal
         open={showWelcome}
@@ -1538,6 +1538,7 @@ const Index = () => {
                   onDisplayModeChange={setEarningsDisplay}
                   tooltipDismissed={tooltipDismissed}
                   onDismissTooltip={dismissTooltip}
+                  includesRankingBonus={rankingBonusContributesToTotal}
                 />
               </div>
             </div>
