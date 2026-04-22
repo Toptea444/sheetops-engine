@@ -1189,6 +1189,24 @@ const Index = () => {
     return { totalEarnings, daysActive: activeDays.size };
   }, [adjustedResults, selectedCycle, selectedSheets, includeRankingBonusInTotal]);
 
+  // Whether the user is currently viewing a past (read-only) cycle.
+  const isViewingPastCycle = useMemo(() => {
+    return getCycleKey(selectedCycle) !== getCycleKey(getCycleOptions(0)[0]);
+  }, [selectedCycle]);
+
+  // Whether ranking bonus is actually contributing to the displayed total
+  // (preference is on AND at least one selected sheet is a ranking bonus sheet).
+  const rankingBonusContributesToTotal = useMemo(() => {
+    if (!includeRankingBonusInTotal) return false;
+    return adjustedResults.some(
+      (r) =>
+        r.sheetName &&
+        selectedSheets.includes(r.sheetName) &&
+        isRankingBonusSheet(r.sheetName) &&
+        (r.dailyBreakdown?.some((d) => (d.value ?? 0) > 0) ?? false),
+    );
+  }, [adjustedResults, selectedSheets, includeRankingBonusInTotal]);
+
   // Compute yesterday's earnings for the reveal animation
   const previousDayEarnings = useMemo(() => {
     const yesterday = new Date();
