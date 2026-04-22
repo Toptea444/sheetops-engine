@@ -1564,8 +1564,8 @@ const Index = () => {
             {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
             <div className="mb-8">
               <SheetBreakdownCards
-                results={adjustedResults}
-                sheetNames={selectedSheets}
+                results={displayResults}
+                sheetNames={displaySelectedSheets}
                 cycle={selectedCycle}
                 isLoading={isLoading}
                 displayMode={earningsDisplay}
@@ -1582,7 +1582,7 @@ const Index = () => {
             <div className="mb-8">
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
                 <WeeklyBreakdown 
-                  results={adjustedResults} 
+                  results={displayResults} 
                   cycle={selectedCycle}
                   isLoading={isLoading}
                   displayMode={earningsDisplay}
@@ -1594,8 +1594,8 @@ const Index = () => {
             <div className="mb-8">
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6">
                 <DailyEarningsTable
-                  results={adjustedResults}
-                  sheetNames={selectedSheets}
+                  results={displayResults}
+                  sheetNames={displaySelectedSheets}
                   cycle={selectedCycle}
                   isLoading={isLoading}
                   getTransferInfo={getTransferInfoForDate}
