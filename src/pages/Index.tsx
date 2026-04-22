@@ -1582,9 +1582,9 @@ const Index = () => {
                   isLoading={isLoading}
                   getTransferInfo={getTransferInfoForDate}
                   currentUserId={userId}
-                  subsidyData={subsidyData}
-                  subsidyOptedIn={subsidyOptedIn}
-                  subsidyKId={subsidyKId}
+                  subsidyData={null}
+                  subsidyOptedIn={false}
+                  subsidyKId={null}
                 />
                 {/* Adjustments info — collapsed inside the daily view */}
                 {adjustmentNotes.length > 0 && (
