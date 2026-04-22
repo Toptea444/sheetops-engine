@@ -1365,8 +1365,8 @@ const Index = () => {
       {/* Admin Alerts Display */}
       <AlertsDisplay />
       
-      {/* Weekly Bonus Alert — only relevant for the current cycle */}
-      {!isViewingPastCycle && <WeeklyBonusAlert />}
+      {/* Weekly Bonus Alert */}
+      <WeeklyBonusAlert />
       
       <WelcomeModal
         open={showWelcome}
