@@ -1207,6 +1207,24 @@ const Index = () => {
     );
   }, [adjustedResults, selectedSheets, includeRankingBonusInTotal]);
 
+  // Helper: any "weekly bonus" sheet (GH variant or "WEEKLY BONUS FROM ..." variant).
+  const isAnyWeeklyBonusSheet = (name: string): boolean => {
+    if (!name) return false;
+    const n = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    return n.includes('WEEKLY') && n.includes('BONUS');
+  };
+
+  // When viewing a past cycle, hide all weekly-bonus sheets from every breakdown view.
+  const displaySelectedSheets = useMemo(() => {
+    if (!isViewingPastCycle) return selectedSheets;
+    return selectedSheets.filter((name) => !isAnyWeeklyBonusSheet(name));
+  }, [selectedSheets, isViewingPastCycle]);
+
+  const displayResults = useMemo(() => {
+    if (!isViewingPastCycle) return adjustedResults;
+    return adjustedResults.filter((r) => !isAnyWeeklyBonusSheet(r.sheetName ?? ''));
+  }, [adjustedResults, isViewingPastCycle]);
+
   // Compute yesterday's earnings for the reveal animation
   const previousDayEarnings = useMemo(() => {
     const yesterday = new Date();
