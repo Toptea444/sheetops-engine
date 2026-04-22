@@ -1189,6 +1189,24 @@ const Index = () => {
     return { totalEarnings, daysActive: activeDays.size };
   }, [adjustedResults, selectedCycle, selectedSheets, includeRankingBonusInTotal]);
 
+  // Whether the user is currently viewing a past (read-only) cycle.
+  const isViewingPastCycle = useMemo(() => {
+    return getCycleKey(selectedCycle) !== getCycleKey(getCycleOptions(0)[0]);
+  }, [selectedCycle]);
+
+  // Whether ranking bonus is actually contributing to the displayed total
+  // (preference is on AND at least one selected sheet is a ranking bonus sheet).
+  const rankingBonusContributesToTotal = useMemo(() => {
+    if (!includeRankingBonusInTotal) return false;
+    return adjustedResults.some(
+      (r) =>
+        r.sheetName &&
+        selectedSheets.includes(r.sheetName) &&
+        isRankingBonusSheet(r.sheetName) &&
+        (r.dailyBreakdown?.some((d) => (d.value ?? 0) > 0) ?? false),
+    );
+  }, [adjustedResults, selectedSheets, includeRankingBonusInTotal]);
+
   // Compute yesterday's earnings for the reveal animation
   const previousDayEarnings = useMemo(() => {
     const yesterday = new Date();
@@ -1347,8 +1365,8 @@ const Index = () => {
       {/* Admin Alerts Display */}
       <AlertsDisplay />
       
-      {/* Weekly Bonus Alert */}
-      <WeeklyBonusAlert />
+      {/* Weekly Bonus Alert — only relevant for the current cycle */}
+      {!isViewingPastCycle && <WeeklyBonusAlert />}
       
       <WelcomeModal
         open={showWelcome}
@@ -1520,6 +1538,7 @@ const Index = () => {
                   onDisplayModeChange={setEarningsDisplay}
                   tooltipDismissed={tooltipDismissed}
                   onDismissTooltip={dismissTooltip}
+                  includesRankingBonus={rankingBonusContributesToTotal}
                 />
               </div>
             </div>
@@ -1532,25 +1551,12 @@ const Index = () => {
                 cycle={selectedCycle}
                 isLoading={isLoading}
                 displayMode={earningsDisplay}
-                subsidyData={subsidyData}
-                subsidyOptedIn={subsidyOptedIn}
+                subsidyData={null}
+                subsidyOptedIn={false}
               />
             </div>
 
-            {/* Transport Subsidy Card */}
-            {subsidyOptedIn && subsidyKId && (
-              <div className="mb-8">
-                <div className="bg-card border border-border rounded-2xl p-6">
-                  <TransportSubsidyCard
-                    kId={subsidyKId}
-                    subsidyData={subsidyData}
-                    isLoading={isLoading || subsidyLoading}
-                    isFetching={subsidyLoading}
-                    onFetch={(id) => fetchSubsidyData(id)}
-                  />
-                </div>
-              </div>
-            )}
+            {/* Transport Subsidy Card — temporarily hidden */}
 
             {/* Removed standalone AdjustmentsPanel — now shown inside Daily Earnings section */}
 
@@ -1576,9 +1582,9 @@ const Index = () => {
                   isLoading={isLoading}
                   getTransferInfo={getTransferInfoForDate}
                   currentUserId={userId}
-                  subsidyData={subsidyData}
-                  subsidyOptedIn={subsidyOptedIn}
-                  subsidyKId={subsidyKId}
+                  subsidyData={null}
+                  subsidyOptedIn={false}
+                  subsidyKId={null}
                 />
                 {/* Adjustments info — collapsed inside the daily view */}
                 {adjustmentNotes.length > 0 && (
