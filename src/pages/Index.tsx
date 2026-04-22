@@ -1194,18 +1194,10 @@ const Index = () => {
     return getCycleKey(selectedCycle) !== getCycleKey(getCycleOptions(0)[0]);
   }, [selectedCycle]);
 
-  // Whether ranking bonus is actually contributing to the displayed total
-  // (preference is on AND at least one selected sheet is a ranking bonus sheet).
-  const rankingBonusContributesToTotal = useMemo(() => {
-    if (!includeRankingBonusInTotal) return false;
-    return adjustedResults.some(
-      (r) =>
-        r.sheetName &&
-        selectedSheets.includes(r.sheetName) &&
-        isRankingBonusSheet(r.sheetName) &&
-        (r.dailyBreakdown?.some((d) => (d.value ?? 0) > 0) ?? false),
-    );
-  }, [adjustedResults, selectedSheets, includeRankingBonusInTotal]);
+  // Whether to show the "+ ranking bonus" badge next to Total Earnings.
+  // Mirrors the user's preference exactly — visible whenever the setting is ON,
+  // hidden whenever the setting is OFF, regardless of selected sheets.
+  const rankingBonusContributesToTotal = includeRankingBonusInTotal;
 
   // Helper: any "weekly bonus" sheet (GH variant or "WEEKLY BONUS FROM ..." variant).
   const isAnyWeeklyBonusSheet = (name: string): boolean => {
