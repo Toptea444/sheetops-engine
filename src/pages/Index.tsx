@@ -1207,6 +1207,24 @@ const Index = () => {
     );
   }, [adjustedResults, selectedSheets, includeRankingBonusInTotal]);
 
+  // Helper: any "weekly bonus" sheet (GH variant or "WEEKLY BONUS FROM ..." variant).
+  const isAnyWeeklyBonusSheet = (name: string): boolean => {
+    if (!name) return false;
+    const n = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    return n.includes('WEEKLY') && n.includes('BONUS');
+  };
+
+  // When viewing a past cycle, hide all weekly-bonus sheets from every breakdown view.
+  const displaySelectedSheets = useMemo(() => {
+    if (!isViewingPastCycle) return selectedSheets;
+    return selectedSheets.filter((name) => !isAnyWeeklyBonusSheet(name));
+  }, [selectedSheets, isViewingPastCycle]);
+
+  const displayResults = useMemo(() => {
+    if (!isViewingPastCycle) return adjustedResults;
+    return adjustedResults.filter((r) => !isAnyWeeklyBonusSheet(r.sheetName ?? ''));
+  }, [adjustedResults, isViewingPastCycle]);
+
   // Compute yesterday's earnings for the reveal animation
   const previousDayEarnings = useMemo(() => {
     const yesterday = new Date();
@@ -1365,8 +1383,8 @@ const Index = () => {
       {/* Admin Alerts Display */}
       <AlertsDisplay />
       
-      {/* Weekly Bonus Alert — only relevant for the current cycle */}
-      {!isViewingPastCycle && <WeeklyBonusAlert />}
+      {/* Weekly Bonus Alert */}
+      <WeeklyBonusAlert />
       
       <WelcomeModal
         open={showWelcome}
@@ -1546,8 +1564,8 @@ const Index = () => {
             {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
             <div className="mb-8">
               <SheetBreakdownCards
-                results={adjustedResults}
-                sheetNames={selectedSheets}
+                results={displayResults}
+                sheetNames={displaySelectedSheets}
                 cycle={selectedCycle}
                 isLoading={isLoading}
                 displayMode={earningsDisplay}
@@ -1564,7 +1582,7 @@ const Index = () => {
             <div className="mb-8">
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
                 <WeeklyBreakdown 
-                  results={adjustedResults} 
+                  results={displayResults} 
                   cycle={selectedCycle}
                   isLoading={isLoading}
                   displayMode={earningsDisplay}
@@ -1576,8 +1594,8 @@ const Index = () => {
             <div className="mb-8">
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6">
                 <DailyEarningsTable
-                  results={adjustedResults}
-                  sheetNames={selectedSheets}
+                  results={displayResults}
+                  sheetNames={displaySelectedSheets}
                   cycle={selectedCycle}
                   isLoading={isLoading}
                   getTransferInfo={getTransferInfoForDate}
