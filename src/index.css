@@ -158,3 +158,25 @@
                 0 4px 6px -4px hsl(215 30% 15% / 0.1);
   }
 }
+
+@keyframes ranking-bonus-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-35%);
+  }
+}
+
+@layer utilities {
+  .ranking-bonus-marquee {
+    animation: ranking-bonus-marquee 18s linear infinite;
+    will-change: transform;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ranking-bonus-marquee {
+      animation: none;
+    }
+  }
+}
