@@ -1200,6 +1200,25 @@ const Index = () => {
   // hidden whenever the setting is OFF, regardless of selected sheets.
   const rankingBonusContributesToTotal = includeRankingBonusInTotal;
 
+  // Calculate total ranking bonus earnings for the momentum banner
+  const totalRankingBonusEarnings = useMemo(() => {
+    let total = 0;
+    adjustedResults.forEach((result) => {
+      if (result.valueType === 'percent') return;
+      if (!result.sheetName || !isRankingBonusSheet(result.sheetName)) return;
+      if (!selectedSheets.includes(result.sheetName)) return;
+
+      result.dailyBreakdown?.forEach((day) => {
+        if (day.fullDate === undefined) return;
+        const dayDate = new Date(day.fullDate);
+        if (isDateInCycle(dayDate, selectedCycle)) {
+          total += day.value;
+        }
+      });
+    });
+    return total;
+  }, [adjustedResults, selectedSheets, selectedCycle]);
+
   // Helper: any "weekly bonus" sheet (GH variant or "WEEKLY BONUS FROM ..." variant).
   const isAnyWeeklyBonusSheet = (name: string): boolean => {
     if (!name) return false;
@@ -1541,6 +1560,7 @@ const Index = () => {
               userId={userId}
               userName={userName}
               isLoggedIn={identityConfirmed && pinVerifiedThisSession}
+              totalRankingBonusEarnings={totalRankingBonusEarnings}
             />
 
             {/* Hero Summary Section - Main Focus */}
