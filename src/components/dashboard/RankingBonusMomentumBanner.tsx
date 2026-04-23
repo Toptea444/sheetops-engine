@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp } from 'lucide-react';
 
 type RankingBonusMomentumBannerProps = {
   userId?: string | null;
@@ -74,68 +73,57 @@ export const RankingBonusMomentumBanner = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="mb-6 relative"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="mb-5"
     >
-      <div className="flex items-center gap-4 py-3 px-4 rounded-xl bg-gradient-to-r from-primary/[0.06] via-primary/[0.03] to-transparent border border-primary/10">
-        {/* Animated pulse indicator */}
-        <div className="relative flex-shrink-0">
-          <motion.div
-            className="absolute inset-0 rounded-full bg-primary/20"
-            animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <div className="relative w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <TrendingUp className="w-4 h-4 text-primary" />
+      <div className="flex items-center justify-between gap-3">
+        {/* Left: Minimal indicator + message */}
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Subtle live indicator */}
+          <div className="relative flex-shrink-0">
+            <motion.span
+              className="absolute inset-0 rounded-full bg-primary/40"
+              animate={{ scale: [1, 1.8], opacity: [0.6, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut' }}
+            />
+            <span className={`relative block w-2 h-2 rounded-full ${isUrgent ? 'bg-orange-500' : 'bg-primary'}`} />
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4">
+          {/* Label + rotating message */}
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xs font-semibold tracking-wide uppercase text-primary">
-              Ranking Bonus
+            <span className="text-[11px] font-semibold tracking-wider uppercase text-primary/70 flex-shrink-0">
+              Ranking
             </span>
-            <span className="hidden sm:inline text-primary/30">|</span>
+            <span className="text-muted-foreground/40 hidden sm:inline">—</span>
             <AnimatePresence mode="wait">
               <motion.span
                 key={messageIndex}
-                initial={{ opacity: 0, x: 8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.3 }}
-                className="text-sm text-muted-foreground truncate"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.25 }}
+                className="text-[13px] text-muted-foreground truncate hidden sm:inline"
               >
                 {selectedMessage}
               </motion.span>
             </AnimatePresence>
           </div>
-
-          {/* Days countdown */}
-          <motion.div
-            className="flex items-center gap-1.5 flex-shrink-0"
-            animate={isUrgent ? { scale: [1, 1.02, 1] } : {}}
-            transition={{ duration: 1.5, repeat: isUrgent ? Infinity : 0, ease: 'easeInOut' }}
-          >
-            <div className={`flex items-baseline gap-1 ${isUrgent ? 'text-orange-500' : 'text-primary'}`}>
-              <span className="text-lg font-semibold tabular-nums leading-none">{daysLeft}</span>
-              <span className="text-xs font-medium opacity-80">
-                {daysLeft === 1 ? 'day left' : 'days left'}
-              </span>
-            </div>
-          </motion.div>
         </div>
-      </div>
 
-      {/* Subtle animated line accent */}
-      <motion.div
-        className="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
-      />
+        {/* Right: Countdown */}
+        <motion.div
+          className="flex items-center gap-1.5 flex-shrink-0"
+          animate={isUrgent ? { opacity: [1, 0.7, 1] } : {}}
+          transition={{ duration: 1.2, repeat: isUrgent ? Infinity : 0, ease: 'easeInOut' }}
+        >
+          <span className={`text-sm font-semibold tabular-nums ${isUrgent ? 'text-orange-500' : 'text-primary'}`}>
+            {daysLeft}d
+          </span>
+          <span className="text-[11px] text-muted-foreground/60 font-medium">left</span>
+        </motion.div>
+      </div>
     </motion.div>
   );
 };
