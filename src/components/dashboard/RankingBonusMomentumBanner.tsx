@@ -9,7 +9,7 @@ type RankingBonusMomentumBannerProps = {
   totalRankingBonusEarnings?: number;
 };
 
-// General motivational messages (70 messages)
+// General motivational messages (120 messages)
 const GENERAL_MESSAGES = [
   // Original 5
   'Your position matters — push now.',
@@ -89,6 +89,61 @@ const GENERAL_MESSAGES = [
   'Close the month like a boss.',
   'Strong finish = strong bonus.',
   'End of month energy — activate.',
+  // === NEW 50 MESSAGES ===
+  // Questions & challenges
+  'Shey you don give up? No be you abeg.',
+  'Wetin you dey wait for?',
+  'How far with the grind today?',
+  'You think say e easy? Prove am.',
+  'Na today you wan start or wetin?',
+  'You don chop today ranking point?',
+  'Shey you serious or you dey play?',
+  'Who tell you say you no fit?',
+  'You wan let them pass you like that?',
+  'Abi you don tire? Stand up!',
+  'You think say them go give you? Work for am.',
+  'How your ranking dey look sef?',
+  'You dey feel the pressure? Good — use am.',
+  'Na you go explain why you no try?',
+  'Shey you sabi the top dey sweet?',
+  // Pidgin slangs & vibes
+  'No dey form busy — enter field.',
+  'Ginger yourself small na.',
+  'Wahala for who no wan rank up.',
+  'E be like say you wan collect o.',
+  'Ehen! Na now now.',
+  'Gbe body enter ranking matter.',
+  'No dey catch trips — focus.',
+  'Sharply sharply — run am.',
+  'E don tey wey you push?',
+  'Shine your eye for the leaderboard.',
+  'No let the month waka pass you.',
+  'Cruise dey but ranking first.',
+  'Dem never see your final form.',
+  'Which kain levels be this? Upgrade!',
+  'Body no be firewood — but na ranking time.',
+  // Hype & motivation
+  'Omo see your rank — you fit do more.',
+  'The grind no get weekend.',
+  'E no hard — just do the work.',
+  'Your only competition na yesterday you.',
+  'Prove to yourself say you different.',
+  'Champions dey work when others dey rest.',
+  'Na the extra effort dey separate.',
+  'Today small, tomorrow plenty.',
+  'No be luck — na pure work.',
+  'Your time na now, no postpone.',
+  // Reality checks
+  'Month end no dey wait for anybody.',
+  'Opportunity no dey knock twice.',
+  'Na who try go know the result.',
+  'Regret dey wait for who no try.',
+  'Better to try pass to wonder wetin for happen.',
+  'The leaderboard no sabi story — show result.',
+  'Action loud pass intention.',
+  'Plan without action na just wish.',
+  'Your ranking na your responsibility.',
+  'No excuses — just execute.',
 ];
 
 // Earnings-based messages (15 messages) - dynamic based on amount
