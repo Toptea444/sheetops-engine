@@ -159,24 +159,4 @@
   }
 }
 
-@keyframes ranking-bonus-marquee {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-35%);
-  }
-}
 
-@layer utilities {
-  .ranking-bonus-marquee {
-    animation: ranking-bonus-marquee 18s linear infinite;
-    will-change: transform;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .ranking-bonus-marquee {
-      animation: none;
-    }
-  }
-}
