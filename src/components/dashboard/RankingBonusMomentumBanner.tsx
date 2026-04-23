@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronRight } from 'lucide-react';
 
 type RankingBonusMomentumBannerProps = {
   userId?: string | null;
@@ -38,32 +39,37 @@ export const RankingBonusMomentumBanner = ({
   const { isActive, daysToMonthEnd } = useMemo(() => getRankingWindowDetails(), []);
   const [messageIndex, setMessageIndex] = useState(0);
 
+  // Auto-rotate messages every 6 seconds
+  useEffect(() => {
+    if (!isLoggedIn || !isActive) return;
+
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % MESSAGES.length);
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [isActive, isLoggedIn]);
+
+  // Initialize with a random message on mount
   useEffect(() => {
     if (!isLoggedIn || !isActive) return;
 
     const profileKey = userId || userName || 'anon';
     const sessionKey = `sheetops_ranking_bonus_msg_session_${profileKey}`;
-    const lastIndexKey = `sheetops_ranking_bonus_msg_last_${profileKey}`;
 
     const existingSessionIndex = sessionStorage.getItem(sessionKey);
     if (existingSessionIndex !== null) {
       setMessageIndex(Number(existingSessionIndex));
-      return;
+    } else {
+      const randomIndex = Math.floor(Math.random() * MESSAGES.length);
+      sessionStorage.setItem(sessionKey, String(randomIndex));
+      setMessageIndex(randomIndex);
     }
-
-    const previousIndexRaw = localStorage.getItem(lastIndexKey);
-    const previousIndex = previousIndexRaw ? Number(previousIndexRaw) : -1;
-
-    const availableIndices = MESSAGES
-      .map((_, index) => index)
-      .filter((index) => index !== previousIndex);
-
-    const nextIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)] ?? 0;
-
-    sessionStorage.setItem(sessionKey, String(nextIndex));
-    localStorage.setItem(lastIndexKey, String(nextIndex));
-    setMessageIndex(nextIndex);
   }, [isActive, isLoggedIn, userId, userName]);
+
+  const nextMessage = useCallback(() => {
+    setMessageIndex((prev) => (prev + 1) % MESSAGES.length);
+  }, []);
 
   if (!isLoggedIn || !isActive) return null;
 
@@ -73,56 +79,54 @@ export const RankingBonusMomentumBanner = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
       className="mb-5"
     >
-      <div className="flex items-center justify-between gap-3">
-        {/* Left: Minimal indicator + message */}
-        <div className="flex items-center gap-3 min-w-0">
-          {/* Subtle live indicator */}
-          <div className="relative flex-shrink-0">
-            <motion.span
-              className="absolute inset-0 rounded-full bg-primary/40"
-              animate={{ scale: [1, 1.8], opacity: [0.6, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut' }}
-            />
-            <span className={`relative block w-2 h-2 rounded-full ${isUrgent ? 'bg-orange-500' : 'bg-primary'}`} />
-          </div>
-
-          {/* Label + rotating message */}
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[11px] font-semibold tracking-wider uppercase text-primary/70 flex-shrink-0">
-              Ranking
-            </span>
-            <span className="text-muted-foreground/40 hidden sm:inline">—</span>
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={messageIndex}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.25 }}
-                className="text-[13px] text-muted-foreground truncate hidden sm:inline"
-              >
-                {selectedMessage}
-              </motion.span>
-            </AnimatePresence>
-          </div>
+      {/* Single-line premium ticker */}
+      <div className="flex items-center gap-2">
+        {/* Live pulse indicator */}
+        <div className="relative flex-shrink-0">
+          <motion.span
+            className={`absolute inset-0 rounded-full ${isUrgent ? 'bg-orange-500/50' : 'bg-primary/40'}`}
+            animate={{ scale: [1, 2], opacity: [0.5, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut' }}
+          />
+          <span className={`relative block w-1.5 h-1.5 rounded-full ${isUrgent ? 'bg-orange-500' : 'bg-primary'}`} />
         </div>
 
-        {/* Right: Countdown */}
-        <motion.div
-          className="flex items-center gap-1.5 flex-shrink-0"
-          animate={isUrgent ? { opacity: [1, 0.7, 1] } : {}}
-          transition={{ duration: 1.2, repeat: isUrgent ? Infinity : 0, ease: 'easeInOut' }}
+        {/* Countdown badge */}
+        <span className={`text-[11px] font-bold tabular-nums px-1.5 py-0.5 rounded ${
+          isUrgent 
+            ? 'bg-orange-500/10 text-orange-500' 
+            : 'bg-primary/10 text-primary'
+        }`}>
+          {daysLeft}d left
+        </span>
+
+        {/* Separator */}
+        <span className="text-muted-foreground/20">|</span>
+
+        {/* Rotating message with tap to advance */}
+        <button
+          onClick={nextMessage}
+          className="flex items-center gap-1 min-w-0 group cursor-pointer"
         >
-          <span className={`text-sm font-semibold tabular-nums ${isUrgent ? 'text-orange-500' : 'text-primary'}`}>
-            {daysLeft}d
-          </span>
-          <span className="text-[11px] text-muted-foreground/60 font-medium">left</span>
-        </motion.div>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={messageIndex}
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="text-[13px] text-muted-foreground truncate"
+            >
+              {selectedMessage}
+            </motion.span>
+          </AnimatePresence>
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0 group-hover:text-primary transition-colors" />
+        </button>
       </div>
     </motion.div>
   );
