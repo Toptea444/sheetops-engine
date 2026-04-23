@@ -27,6 +27,7 @@ import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
 import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCard';
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
 import { SheetSettingsModal } from '@/components/dashboard/SheetSettingsModal';
+import { RankingBonusMomentumBanner } from '@/components/dashboard/RankingBonusMomentumBanner';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
@@ -1535,6 +1536,12 @@ const Index = () => {
                 )}
               </div>
             </div>
+
+            <RankingBonusMomentumBanner
+              userId={userId}
+              userName={userName}
+              isLoggedIn={identityConfirmed && pinVerifiedThisSession}
+            />
 
             {/* Hero Summary Section - Main Focus */}
             <div className="mb-8">
