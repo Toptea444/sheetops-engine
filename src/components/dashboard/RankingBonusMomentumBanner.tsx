@@ -258,25 +258,31 @@ export const RankingBonusMomentumBanner = ({
     return allMessages[messageIndex % allMessages.length];
   }, [showEarningsMessage, totalRankingBonusEarnings, allMessages, messageIndex]);
 
-  // Auto-rotate messages every 5 seconds
+  // Auto-rotate messages every 5 seconds with random selection
   useEffect(() => {
     if (!isLoggedIn || !isActive) return;
 
+    let rotationCount = 0;
     const interval = setInterval(() => {
-      setMessageIndex((prev) => {
-        const next = prev + 1;
-        // Every 4th message, show earnings if available
-        if (next % 4 === 0 && totalRankingBonusEarnings > 0) {
-          setShowEarningsMessage(true);
-        } else {
-          setShowEarningsMessage(false);
-        }
-        return next;
-      });
+      rotationCount++;
+      // Every 4th rotation, show earnings if available
+      if (rotationCount % 4 === 0 && totalRankingBonusEarnings > 0) {
+        setShowEarningsMessage(true);
+      } else {
+        setShowEarningsMessage(false);
+        // Pick a random message different from the current one
+        setMessageIndex((prev) => {
+          let nextIndex;
+          do {
+            nextIndex = Math.floor(Math.random() * allMessages.length);
+          } while (nextIndex === prev && allMessages.length > 1);
+          return nextIndex;
+        });
+      }
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [isActive, isLoggedIn, totalRankingBonusEarnings]);
+  }, [isActive, isLoggedIn, totalRankingBonusEarnings, allMessages.length]);
 
   // Initialize with a random message on mount
   useEffect(() => {
@@ -296,17 +302,21 @@ export const RankingBonusMomentumBanner = ({
   }, [isActive, isLoggedIn, userId, userName, allMessages.length]);
 
   const nextMessage = useCallback(() => {
-    setMessageIndex((prev) => {
-      const next = prev + 1;
-      // Toggle earnings message on tap
-      if (totalRankingBonusEarnings > 0 && !showEarningsMessage) {
-        setShowEarningsMessage(true);
-      } else {
-        setShowEarningsMessage(false);
-      }
-      return next;
-    });
-  }, [totalRankingBonusEarnings, showEarningsMessage]);
+    // Toggle earnings message on tap
+    if (totalRankingBonusEarnings > 0 && !showEarningsMessage) {
+      setShowEarningsMessage(true);
+    } else {
+      setShowEarningsMessage(false);
+      // Pick a random message different from the current one
+      setMessageIndex((prev) => {
+        let nextIndex;
+        do {
+          nextIndex = Math.floor(Math.random() * allMessages.length);
+        } while (nextIndex === prev && allMessages.length > 1);
+        return nextIndex;
+      });
+    }
+  }, [totalRankingBonusEarnings, showEarningsMessage, allMessages.length]);
 
   if (!isLoggedIn || !isActive) return null;
 
