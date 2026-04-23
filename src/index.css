@@ -159,55 +159,24 @@
   }
 }
 
-
-@keyframes ranking-bonus-ticker {
+@keyframes ranking-bonus-marquee {
   0% {
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translateX(-35%);
   }
 }
 
 @layer utilities {
-  .ranking-bonus-rail {
-    box-shadow: 0 6px 18px -14px hsl(var(--primary) / 0.75);
-  }
-
-  .ranking-bonus-ticker-track {
-    display: flex;
-    width: max-content;
-    min-width: 100%;
-    animation: ranking-bonus-ticker 28s linear infinite;
+  .ranking-bonus-marquee {
+    animation: ranking-bonus-marquee 18s linear infinite;
     will-change: transform;
   }
 
-  .ranking-bonus-ticker-row {
-    display: flex;
-    align-items: center;
-    gap: 1.75rem;
-    padding-inline: 0.9rem;
-  }
-
-  .ranking-bonus-ticker-item {
-    white-space: nowrap;
-    font-size: 0.7rem;
-    color: hsl(var(--muted-foreground));
-    position: relative;
-    padding-left: 0.8rem;
-  }
-
-  .ranking-bonus-ticker-item::before {
-    content: '•';
-    position: absolute;
-    left: 0;
-    color: hsl(var(--primary));
-  }
-
   @media (prefers-reduced-motion: reduce) {
-    .ranking-bonus-ticker-track {
+    .ranking-bonus-marquee {
       animation: none;
     }
   }
 }
-
