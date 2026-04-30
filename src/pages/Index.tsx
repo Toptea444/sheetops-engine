@@ -28,7 +28,6 @@ import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCar
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
 import { SheetSettingsModal } from '@/components/dashboard/SheetSettingsModal';
 import { RankingBonusMomentumBanner } from '@/components/dashboard/RankingBonusMomentumBanner';
-import { DoubleBonusCelebration } from '@/components/dashboard/DoubleBonusCelebration';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
@@ -1448,15 +1447,6 @@ const Index = () => {
         userName={userName}
         previousDayEarnings={previousDayEarnings}
         isDataReady={!isLoading && identityConfirmed && adjustedResults.length > 0}
-      />
-
-      {/* Double Bonus Period Celebration - April 22-30 */}
-      <DoubleBonusCelebration
-        results={adjustedResults}
-        selectedCycle={selectedCycle}
-        userName={userName}
-        isDataReady={!isLoading && identityConfirmed && adjustedResults.length > 0}
-        isLoggedIn={identityConfirmed && pinVerifiedThisSession}
       />
 
       {/* Cycle Summary Modals */}
