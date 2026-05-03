@@ -8,31 +8,30 @@
 
 @layer base {
   :root {
-    /* Corporate Navy/Blue Theme */
-    /* Slightly darker/tinted surface to reduce "too much white" */
-    --background: 215 25% 96%;
-    --foreground: 215 25% 15%;
+    /* Apple Glass Morphism - Light Theme */
+    --background: 0 0% 100%;
+    --foreground: 215 15% 15%;
 
-    --card: 215 25% 98%;
-    --card-foreground: 215 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 15% 15%;
 
-    --popover: 215 25% 98%;
-    --popover-foreground: 215 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 15% 15%;
 
-    /* Navy Blue Primary */
-    --primary: 215 70% 35%;
+    /* Apple Blue Primary */
+    --primary: 210 95% 56%;
     --primary-foreground: 0 0% 100%;
 
-    /* Light Blue Secondary */
-    --secondary: 210 50% 95%;
-    --secondary-foreground: 215 70% 30%;
+    /* Light Gray Secondary */
+    --secondary: 210 13% 96%;
+    --secondary-foreground: 215 15% 15%;
 
-    --muted: 210 25% 93%;
+    --muted: 210 10% 94%;
     --muted-foreground: 215 15% 45%;
 
-    /* Corporate Accent - Steel Blue */
-    --accent: 210 60% 92%;
-    --accent-foreground: 215 70% 30%;
+    /* Glass Border - subtle white tint */
+    --accent: 210 13% 96%;
+    --accent-foreground: 215 15% 15%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
@@ -45,51 +44,52 @@
     --warning: 35 90% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 215 25% 88%;
-    --input: 215 25% 88%;
-    --ring: 215 70% 45%;
+    --border: 210 13% 91%;
+    --input: 210 13% 91%;
+    --ring: 210 95% 56%;
 
-    --radius: 1rem;
+    /* Ultra-rounded: Apple's sweet spot */
+    --radius: 1.5rem;
 
-    /* Corporate Sidebar */
-    --sidebar-background: 215 30% 18%;
-    --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 210 80% 55%;
+    /* Glass Sidebar */
+    --sidebar-background: 215 15% 5%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 210 95% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 30% 25%;
-    --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 215 30% 25%;
-    --sidebar-ring: 210 80% 55%;
+    --sidebar-accent: 215 15% 10%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 215 15% 15%;
+    --sidebar-ring: 210 95% 56%;
 
-    /* Corporate Chart Colors */
-    --chart-1: 215 70% 45%;
-    --chart-2: 195 70% 50%;
+    /* Chart Colors - minimal, refined */
+    --chart-1: 210 95% 56%;
+    --chart-2: 195 90% 50%;
     --chart-3: 145 60% 45%;
     --chart-4: 35 90% 55%;
     --chart-5: 260 60% 55%;
   }
 
   .dark {
-    --background: 215 30% 10%;
-    --foreground: 210 20% 95%;
+    --background: 215 15% 5%;
+    --foreground: 0 0% 95%;
 
-    --card: 215 30% 14%;
-    --card-foreground: 210 20% 95%;
+    --card: 215 15% 10%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 215 30% 14%;
-    --popover-foreground: 210 20% 95%;
+    --popover: 215 15% 10%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 210 80% 55%;
-    --primary-foreground: 215 30% 10%;
+    --primary: 210 95% 56%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 30% 20%;
-    --secondary-foreground: 210 20% 95%;
+    --secondary: 215 15% 18%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 215 30% 18%;
-    --muted-foreground: 210 15% 60%;
+    --muted: 215 15% 15%;
+    --muted-foreground: 210 13% 70%;
 
-    --accent: 215 30% 22%;
-    --accent-foreground: 210 20% 95%;
+    --accent: 215 15% 18%;
+    --accent-foreground: 0 0% 95%;
 
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
@@ -100,18 +100,18 @@
     --warning: 35 90% 55%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 215 30% 22%;
-    --input: 215 30% 22%;
-    --ring: 210 80% 55%;
+    --border: 215 15% 20%;
+    --input: 215 15% 20%;
+    --ring: 210 95% 56%;
 
-    --sidebar-background: 215 30% 8%;
-    --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 210 80% 55%;
+    --sidebar-background: 215 15% 5%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 210 95% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 30% 15%;
-    --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 215 30% 15%;
-    --sidebar-ring: 210 80% 55%;
+    --sidebar-accent: 215 15% 12%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 215 15% 15%;
+    --sidebar-ring: 210 95% 56%;
   }
 }
 
@@ -144,18 +144,42 @@
 }
 
 @layer utilities {
+  /* Apple Glass Morphism Utilities */
+  .glass {
+    @apply backdrop-blur-md bg-white/30 border border-white/20;
+  }
+
+  .glass-strong {
+    @apply backdrop-blur-xl bg-white/40 border border-white/30;
+  }
+
+  .glass-dark {
+    @apply backdrop-blur-md bg-black/20 border border-white/10;
+  }
+
+  .glass-shadow {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08),
+                0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  .glass-shadow-lg {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1),
+                0 4px 16px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Legacy corporate utilities for compatibility */
   .corporate-gradient {
-    background: linear-gradient(135deg, hsl(215 70% 35%) 0%, hsl(210 80% 45%) 100%);
+    background: linear-gradient(135deg, hsl(210 95% 56%) 0%, hsl(210 90% 60%) 100%);
   }
 
   .corporate-shadow {
-    box-shadow: 0 4px 6px -1px hsl(215 30% 15% / 0.1), 
-                0 2px 4px -2px hsl(215 30% 15% / 0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 
+                0 2px 4px -2px rgba(0, 0, 0, 0.05);
   }
 
   .corporate-shadow-lg {
-    box-shadow: 0 10px 15px -3px hsl(215 30% 15% / 0.1),
-                0 4px 6px -4px hsl(215 30% 15% / 0.1);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08),
+                0 4px 6px -4px rgba(0, 0, 0, 0.05);
   }
 }
 

@@ -46,7 +46,7 @@ export function Header({
   const showUserBadgeStatic = userId && !onSwitchUser;
 
   return (
-    <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+    <header className="glass rounded-b-2xl sticky top-0 z-50">
       <div className="container mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center">
