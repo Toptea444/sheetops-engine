@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
  * as the rest of the app. No AI sparkle icons, no gradient text.
  */
 
-const FIRST_ID = "NGDS-1009";
+const FIRST_ID = "NGDS1009";
 
 /* ============================================================
    SHARED SCENERY LAYERS
@@ -218,47 +218,44 @@ const MarqueeColumn = ({
 };
 
 /* ============================================================
-   SCENE 1 — Cold open, kinetic typography
+   SCENE 1 — Cold open
    ============================================================ */
 const SceneOne = ({ onDone }: { onDone: () => void }) => {
   useEffect(() => {
-    const t = window.setTimeout(onDone, 6800);
+    const t = window.setTimeout(onDone, 4800);
     return () => window.clearTimeout(t);
   }, [onDone]);
 
   return (
     <SceneShell>
       <AuroraSweep />
-      <FloatingParticles count={18} />
+      <FloatingParticles count={14} />
 
-      {/* expanding shockwave */}
-      {[0, 1, 2].map((i) => (
-        <motion.div
-          key={i}
-          className="absolute h-24 w-24 rounded-full border-2 border-blue-400/40"
-          initial={{ scale: 0, opacity: 0.8 }}
-          animate={{ scale: 8, opacity: 0 }}
-          transition={{ duration: 4, repeat: Infinity, delay: i * 1.3, ease: "easeOut" }}
-        />
-      ))}
+      {/* single soft pulse, no spiral */}
+      <motion.div
+        className="absolute h-3 w-3 rounded-full bg-blue-300 shadow-[0_0_60px_20px_rgba(96,165,250,0.6)]"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.9] }}
+        transition={{ duration: 1.2, ease: "easeOut" }}
+      />
 
       <div className="relative z-10 mx-6 max-w-3xl text-center">
         <motion.p
           initial={{ opacity: 0, letterSpacing: "0.05em" }}
-          animate={{ opacity: 1, letterSpacing: "0.55em" }}
-          transition={{ duration: 1.8, delay: 0.3 }}
-          className="mb-8 text-[10px] uppercase text-blue-300 sm:text-xs"
+          animate={{ opacity: 1, letterSpacing: "0.45em" }}
+          transition={{ duration: 1, delay: 0.2 }}
+          className="mb-6 text-[10px] uppercase text-blue-300 sm:text-xs"
         >
           A short story · Chapter one
         </motion.p>
 
-        <h1 className="mb-6 text-4xl font-bold leading-[1.05] text-white sm:text-6xl">
+        <h1 className="mb-5 text-4xl font-bold leading-[1.05] text-white sm:text-6xl">
           {"Every big thing".split(" ").map((w, i) => (
             <motion.span
               key={i}
-              initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
+              initial={{ opacity: 0, y: 30, filter: "blur(6px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 0.9, delay: 1 + i * 0.2 }}
+              transition={{ duration: 0.5, delay: 0.6 + i * 0.12 }}
               className="mr-3 inline-block"
             >
               {w}
@@ -268,9 +265,9 @@ const SceneOne = ({ onDone }: { onDone: () => void }) => {
           {"started small.".split(" ").map((w, i) => (
             <motion.span
               key={i}
-              initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
+              initial={{ opacity: 0, y: 30, filter: "blur(6px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 0.9, delay: 1.8 + i * 0.2 }}
+              transition={{ duration: 0.5, delay: 1.1 + i * 0.12 }}
               className="mr-3 inline-block text-blue-200"
             >
               {w}
@@ -279,17 +276,17 @@ const SceneOne = ({ onDone }: { onDone: () => void }) => {
         </h1>
 
         <motion.p
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 3.6 }}
+          transition={{ duration: 0.7, delay: 2 }}
           className="text-base text-slate-300 sm:text-xl"
         >
           A spreadsheet. A team. A simple question:
         </motion.p>
         <motion.p
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 4.6 }}
+          transition={{ duration: 0.7, delay: 2.6 }}
           className="mt-2 text-lg italic text-white sm:text-2xl"
         >
           "How much did I really earn this week?"
@@ -300,86 +297,76 @@ const SceneOne = ({ onDone }: { onDone: () => void }) => {
 };
 
 /* ============================================================
-   SCENE 2 — The first spark (NGDS-1009)
+   SCENE 2 — The first person (NGDS1009, January)
    ============================================================ */
 const SceneTwo = ({ onDone }: { onDone: () => void }) => {
   useEffect(() => {
-    const t = window.setTimeout(onDone, 6800);
+    const t = window.setTimeout(onDone, 5500);
     return () => window.clearTimeout(t);
   }, [onDone]);
 
   return (
     <SceneShell>
       <GridFloor />
-      <FloatingParticles count={20} />
+      <FloatingParticles count={16} />
 
-      {/* spotlight cone */}
       <motion.div
         initial={{ opacity: 0, scaleY: 0 }}
         animate={{ opacity: 0.6, scaleY: 1 }}
-        transition={{ duration: 1.4, delay: 0.4 }}
+        transition={{ duration: 0.9, delay: 0.2 }}
         className="absolute top-0 h-1/2 w-[60vw] origin-top bg-gradient-to-b from-blue-300/30 via-blue-400/10 to-transparent blur-2xl"
         style={{ clipPath: "polygon(40% 0, 60% 0, 100% 100%, 0 100%)" }}
       />
 
       <div className="relative z-10 mx-6 flex max-w-2xl flex-col items-center text-center">
-        {/* ID card with pulsing halo */}
-        <div className="relative mb-8">
+        <div className="relative mb-7">
           <motion.div
             className="absolute inset-0 -z-10 rounded-2xl bg-blue-400/40 blur-3xl"
-            animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0.8, 0.4] }}
-            transition={{ duration: 2.2, repeat: Infinity }}
+            animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.8, 0.4] }}
+            transition={{ duration: 1.8, repeat: Infinity }}
           />
           <motion.div
-            initial={{ scale: 0.2, opacity: 0, rotateY: -180 }}
+            initial={{ scale: 0.4, opacity: 0, rotateY: -120 }}
             animate={{ scale: 1, opacity: 1, rotateY: 0 }}
-            transition={{ duration: 1.4, ease: "backOut" }}
+            transition={{ duration: 0.9, ease: "backOut" }}
             style={{ transformStyle: "preserve-3d" }}
           >
             <IdCard id={FIRST_ID} className="scale-150" />
           </motion.div>
-          {/* orbiting dot */}
-          <motion.div
-            className="absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-          >
-            <span className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-blue-300 shadow-[0_0_12px_rgba(147,197,253,0.9)]" />
-          </motion.div>
         </div>
 
         <motion.p
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.6 }}
+          transition={{ duration: 0.6, delay: 1 }}
           className="mb-2 text-[10px] uppercase tracking-[0.4em] text-blue-300 sm:text-xs"
         >
-          Worker zero
+          January · the very first one
         </motion.p>
 
         <motion.h2
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 2 }}
-          className="mb-5 text-3xl font-bold text-white sm:text-5xl"
+          transition={{ duration: 0.7, delay: 1.3 }}
+          className="mb-4 text-3xl font-bold text-white sm:text-5xl"
         >
-          It all began with one person.
+          It all started with one person, in January.
         </motion.h2>
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 3.2 }}
+          transition={{ duration: 0.7, delay: 2.2 }}
           className="text-base text-slate-300 sm:text-lg"
         >
-          One worker. One screen. One quiet click.
+          One worker opened the app for the very first time.
         </motion.p>
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 4.4 }}
+          transition={{ duration: 0.7, delay: 3.1 }}
           className="mt-3 text-sm text-blue-300 sm:text-base"
         >
-          Nobody knew what would happen next.
+          Then they told a friend. And that's where it really began.
         </motion.p>
       </div>
     </SceneShell>
@@ -387,109 +374,95 @@ const SceneTwo = ({ onDone }: { onDone: () => void }) => {
 };
 
 /* ============================================================
-   SCENE 3 — Word spreads (LOTS of IDs)
+   SCENE 3 — Word spreads (constellation of IDs lighting up)
    ============================================================ */
 const SceneThree = ({ ids, onDone }: { ids: string[]; onDone: () => void }) => {
   useEffect(() => {
-    const t = window.setTimeout(onDone, 8500);
+    const t = window.setTimeout(onDone, 6500);
     return () => window.clearTimeout(t);
   }, [onDone]);
 
-  // Many hero cards arriving from various directions
-  const heroIds = useMemo(() => ids.slice(0, 14), [ids]);
-  const positions: React.CSSProperties[] = [
-    { top: "12%", left: "8%" },
-    { top: "18%", right: "10%" },
-    { top: "26%", left: "22%" },
-    { top: "32%", right: "24%" },
-    { top: "44%", left: "6%" },
-    { top: "48%", right: "8%" },
-    { bottom: "30%", left: "18%" },
-    { bottom: "26%", right: "20%" },
-    { bottom: "14%", left: "10%" },
-    { bottom: "10%", right: "12%" },
-    { top: "8%", left: "42%" },
-    { bottom: "6%", left: "44%" },
-    { top: "55%", left: "32%" },
-    { top: "60%", right: "30%" },
-  ];
-  const fromVectors = [
-    { x: -200, y: -150 },
-    { x: 200, y: -150 },
-    { x: -250, y: 0 },
-    { x: 250, y: 0 },
-    { x: -150, y: 200 },
-    { x: 150, y: 200 },
-    { x: 0, y: -250 },
-    { x: 0, y: 250 },
-  ];
+  const cards = useMemo(() => {
+    const pool = ids.length ? ids : Array.from({ length: 28 }, (_, i) => `NGDS${1000 + i}`);
+    const slice = pool.slice(0, Math.min(26, pool.length));
+    return slice.map((id, i) => {
+      const seed = (i * 9301 + 49297) % 233280;
+      const rand = seed / 233280;
+      const rand2 = ((i * 7 + 13) % 100) / 100;
+      return {
+        id,
+        x: 4 + rand * 90,
+        y: 6 + rand2 * 80,
+        delay: 0.15 + i * 0.1,
+        scale: 0.85 + (i % 3) * 0.08,
+      };
+    });
+  }, [ids]);
 
   return (
     <SceneShell>
-      <AuroraSweep />
-      <MarqueeColumn ids={ids} side="left" durationSec={42} />
-      <MarqueeColumn ids={ids} side="center-left" durationSec={55} reverse offset={-40} />
-      <MarqueeColumn ids={ids} side="center-right" durationSec={50} offset={-80} />
-      <MarqueeColumn ids={ids} side="right" durationSec={48} reverse />
+      <FloatingParticles count={20} />
 
-      {/* Cards rushing in from off-screen */}
-      <div className="pointer-events-none absolute inset-0 z-20">
-        {heroIds.map((id, i) => {
-          const v = fromVectors[i % fromVectors.length];
-          return (
-            <motion.div
-              key={id + i}
-              initial={{ opacity: 0, scale: 0.2, x: v.x, y: v.y, rotate: -15 }}
-              animate={{
-                opacity: [0, 1, 1, 0],
-                scale: [0.2, 1, 1, 0.9],
-                x: [v.x, 0, 0, 0],
-                y: [v.y, 0, 0, -20],
-                rotate: [-15, 0, 0, 0],
-              }}
-              transition={{
-                duration: 5.5,
-                delay: 0.3 + i * 0.25,
-                times: [0, 0.2, 0.78, 1],
-                ease: "easeOut",
-              }}
-              className="absolute"
-              style={positions[i]}
-            >
-              <IdCard id={id} />
-            </motion.div>
-          );
-        })}
+      <motion.div
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 30% 40%, rgba(96,165,250,0.25) 1px, transparent 1px)," +
+            "radial-gradient(circle at 70% 60%, rgba(147,197,253,0.25) 1px, transparent 1px)",
+          backgroundSize: "80px 80px, 100px 100px",
+        }}
+        animate={{ backgroundPosition: ["0 0, 0 0", "80px 80px, -100px 100px"] }}
+        transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+      />
+
+      {/* IDs popping in like stars lighting up */}
+      <div className="pointer-events-none absolute inset-0 z-10">
+        {cards.map((c, i) => (
+          <motion.div
+            key={c.id + i}
+            className="absolute"
+            style={{ left: `${c.x}%`, top: `${c.y}%` }}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: [0, 1, 0.85], scale: [0, c.scale * 1.15, c.scale] }}
+            transition={{ duration: 0.6, delay: c.delay, ease: "backOut" }}
+          >
+            <motion.span
+              className="absolute inset-0 -z-10 rounded-xl bg-blue-400/40 blur-xl"
+              animate={{ opacity: [0.5, 0.2, 0.5] }}
+              transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.1 }}
+            />
+            <IdCard id={c.id} />
+          </motion.div>
+        ))}
       </div>
 
-      {/* Center dark plate so headline reads cleanly */}
       <div className="relative z-30 mx-6 max-w-2xl">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          className="rounded-3xl border border-blue-400/20 bg-slate-950/80 px-6 py-8 backdrop-blur-md sm:px-10 sm:py-10"
+          transition={{ duration: 0.5 }}
+          className="rounded-3xl border border-blue-400/20 bg-slate-950/85 px-6 py-7 backdrop-blur-md sm:px-10 sm:py-9"
         >
           <h2 className="text-center text-3xl font-bold leading-tight text-white sm:text-5xl">
-            Then someone whispered it
+            Then they told everyone
             <br />
-            <span className="text-blue-200">to a friend.</span>
+            <span className="text-blue-200">they could.</span>
           </h2>
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 1.6 }}
-            className="mt-5 text-center text-base text-slate-300 sm:text-lg"
+            transition={{ duration: 0.6, delay: 1 }}
+            className="mt-4 text-center text-base text-slate-300 sm:text-lg"
           >
-            That friend told another. And another.
+            One mouth. Then two. Then dozens.
           </motion.p>
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 3.2 }}
+            transition={{ duration: 0.6, delay: 1.9 }}
             className="mt-3 text-center text-sm text-blue-300 sm:text-base"
           >
-            Soon, real worker IDs were lighting up the screen — one by one.
+            Real worker IDs lit up the screen — one after another.
           </motion.p>
         </motion.div>
       </div>
@@ -498,7 +471,7 @@ const SceneThree = ({ ids, onDone }: { ids: string[]; onDone: () => void }) => {
 };
 
 /* ============================================================
-   SCENE 4 — The number
+   SCENE 4 — The number (orbiting IDs)
    ============================================================ */
 const SceneFour = ({
   ids,
@@ -513,41 +486,75 @@ const SceneFour = ({
   const rounded = useTransform(display, (v) => Math.round(v).toString());
 
   useEffect(() => {
-    const t = window.setTimeout(onDone, 7500);
+    const t = window.setTimeout(onDone, 6000);
     return () => window.clearTimeout(t);
   }, [onDone]);
 
   useEffect(() => {
     if (!count) return;
     const controls = animate(display, count, {
-      duration: 2.6,
-      delay: 0.8,
+      duration: 2,
+      delay: 0.4,
       ease: [0.16, 1, 0.3, 1],
     });
     return controls.stop;
   }, [count, display]);
 
+  const innerOrbit = useMemo(() => ids.slice(0, 8), [ids]);
+  const outerOrbit = useMemo(() => ids.slice(8, 20), [ids]);
+
+  const orbit = (list: string[], radius: number, durationSec: number, reverse = false) => (
+    <motion.div
+      className="absolute inset-0 flex items-center justify-center"
+      animate={{ rotate: reverse ? -360 : 360 }}
+      transition={{ duration: durationSec, repeat: Infinity, ease: "linear" }}
+    >
+      {list.map((id, i) => {
+        const angle = (i / list.length) * 360;
+        return (
+          <div
+            key={id + i}
+            className="absolute"
+            style={{
+              transform: `rotate(${angle}deg) translate(${radius}px) rotate(-${angle}deg)`,
+            }}
+          >
+            <motion.div
+              animate={{ rotate: reverse ? 360 : -360 }}
+              transition={{ duration: durationSec, repeat: Infinity, ease: "linear" }}
+            >
+              <IdCard id={id} className="opacity-80" />
+            </motion.div>
+          </div>
+        );
+      })}
+    </motion.div>
+  );
+
   return (
     <SceneShell>
-      <AuroraSweep />
-      <MarqueeColumn ids={ids} side="left" durationSec={50} />
-      <MarqueeColumn ids={ids} side="center-left" durationSec={62} reverse offset={-30} />
-      <MarqueeColumn ids={ids} side="center-right" durationSec={58} offset={-60} />
-      <MarqueeColumn ids={ids} side="right" durationSec={55} reverse />
+      <FloatingParticles count={18} />
 
-      {/* radial pulse behind the number */}
       <motion.div
-        className="absolute h-[60vmin] w-[60vmin] rounded-full bg-blue-500/20 blur-3xl"
-        animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.3, 0.7, 0.3] }}
-        transition={{ duration: 3, repeat: Infinity }}
+        className="absolute h-[55vmin] w-[55vmin] rounded-full bg-blue-500/20 blur-3xl"
+        animate={{ scale: [0.9, 1.15, 0.9], opacity: [0.3, 0.7, 0.3] }}
+        transition={{ duration: 2.4, repeat: Infinity }}
       />
+
+      <div className="pointer-events-none absolute inset-0 z-10 hidden sm:block">
+        {orbit(innerOrbit, 180, 28)}
+        {orbit(outerOrbit, 290, 40, true)}
+      </div>
+      <div className="pointer-events-none absolute inset-0 z-10 sm:hidden">
+        {orbit(innerOrbit.slice(0, 6), 130, 24)}
+      </div>
 
       <div className="pointer-events-none relative z-30 mx-6 flex flex-col items-center text-center">
         <motion.div
-          initial={{ opacity: 0, y: 14 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-400/40 bg-slate-950/80 px-5 py-2 backdrop-blur"
+          transition={{ duration: 0.6 }}
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-400/40 bg-slate-950/80 px-5 py-2 backdrop-blur"
         >
           <span className="h-2 w-2 animate-pulse rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.9)]" />
           <span className="text-[10px] font-medium uppercase tracking-[0.4em] text-blue-200 sm:text-xs">
@@ -556,10 +563,9 @@ const SceneFour = ({
         </motion.div>
 
         <motion.div
-          initial={{ scale: 0.5, opacity: 0, filter: "blur(20px)" }}
+          initial={{ scale: 0.6, opacity: 0, filter: "blur(14px)" }}
           animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
-          transition={{ duration: 1.2, delay: 0.4, ease: "backOut" }}
-          className="relative"
+          transition={{ duration: 0.8, delay: 0.3, ease: "backOut" }}
         >
           <motion.span className="block text-7xl font-black leading-none text-white drop-shadow-[0_0_50px_rgba(96,165,250,0.6)] sm:text-9xl">
             {rounded}
@@ -567,17 +573,17 @@ const SceneFour = ({
         </motion.div>
 
         <motion.p
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 3 }}
-          className="mt-7 max-w-md text-xl font-semibold text-white sm:text-3xl"
+          transition={{ duration: 0.7, delay: 2.2 }}
+          className="mt-6 max-w-md text-xl font-semibold text-white sm:text-3xl"
         >
           workers are using this app today.
         </motion.p>
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.9, delay: 4.2 }}
+          transition={{ duration: 0.7, delay: 3.1 }}
           className="mt-3 max-w-sm text-sm text-blue-300 sm:text-base"
         >
           And the count climbs every single week.
