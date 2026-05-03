@@ -88,10 +88,10 @@ export function GoalsPanel({
 
       {/* Goal card */}
       <div className={cn(
-        'p-3 rounded-lg border transition-all duration-300',
+        'p-3 glass rounded-2xl glass-shadow transition-all duration-300',
         isComplete
-          ? 'bg-success/5 border-success/30'
-          : 'bg-muted/20 border-border/60'
+          ? 'border-success/30'
+          : 'border-white/20 dark:border-black/10'
       )}>
         <div className="flex items-start gap-3">
           <div className={cn(

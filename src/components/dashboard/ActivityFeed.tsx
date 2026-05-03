@@ -197,9 +197,9 @@ export function ActivityFeed({ sheetData, currentUserId, cycle }: ActivityFeedPr
             <div
               key={activity.id}
               className={cn(
-                'flex items-start gap-3 p-2.5 rounded-lg transition-all duration-200',
-                'animate-fade-in hover:bg-muted/30',
-                isCurrentUser && 'bg-primary/5 border border-primary/20'
+                'flex items-start gap-3 p-2.5 glass rounded-2xl transition-all duration-200',
+                'animate-fade-in hover:bg-white/20 dark:hover:bg-black/20',
+                isCurrentUser && 'border-primary/30'
               )}
               style={{ animationDelay: `${index * 50}ms` }}
             >

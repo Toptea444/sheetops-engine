@@ -42,7 +42,7 @@ export function StreaksPanel({
   return (
     <div className="space-y-4">
       {/* Streak Card */}
-      <div className="p-4 rounded-lg bg-gradient-to-br from-warning/20 to-destructive/10 border border-warning/30">
+      <div className="p-4 glass rounded-2xl glass-shadow border-warning/20 bg-gradient-to-br from-warning/5 to-destructive/5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-warning/30 flex items-center justify-center">

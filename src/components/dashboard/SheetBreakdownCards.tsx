@@ -67,7 +67,7 @@ export function SheetBreakdownCards({
       {sheetBreakdown.map((sheet) => (
         <div 
           key={sheet.name} 
-          className="shrink-0 px-3 py-2.5 rounded-lg border bg-card/70 min-w-[132px]"
+          className="shrink-0 px-3 py-2.5 glass rounded-full min-w-[132px]"
         >
           <div className="flex items-center gap-2 mb-1">
             <p className="text-xs text-muted-foreground truncate max-w-[110px]">
@@ -92,7 +92,7 @@ export function SheetBreakdownCards({
 
       {/* Transport Subsidy card */}
       {subsidyOptedIn && (
-        <div className="shrink-0 px-3 py-2.5 rounded-lg border bg-card/70 min-w-[132px]">
+        <div className="shrink-0 px-3 py-2.5 glass rounded-full min-w-[132px]">
           <div className="flex items-center gap-2 mb-1">
             <p className="text-xs text-muted-foreground truncate max-w-[110px]">
               Transport

@@ -179,7 +179,7 @@ export function LeaderboardPanel({
 
         {/* Data info banner for cycle mode */}
         {mode === 'cycle' && dataInfo.latestDataDate && (
-          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
+          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground glass rounded-2xl px-3 py-2">
             <Calendar className="h-3.5 w-3.5" />
             <span>
               Data available through <span className="font-medium text-foreground">{formatDateShort(dataInfo.latestDataDate)}</span>
@@ -292,7 +292,7 @@ function LeaderboardList({ entries, currentUserId, showPodium }: LeaderboardList
             )}
             <div
               className={cn(
-                'flex items-center gap-3 p-3 rounded-lg border transition-colors',
+                'flex items-center gap-3 p-3 glass rounded-2xl glass-shadow transition-colors',
                 getRankBg(entry.rank, entry.isCurrentUser)
               )}
             >

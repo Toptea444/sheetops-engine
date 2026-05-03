@@ -109,14 +109,14 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
 
   if (grandTotal === 0) {
     return (
-      <div className="h-[120px] flex items-center justify-center text-sm text-muted-foreground border rounded-md bg-muted/20">
+      <div className="h-[120px] flex items-center justify-center text-sm text-muted-foreground glass rounded-2xl">
         No earnings data for this cycle
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
+    <div className="glass rounded-2xl p-4 glass-shadow space-y-3">
       <p className="text-xs text-muted-foreground">Weekly Breakdown</p>
       <div className="space-y-2">
         {weekData.map((week) => {
@@ -136,7 +136,7 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
                   )}
                 </div>
               </div>
-              <div className="h-2 w-full rounded-full bg-muted/40 overflow-hidden">
+              <div className="h-2 w-full rounded-full bg-white/20 dark:bg-black/20 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-primary transition-all duration-500"
                   style={{ width: `${Math.max(pct, week.total > 0 ? 2 : 0)}%` }}
@@ -146,7 +146,7 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
           );
         })}
       </div>
-      <div className="flex justify-end pt-1 border-t border-border/50">
+      <div className="flex justify-end pt-2 border-t border-white/20 dark:border-black/20">
         {isHidden ? (
           <div className="h-4 w-24 rounded-md bg-muted animate-pulse" />
         ) : (

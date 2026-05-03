@@ -187,7 +187,7 @@ export function DailyEarningsTable({
                 </p>
 
                 {stats.hasSplit && !isPercent ? (
-                  <div className="grid grid-cols-4 gap-2 mb-3 p-3 bg-muted/20 rounded-lg text-center">
+                  <div className="grid grid-cols-4 gap-2 mb-3 p-3 glass rounded-2xl text-center">
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Bonus</p>
                       <p className="text-base font-semibold">{formatCurrency(stats.bonusTotal)}</p>
@@ -206,7 +206,7 @@ export function DailyEarningsTable({
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-2 mb-3 p-3 bg-muted/20 rounded-lg text-center">
+                  <div className="grid grid-cols-3 gap-2 mb-3 p-3 glass rounded-2xl text-center">
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>
                       <p className="text-base font-semibold">{formatValue(stats.total)}</p>
@@ -228,10 +228,10 @@ export function DailyEarningsTable({
                   </p>
                 ) : (
                   <>
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="glass rounded-2xl overflow-hidden">
                       <Table>
                         <TableHeader>
-                          <TableRow className="hover:bg-transparent bg-muted/20">
+                          <TableRow className="hover:bg-transparent bg-white/20 dark:bg-black/10">
                             <TableHead className="text-sm font-medium h-10">Date</TableHead>
                             {stats.hasSplit && !isPercent ? (
                               <>
@@ -324,7 +324,7 @@ export function DailyEarningsTable({
             {subsidyData ? (
               <div className="space-y-4">
                 {/* Summary stats */}
-                <div className="grid grid-cols-2 gap-3 p-4 bg-muted/20 rounded-lg">
+                <div className="grid grid-cols-2 gap-3 p-4 glass rounded-2xl">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground shrink-0" />
                     <div>
@@ -342,10 +342,10 @@ export function DailyEarningsTable({
                 </div>
 
                 {/* Detailed breakdown */}
-                <div className="border rounded-lg overflow-hidden">
+                <div className="glass rounded-2xl overflow-hidden">
                   <Table>
                     <TableHeader>
-                      <TableRow className="hover:bg-transparent bg-muted/20">
+                      <TableRow className="hover:bg-transparent bg-white/20 dark:bg-black/10">
                         <TableHead className="text-sm font-medium h-10">Metric</TableHead>
                         <TableHead className="text-sm font-medium h-10 text-right">Value</TableHead>
                       </TableRow>
