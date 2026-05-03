@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
  * as the rest of the app. No AI sparkle icons, no gradient text.
  */
 
-const FIRST_ID = "NGDS-1009";
+const FIRST_ID = "NGDS1009";
 
 /* ============================================================
    SHARED SCENERY LAYERS
