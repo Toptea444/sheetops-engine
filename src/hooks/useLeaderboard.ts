@@ -94,9 +94,14 @@ export function getCurrentWeekInCycle(cycle: CyclePeriod): WeekPeriod | null {
 }
 
 function normalizeComparable(value: string): string {
-  // Be extra tolerant: users sometimes copy/paste IDs with hidden chars or punctuation.
-  // Keep only alphanumerics so matching works reliably across sheets.
-  return value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // Keep meaningful separators like hyphens because NGDS1009 and NGDS-1009
+  // represent different collector stages in this app.
+  return value
+    .toUpperCase()
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[‐‑‒–—―]/g, '-')
+    .replace(/\s+/g, '')
+    .trim();
 }
 
 function normalizeLabel(s: string): string {
