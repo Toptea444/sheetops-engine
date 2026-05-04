@@ -186,15 +186,23 @@ function normalizeStage(stage: string): string {
     .replace(/[‐‑‒–—―]/g, '-')
     .trim();
 
+  const canonicalizeZeroStage = (prefix: string, value: string) => {
+    const numeric = Number.parseInt(value, 10);
+    if (Number.isFinite(numeric) && numeric === 0) {
+      return `${prefix}0`;
+    }
+    return `${prefix}${value}`;
+  };
+
   const stageWordMatch = raw.match(/^STAGE\s*-?\s*(-?\d+)$/);
   if (stageWordMatch) {
-    return `S${stageWordMatch[1]}`;
+    return canonicalizeZeroStage('S', stageWordMatch[1]);
   }
 
   const compact = raw.replace(/[\s_]/g, '');
   const shortMatch = compact.match(/^([ST])(-?\d+)$/);
   if (shortMatch) {
-    return `${shortMatch[1]}${shortMatch[2]}`;
+    return canonicalizeZeroStage(shortMatch[1], shortMatch[2]);
   }
 
   return compact;
