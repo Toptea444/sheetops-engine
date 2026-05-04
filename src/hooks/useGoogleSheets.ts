@@ -336,8 +336,8 @@ function parseDailyPerformanceSheet(
     const looksLikeUserId = (v: string) => {
       const t = v.trim().toUpperCase();
       if (!t) return false;
-      // Examples: GHAS-1008, NGDS-1009, GHBS-1002
-      return /^[A-Z]{2,6}-\d{2,6}$/.test(t);
+      // Examples: NGDS1009 (S1), NGDS0001 (T0), NGDS-1009 (T-1), K-1001
+      return /^[A-Z]{1,6}(?:-)?\d{2,6}$/.test(t);
     };
 
     const sampleRows = matrix.slice(dataStartRow, Math.min(matrix.length, dataStartRow + 80));
