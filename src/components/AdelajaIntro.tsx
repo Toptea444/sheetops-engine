@@ -56,18 +56,12 @@ export function AdelajaIntro({ onComplete }: AdelajaIntroProps) {
   const reduceMotion = useReducedMotion();
   const [visible, setVisible] = useState<boolean | null>(null);
 
-  // Decide visibility once config has loaded from server (or fall back to cached default).
+  // Decide visibility once based on first available config (cached or default).
   useEffect(() => {
     if (visible !== null) return;
-    if (!loaded) {
-      // fast path: if cached config disables intro, skip immediately
-      if (!config.enabled) {
-        setVisible(false);
-      }
-      return;
-    }
     setVisible(shouldShow(config));
-  }, [loaded, config, visible]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const finish = useCallback(() => setVisible(false), []);
 
