@@ -32,6 +32,7 @@ import { RankingBonusMomentumBanner } from '@/components/dashboard/RankingBonusM
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
 import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
+import { AdelajaIntro } from '@/components/AdelajaIntro';
 import { CycleSummaryModal } from '@/components/dashboard/CycleSummaryModal';
 import { CycleSummaryStaticModal } from '@/components/dashboard/CycleSummaryStaticModal';
 import { CycleSelectorHighlight, hasSeenCycleSelectorHighlight, markCycleSelectorHighlightAsSeen } from '@/components/dashboard/CycleSelectorHighlight';
@@ -88,6 +89,7 @@ const Index = () => {
   } = useUserIdentity();
 
   const [showWelcome, setShowWelcome] = useState(false);
+  const [introDone, setIntroDone] = useState(false);
   const [showIdentityConfirmation, setShowIdentityConfirmation] = useState(false);
   const [showPinGate, setShowPinGate] = useState(false);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
@@ -1441,12 +1443,14 @@ const Index = () => {
       />
 
 
+      <AdelajaIntro onComplete={() => setIntroDone(true)} />
+
       <EarningsReveal
         totalEarnings={cycleStats.totalEarnings}
         daysActive={cycleStats.daysActive}
         userName={userName}
         previousDayEarnings={previousDayEarnings}
-        isDataReady={!isLoading && identityConfirmed && adjustedResults.length > 0}
+        isDataReady={introDone && !isLoading && identityConfirmed && adjustedResults.length > 0}
       />
 
       {/* Cycle Summary Modals */}
