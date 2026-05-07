@@ -559,6 +559,44 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'get_intro_config': {
+        const { data: row } = await supabase
+          .from('admin_settings')
+          .select('setting_value')
+          .eq('setting_key', 'intro_config')
+          .maybeSingle();
+        result = { config: row?.setting_value ?? null };
+        break;
+      }
+
+      case 'update_intro_config': {
+        const cfg = params?.config;
+        if (!cfg || typeof cfg !== 'object') {
+          result = { success: false, error: 'Config object is required' };
+          break;
+        }
+        const { data: existing } = await supabase
+          .from('admin_settings')
+          .select('id')
+          .eq('setting_key', 'intro_config')
+          .maybeSingle();
+        if (existing) {
+          await supabase
+            .from('admin_settings')
+            .update({ setting_value: cfg, updated_at: new Date().toISOString() })
+            .eq('id', existing.id);
+        } else {
+          await supabase.from('admin_settings').insert({
+            setting_key: 'intro_config',
+            setting_value: cfg,
+            description: 'Built by Adelaja intro animation configuration',
+          });
+        }
+        await logAudit(supabase, 'update_intro_config', { keys: Object.keys(cfg) }, 'settings', 'intro_config');
+        result = { success: true };
+        break;
+      }
+
       case 'get_pin_reset_requests': {
         const { data: requests } = await supabase
           .from('pin_reset_requests')
