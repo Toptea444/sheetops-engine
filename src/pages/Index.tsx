@@ -32,6 +32,7 @@ import { RankingBonusMomentumBanner } from '@/components/dashboard/RankingBonusM
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
 import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
+import { AdelajaIntro } from '@/components/AdelajaIntro';
 import { CycleSummaryModal } from '@/components/dashboard/CycleSummaryModal';
 import { CycleSummaryStaticModal } from '@/components/dashboard/CycleSummaryStaticModal';
 import { CycleSelectorHighlight, hasSeenCycleSelectorHighlight, markCycleSelectorHighlightAsSeen } from '@/components/dashboard/CycleSelectorHighlight';
