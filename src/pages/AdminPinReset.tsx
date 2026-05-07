@@ -27,6 +27,7 @@ import { AuditLogTab } from '@/components/admin/AuditLogTab';
 import { CycleReportTab } from '@/components/admin/CycleReportTab';
 import { WorkerNotesTab } from '@/components/admin/WorkerNotesTab';
 import { StageTotalsTab } from '@/components/admin/StageTotalsTab';
+import { IntroAnimationTab } from '@/components/admin/IntroAnimationTab';
 import { ThemeSwitcher } from '@/components/dashboard/ThemeSwitcher';
 import { useTheme, type Theme, type AccentColor } from '@/hooks/useTheme';
 import { toast } from 'sonner';
@@ -1647,6 +1648,10 @@ export default function AdminPinReset() {
               <Bell className="h-3 w-3" />
               <span className="hidden sm:inline">Alerts</span>
             </TabsTrigger>
+            <TabsTrigger value="intro" className="text-xs gap-0.5 px-2 shrink-0">
+              <Sparkles className="h-3 w-3" />
+              <span className="hidden sm:inline">Intro</span>
+            </TabsTrigger>
             <TabsTrigger value="settings" className="text-xs gap-0.5 px-2 shrink-0">
               <Settings className="h-3 w-3" />
               <span className="hidden sm:inline">Settings</span>
@@ -1690,6 +1695,9 @@ export default function AdminPinReset() {
           </TabsContent>
           <TabsContent value="alerts">
             <AlertsTab adminSecret={adminSecret} />
+          </TabsContent>
+          <TabsContent value="intro">
+            <IntroAnimationTab adminSecret={adminSecret} />
           </TabsContent>
           <TabsContent value="settings">
             <SettingsTab adminSecret={adminSecret} />
