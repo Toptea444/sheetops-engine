@@ -1442,12 +1442,14 @@ const Index = () => {
       />
 
 
+      <AdelajaIntro onComplete={() => setIntroDone(true)} />
+
       <EarningsReveal
         totalEarnings={cycleStats.totalEarnings}
         daysActive={cycleStats.daysActive}
         userName={userName}
         previousDayEarnings={previousDayEarnings}
-        isDataReady={!isLoading && identityConfirmed && adjustedResults.length > 0}
+        isDataReady={introDone && !isLoading && identityConfirmed && adjustedResults.length > 0}
       />
 
       {/* Cycle Summary Modals */}
