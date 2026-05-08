@@ -240,7 +240,7 @@ export function AdelajaIntro({ onComplete }: AdelajaIntroProps) {
           style={{ background: config.backgroundColor }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 0.985 }}
+          exit={{ opacity: 0 }}
           transition={{ duration: exitDuration, ease: 'easeOut' }}
         >
           {config.showGlow && (
