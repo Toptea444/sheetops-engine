@@ -219,7 +219,24 @@ const Index = () => {
     selectedCycle
   );
 
-  const isIdentityLocked = !!userId && !identityConfirmed;
+  // AI personal-assistant insight (banner) — only for Daily/Performance sheets
+  const { insight: aiInsight, loading: aiInsightLoading } = useEarningsInsight({
+    results: adjustedResults,
+    cycle: selectedCycle,
+    workerName: userName,
+    enabled: introDone && identityConfirmed && pinVerifiedThisSession && adjustedResults.length > 0,
+  });
+  const aiInsightSignature = useMemo(() => {
+    const dp = adjustedResults
+      .filter((r) => {
+        const u = (r.sheetName || '').toUpperCase();
+        return u.includes('DAILY') || u.includes('PERFORMANCE');
+      })
+      .map((r) => `${r.sheetName}:${Math.round(r.totalBonus)}`)
+      .join('|');
+    return `${getCycleKey(selectedCycle)}::${dp}`;
+  }, [adjustedResults, selectedCycle]);
+
 
   // Helper to check if a sheet is the transport subsidy sheet (uses different IDs)
   const isTransportSubsidySheet = (name: string): boolean => {
