@@ -96,7 +96,6 @@ export function AdelajaIntro({ onComplete }: AdelajaIntroProps) {
 
   useEffect(() => {
     if (visible !== true) {
-      if (visible === false) onComplete();
       return;
     }
     recordShow();
@@ -106,8 +105,6 @@ export function AdelajaIntro({ onComplete }: AdelajaIntroProps) {
   }, [visible]);
 
   const letters = useMemo(() => config.text.split(''), [config.text]);
-
-  if (visible !== true) return null;
 
   const exitDuration = Math.max(0.05, config.exitDurationMs / 1000);
   const startDelay = Math.max(0, config.startDelayMs / 1000);
@@ -221,8 +218,8 @@ export function AdelajaIntro({ onComplete }: AdelajaIntroProps) {
   };
 
   return (
-    <AnimatePresence onExitComplete={onComplete}>
-      {visible && (
+    <AnimatePresence onExitComplete={onComplete} mode="wait">
+      {visible === true && (
         <motion.div
           key="adelaja-intro"
           role="status"
