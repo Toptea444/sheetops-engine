@@ -78,7 +78,10 @@ export function InsightBanner({ insight, loading, signature }: InsightBannerProp
         )}
         role="status"
       >
-        <Sparkles className={cn('h-4 w-4 mt-0.5 shrink-0', iconTone)} />
+        {(() => {
+          const Icon = TONE_ICON[tone] || Activity;
+          return <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', iconTone)} />;
+        })()}
         <p className="text-xs sm:text-sm leading-snug flex-1">{insight.insight}</p>
         <button
           onClick={handleDismiss}
