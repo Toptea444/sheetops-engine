@@ -33,6 +33,8 @@ import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
 import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
 import { AdelajaIntro } from '@/components/AdelajaIntro';
+import { InsightBanner } from '@/components/dashboard/InsightBanner';
+import { useEarningsInsight } from '@/hooks/useEarningsInsight';
 import { CycleSummaryModal } from '@/components/dashboard/CycleSummaryModal';
 import { CycleSummaryStaticModal } from '@/components/dashboard/CycleSummaryStaticModal';
 import { CycleSelectorHighlight, hasSeenCycleSelectorHighlight, markCycleSelectorHighlightAsSeen } from '@/components/dashboard/CycleSelectorHighlight';
@@ -217,7 +219,26 @@ const Index = () => {
     selectedCycle
   );
 
+  // AI personal-assistant insight (banner) — only for Daily/Performance sheets
+  const { insight: aiInsight, loading: aiInsightLoading } = useEarningsInsight({
+    results: adjustedResults,
+    cycle: selectedCycle,
+    workerName: userName,
+    enabled: introDone && identityConfirmed && pinVerifiedThisSession && adjustedResults.length > 0,
+  });
+  const aiInsightSignature = useMemo(() => {
+    const dp = adjustedResults
+      .filter((r) => {
+        const u = (r.sheetName || '').toUpperCase();
+        return u.includes('DAILY') || u.includes('PERFORMANCE');
+      })
+      .map((r) => `${r.sheetName}:${Math.round(r.totalBonus)}`)
+      .join('|');
+    return `${getCycleKey(selectedCycle)}::${dp}`;
+  }, [adjustedResults, selectedCycle]);
+
   const isIdentityLocked = !!userId && !identityConfirmed;
+
 
   // Helper to check if a sheet is the transport subsidy sheet (uses different IDs)
   const isTransportSubsidySheet = (name: string): boolean => {
@@ -1566,6 +1587,17 @@ const Index = () => {
               isLoggedIn={identityConfirmed && pinVerifiedThisSession}
               totalRankingBonusEarnings={totalRankingBonusEarnings}
             />
+
+            {/* AI personal-assistant insight banner (Daily/Performance only) */}
+            {aiInsight && (
+              <div className="mb-4">
+                <InsightBanner
+                  insight={aiInsight}
+                  loading={aiInsightLoading}
+                  signature={aiInsightSignature}
+                />
+              </div>
+            )}
 
             {/* Hero Summary Section - Main Focus */}
             <div className="mb-8">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useIntroConfig } from '@/hooks/useIntroConfig';
 import { FONT_FAMILY_CLASS, IntroConfig } from '@/lib/introConfig';
@@ -65,15 +65,45 @@ export function AdelajaIntro({ onComplete }: AdelajaIntroProps) {
 
   const finish = useCallback(() => setVisible(false), []);
 
+  // Compute the minimum time the chosen animation needs so we never cut it
+  // off mid-reveal. We freeze this on first paint so a later remote-config
+  // update can't shorten an in-flight intro.
+  const computedDurationRef = useRef<number | null>(null);
+  if (computedDurationRef.current === null) {
+    const startDelayMs = Math.max(0, config.startDelayMs);
+    const charCount = config.text.length;
+    let animMs = 700; // generic baseline
+    switch (config.animationStyle) {
+      case 'letter-stagger':
+        animMs = 200 + charCount * 35 + 550 + 150; // delay + stagger + duration + safety
+        break;
+      case 'typewriter':
+        animMs = 100 + Math.min(80, 700 / Math.max(charCount, 1)) * charCount + 200;
+        break;
+      case 'slide-up':
+      case 'scale':
+      case 'blur-in':
+      case 'fade':
+        animMs = 100 + 700;
+        break;
+    }
+    // Accent line finishes around startDelay + 850 + 700
+    const accentMs = config.showAccentLine ? 850 + 700 : 0;
+    const minAnim = Math.max(animMs, accentMs);
+    const userTotal = Math.max(400, config.totalDurationMs);
+    computedDurationRef.current = startDelayMs + Math.max(userTotal, minAnim + 250);
+  }
+
   useEffect(() => {
     if (visible !== true) {
       if (visible === false) onComplete();
       return;
     }
     recordShow();
-    const t = setTimeout(finish, Math.max(400, config.totalDurationMs));
+    const t = setTimeout(finish, computedDurationRef.current ?? 2000);
     return () => clearTimeout(t);
-  }, [visible, finish, onComplete, config.totalDurationMs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   const letters = useMemo(() => config.text.split(''), [config.text]);
 
