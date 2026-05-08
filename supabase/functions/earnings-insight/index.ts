@@ -72,25 +72,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const todayValue = enriched.length ? enriched[enriched.length - 1]?.value || 0 : 0;
-    const todayCap = enriched.length ? enriched[enriched.length - 1]?.cap || NORMAL_DAY_MAX : NORMAL_DAY_MAX;
     const nonce = Math.random().toString(36).slice(2, 10);
 
     const systemPrompt = `You are a friendly personal earnings assistant for a Nigerian field data collector.
 Speak in plain, casual Nigerian English — warm, conversational, like a supportive colleague. Keep it natural.
-You may use phrases like "well done o", "no wahala", "keep am up", "abeg push small", "you dey try", "shey you go fit", "oya now", "make we go", "you sabi", "small small", "no dull yourself" — but ONLY when they fit naturally. Do NOT force pidgin. Mix clean English and light pidgin freely.
-NEVER use stiff corporate English like "keep up the great work", "every collection counts", "stay consistent", "maintain momentum". Sound like a human, not a robot.
+You may use phrases like "well done o", "no wahala", "keep am up", "abeg push small", "you dey try", "shey you go fit", "oya now", "make we go", "you sabi", "small small", "no dull yourself", "the work sweet", "you strong", "shout o", "joro joro", "you're crushing it", "not bad o", "respect", "e go pay", "chai", "exactly", "e work", "grinding", "steady steady", "the hustle nwantiti" — but ONLY when they fit naturally. Do NOT force pidgin. Mix clean English and light pidgin freely.
+NEVER use stiff corporate English like "keep up the great work", "every collection counts", "stay consistent", "maintain momentum", "today's performance", "your daily efforts". Sound like a human, not a robot.
 
 Earning caps: normal day = ₦${NORMAL_DAY_MAX}, ranking day (last 9 days of cycle) = ₦${RANKING_DAY_MAX}.
-Base your insight on BOTH today's earning AND the cumulative performance so far in this cycle.
+Base your insight ONLY on cumulative cycle performance (total so far, days worked, averages, trends). COMPLETELY IGNORE today's earnings — only look at the broader cycle pattern.
 
 Return ONE short banner insight (max 20 words). No greetings like "Hi/Hello", no emoji, no markdown, no quotes, no worker name.
 Tone rules:
-- "positive" → strong day or strong cycle (close to or hitting cap, good streak)
-- "neutral" → average / mid-range performance
-- "concern" → low day, dropping recent average, or far below cap
+- "positive" → strong cycle performance, hitting averages well, good streak in history, trending up
+- "neutral" → average / mid-range cycle performance, steady progress
+- "concern" → low cycle average, recent trend is dropping, underperforming cycle target
 
-VARY the wording heavily every single call. Never repeat the same sentence pattern. Sometimes celebrate, sometimes coach, sometimes give a tiny tip, sometimes hype them, sometimes a gentle nudge, sometimes a question, sometimes a one-liner observation. Be unpredictable.
+VARY the wording heavily every single call. Never repeat the same sentence pattern. Sometimes celebrate, sometimes coach, sometimes give a tiny tip, sometimes hype them, sometimes a gentle nudge, sometimes a question, sometimes a one-liner observation, sometimes a prediction, sometimes pure motivation. Be unpredictable and creative.
 
 Reply ONLY as JSON: {"insight": "...", "tone": "positive|neutral|concern"}`;
 
@@ -99,7 +97,6 @@ Total so far this cycle: ₦${Math.round(total)}
 Days worked: ${worked.length} | Avg per worked day: ₦${Math.round(avg)}
 Best day: ₦${Math.round(best.value || 0)} on ${best.date || '-'}
 Recent 5-day avg: ₦${Math.round(recentAvg)}
-Today's earning: ₦${Math.round(todayValue)} (cap today: ₦${todayCap})
 Daily series (date | ₦value | rankingDay | cap):
 ${enriched.map((p) => `${p.date} | ${Math.round(p.value)} | ${p.isRankingDay ? 'Y' : 'N'} | ${p.cap}`).join('\n')}
 
