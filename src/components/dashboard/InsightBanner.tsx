@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, X, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Insight } from '@/hooks/useEarningsInsight';
+
+const TONE_ICON: Record<string, LucideIcon> = {
+  positive: TrendingUp,
+  concern: TrendingDown,
+  neutral: Activity,
+};
 
 interface InsightBannerProps {
   insight: Insight | null;
@@ -72,7 +78,10 @@ export function InsightBanner({ insight, loading, signature }: InsightBannerProp
         )}
         role="status"
       >
-        <Sparkles className={cn('h-4 w-4 mt-0.5 shrink-0', iconTone)} />
+        {(() => {
+          const Icon = TONE_ICON[tone] || Activity;
+          return <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', iconTone)} />;
+        })()}
         <p className="text-xs sm:text-sm leading-snug flex-1">{insight.insight}</p>
         <button
           onClick={handleDismiss}
