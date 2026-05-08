@@ -237,6 +237,8 @@ const Index = () => {
     return `${getCycleKey(selectedCycle)}::${dp}`;
   }, [adjustedResults, selectedCycle]);
 
+  const isIdentityLocked = !!userId && !identityConfirmed;
+
 
   // Helper to check if a sheet is the transport subsidy sheet (uses different IDs)
   const isTransportSubsidySheet = (name: string): boolean => {
