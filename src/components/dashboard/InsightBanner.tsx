@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, X, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Insight } from '@/hooks/useEarningsInsight';
+
+const TONE_ICON: Record<string, LucideIcon> = {
+  positive: TrendingUp,
+  concern: TrendingDown,
+  neutral: Activity,
+};
 
 interface InsightBannerProps {
   insight: Insight | null;
