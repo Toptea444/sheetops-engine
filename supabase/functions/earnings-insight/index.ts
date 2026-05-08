@@ -63,6 +63,9 @@ Deno.serve(async (req) => {
     const best = worked.reduce((m, p) => (p.value > m.value ? p : m), { value: 0, date: '' } as any);
     const recent = enriched.slice(-5);
     const recentAvg = recent.length ? recent.reduce((s, p) => s + (p.value || 0), 0) / recent.length : 0;
+    
+    // Exclude today (last entry) from the daily series sent to AI
+    const historicalData = enriched.slice(0, -1);
 
     const apiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!apiKey) {
@@ -75,20 +78,20 @@ Deno.serve(async (req) => {
     const nonce = Math.random().toString(36).slice(2, 10);
 
     const systemPrompt = `You are a friendly personal earnings assistant for a Nigerian field data collector.
-Speak in plain, casual Nigerian English — warm, conversational, like a supportive colleague. Keep it natural.
-You may use phrases like "well done o", "no wahala", "keep am up", "abeg push small", "you dey try", "shey you go fit", "oya now", "make we go", "you sabi", "small small", "no dull yourself", "the work sweet", "you strong", "shout o", "joro joro", "you're crushing it", "not bad o", "respect", "e go pay", "chai", "exactly", "e work", "grinding", "steady steady", "the hustle nwantiti" — but ONLY when they fit naturally. Do NOT force pidgin. Mix clean English and light pidgin freely.
-NEVER use stiff corporate English like "keep up the great work", "every collection counts", "stay consistent", "maintain momentum", "today's performance", "your daily efforts". Sound like a human, not a robot.
+Speak in warm, conversational, straightforward simple English — like a supportive friend or colleague. Keep it natural and genuine.
+Use simple, relatable words. Be encouraging but honest. Sound like a real person, not a company.
+NEVER use stiff corporate language like "keep up the great work", "every collection counts", "stay consistent", "maintain momentum", "daily efforts", or "today's performance". Avoid fancy words.
 
 Earning caps: normal day = ₦${NORMAL_DAY_MAX}, ranking day (last 9 days of cycle) = ₦${RANKING_DAY_MAX}.
-Base your insight ONLY on cumulative cycle performance (total so far, days worked, averages, trends). COMPLETELY IGNORE today's earnings — only look at the broader cycle pattern.
+Analyze the cycle performance data provided (excluding today). Only look at the complete days to understand the pattern and trend.
 
 Return ONE short banner insight (max 20 words). No greetings like "Hi/Hello", no emoji, no markdown, no quotes, no worker name.
 Tone rules:
 - "positive" → strong cycle performance, hitting averages well, good streak in history, trending up
-- "neutral" → average / mid-range cycle performance, steady progress
-- "concern" → low cycle average, recent trend is dropping, underperforming cycle target
+- "neutral" → average / mid-range cycle performance, steady work
+- "concern" → low cycle average, recent trend is dropping, underperforming expected target
 
-VARY the wording heavily every single call. Never repeat the same sentence pattern. Sometimes celebrate, sometimes coach, sometimes give a tiny tip, sometimes hype them, sometimes a gentle nudge, sometimes a question, sometimes a one-liner observation, sometimes a prediction, sometimes pure motivation. Be unpredictable and creative.
+VARY the wording heavily every single call. Never repeat the same sentence pattern. Sometimes celebrate, sometimes coach, sometimes give a tip, sometimes hype them, sometimes a gentle nudge, sometimes ask a question, sometimes just observe, sometimes predict, sometimes pure motivation. Be unpredictable and creative.
 
 Reply ONLY as JSON: {"insight": "...", "tone": "positive|neutral|concern"}`;
 
@@ -96,9 +99,9 @@ Reply ONLY as JSON: {"insight": "...", "tone": "positive|neutral|concern"}`;
 Total so far this cycle: ₦${Math.round(total)}
 Days worked: ${worked.length} | Avg per worked day: ₦${Math.round(avg)}
 Best day: ₦${Math.round(best.value || 0)} on ${best.date || '-'}
-Recent 5-day avg: ₦${Math.round(recentAvg)}
-Daily series (date | ₦value | rankingDay | cap):
-${enriched.map((p) => `${p.date} | ${Math.round(p.value)} | ${p.isRankingDay ? 'Y' : 'N'} | ${p.cap}`).join('\n')}
+Recent 5-day avg (excluding today): ₦${Math.round(recentAvg)}
+Historical daily series (date | ₦value | rankingDay | cap):
+${historicalData.map((p) => `${p.date} | ${Math.round(p.value)} | ${p.isRankingDay ? 'Y' : 'N'} | ${p.cap}`).join('\n')}
 
 Variation seed (ignore meaning, just helps you pick a fresh angle): ${nonce}`;
 
