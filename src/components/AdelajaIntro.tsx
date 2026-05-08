@@ -129,6 +129,7 @@ export function AdelajaIntro({ onComplete }: AdelajaIntroProps) {
           style={textStyle}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           transition={{ duration: 0.45, delay: startDelay + 0.15 }}
         >
           {config.text}
@@ -143,6 +144,7 @@ export function AdelajaIntro({ onComplete }: AdelajaIntroProps) {
           style={textStyle}
           initial={{ y: 24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -24, opacity: 0 }}
           transition={{ duration: 0.6, delay: startDelay + 0.1, ease: [0.22, 1, 0.36, 1] }}
         >
           {config.text}
@@ -157,6 +159,7 @@ export function AdelajaIntro({ onComplete }: AdelajaIntroProps) {
           style={textStyle}
           initial={{ scale: 0.85, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.85, opacity: 0 }}
           transition={{ duration: 0.55, delay: startDelay + 0.1, ease: [0.22, 1, 0.36, 1] }}
         >
           {config.text}
@@ -171,6 +174,7 @@ export function AdelajaIntro({ onComplete }: AdelajaIntroProps) {
           style={textStyle}
           initial={{ opacity: 0, filter: 'blur(12px)' }}
           animate={{ opacity: 1, filter: 'blur(0px)' }}
+          exit={{ opacity: 0, filter: 'blur(12px)' }}
           transition={{ duration: 0.7, delay: startDelay + 0.1 }}
         >
           {config.text}
@@ -188,6 +192,7 @@ export function AdelajaIntro({ onComplete }: AdelajaIntroProps) {
               key={i}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.05, delay: startDelay + 0.1 + i * perChar }}
             >
               {ch === ' ' ? '\u00A0' : ch}
@@ -207,6 +212,7 @@ export function AdelajaIntro({ onComplete }: AdelajaIntroProps) {
             style={textStyle}
             initial={{ y: '110%', opacity: 0 }}
             animate={{ y: '0%', opacity: 1 }}
+            exit={{ y: '-110%', opacity: 0 }}
             transition={{
               duration: 0.55,
               delay: startDelay + 0.2 + i * 0.035,
