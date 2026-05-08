@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Activity, X, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Insight } from '@/hooks/useEarningsInsight';
@@ -65,11 +66,10 @@ export function InsightBanner({ insight, loading, signature }: InsightBannerProp
   };
 
   return (
-    <div
-      className={cn(
-        'transition-all duration-300 ease-out',
-        mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'
-      )}
+    <motion.div
+      initial={{ opacity: 0, y: -12 }}
+      animate={mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: -12 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
       <div
         className={cn(
@@ -91,6 +91,6 @@ export function InsightBanner({ insight, loading, signature }: InsightBannerProp
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }
