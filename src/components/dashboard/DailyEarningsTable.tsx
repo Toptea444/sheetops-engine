@@ -40,21 +40,23 @@ interface DayData {
   sourceWorkerId?: string;
 }
 
-function formatRecoveryRate(value?: number): string {
+function formatRecoveryRate(value?: number, raw?: string): string {
+  // Prefer the exact raw string from the sheet (no normalization)
+  if (raw && raw.length > 0) return raw;
   if (value === undefined || value === null || !Number.isFinite(value)) return '—';
-  // Sheet may store as fraction (0-1) or percentage (0-100). Normalize.
-  const pct = Math.abs(value) > 0 && Math.abs(value) <= 1 ? value * 100 : value;
-  if (pct === 0) return '0%';
-  return `${pct.toFixed(pct % 1 === 0 ? 0 : 1)}%`;
+  // Fallback: render the raw numeric value with a % suffix, no scaling
+  return `${value}%`;
 }
 
+// Recovery Rate of Amount thresholds map to bonus tiers (per stage standards):
+//   10% → top tier (₦1,500)   30% → ₦1,000   50% → ₦500   70% → ₦0
+// Lower percentage = better performance.
 function recoveryTone(value?: number): string {
   if (value === undefined || value === null || !Number.isFinite(value)) return 'text-muted-foreground';
-  const pct = Math.abs(value) > 0 && Math.abs(value) <= 1 ? value * 100 : value;
-  if (pct >= 100) return 'text-emerald-600 dark:text-emerald-400';
-  if (pct >= 70) return 'text-foreground';
-  if (pct > 0) return 'text-amber-600 dark:text-amber-400';
-  return 'text-muted-foreground';
+  if (value <= 15) return 'text-emerald-600 dark:text-emerald-400';
+  if (value <= 35) return 'text-green-600 dark:text-green-400';
+  if (value <= 55) return 'text-amber-600 dark:text-amber-400';
+  return 'text-red-600 dark:text-red-400';
 }
 
 export function DailyEarningsTable({
