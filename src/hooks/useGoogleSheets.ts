@@ -230,6 +230,7 @@ export function useGoogleSheets() {
             rankingBonus: d.rankingBonus,
             total: d.total,
             recoveryRate: d.recoveryRate,
+            recoveryRateRaw: d.recoveryRateRaw,
           });
         }
       }
