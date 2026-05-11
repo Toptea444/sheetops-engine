@@ -471,6 +471,11 @@ function parseDailyPerformanceSheet(
         'ranking bonus',
         'rank bonus',
       ]);
+      let recoveryCol = findLabelInRange(headerRow, blockStart, blockEnd, [
+        'recovery rate of amount',
+        'recovery rate',
+        'recovery',
+      ]);
 
       // Fallback for malformed sheets where header names are blank/missing.
       if (usernamesCol < 0 || totalCol < 0) {
@@ -480,6 +485,7 @@ function parseDailyPerformanceSheet(
         if (bonusCol < 0) bonusCol = inferred.bonusCol;
         if (rankingBonusCol < 0) rankingBonusCol = inferred.rankingBonusCol;
         if (totalCol < 0) totalCol = inferred.totalCol;
+        if (recoveryCol < 0) recoveryCol = inferred.recoveryCol;
       }
 
       // If still missing critical columns, skip this block.
