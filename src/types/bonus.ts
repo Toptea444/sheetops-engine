@@ -35,8 +35,10 @@ export interface DailyBonus {
   bonus?: number;
   rankingBonus?: number;
   total?: number;
-  /** Recovery Rate of Amount (Daily & Performance sheets) — shown as "Target Met". */
+  /** Recovery Rate of Amount — numeric value (used for color coding). */
   recoveryRate?: number;
+  /** Raw recovery rate string from the sheet (preserved for exact display). */
+  recoveryRateRaw?: string;
   /** When earnings come from a swapped ID, this tracks the original source */
   sourceWorkerId?: string;
 }
