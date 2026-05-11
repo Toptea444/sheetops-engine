@@ -104,6 +104,7 @@ export function DailyEarningsTable({
           total,
           bonus: day.bonus,
           rankingBonus: day.rankingBonus,
+          recoveryRate: day.recoveryRate,
           sourceWorkerId: day.sourceWorkerId,
         });
       });
