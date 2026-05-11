@@ -299,6 +299,11 @@ export function DailyEarningsTable({
                                     )}
                                   </div>
                                 </TableCell>
+                                {stats.hasRecovery && !isPercent && (
+                                  <TableCell className={`text-sm py-2.5 text-right font-medium tabular-nums ${recoveryTone(day.recoveryRate)}`}>
+                                    {formatRecoveryRate(day.recoveryRate)}
+                                  </TableCell>
+                                )}
                                 {stats.hasSplit && !isPercent ? (
                                   <>
                                     <TableCell className="text-sm py-2.5 text-right font-medium">
