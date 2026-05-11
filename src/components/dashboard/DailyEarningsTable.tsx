@@ -36,7 +36,25 @@ interface DayData {
   bonus?: number;
   rankingBonus?: number;
   total?: number;
+  recoveryRate?: number;
   sourceWorkerId?: string;
+}
+
+function formatRecoveryRate(value?: number): string {
+  if (value === undefined || value === null || !Number.isFinite(value)) return '—';
+  // Sheet may store as fraction (0-1) or percentage (0-100). Normalize.
+  const pct = Math.abs(value) > 0 && Math.abs(value) <= 1 ? value * 100 : value;
+  if (pct === 0) return '0%';
+  return `${pct.toFixed(pct % 1 === 0 ? 0 : 1)}%`;
+}
+
+function recoveryTone(value?: number): string {
+  if (value === undefined || value === null || !Number.isFinite(value)) return 'text-muted-foreground';
+  const pct = Math.abs(value) > 0 && Math.abs(value) <= 1 ? value * 100 : value;
+  if (pct >= 100) return 'text-emerald-600 dark:text-emerald-400';
+  if (pct >= 70) return 'text-foreground';
+  if (pct > 0) return 'text-amber-600 dark:text-amber-400';
+  return 'text-muted-foreground';
 }
 
 export function DailyEarningsTable({
