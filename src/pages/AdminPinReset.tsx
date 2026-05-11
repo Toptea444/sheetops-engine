@@ -28,6 +28,7 @@ import { CycleReportTab } from '@/components/admin/CycleReportTab';
 import { WorkerNotesTab } from '@/components/admin/WorkerNotesTab';
 import { StageTotalsTab } from '@/components/admin/StageTotalsTab';
 import { IntroAnimationTab } from '@/components/admin/IntroAnimationTab';
+import { BonusStandardsManager } from '@/components/admin/BonusStandardsManager';
 import { ThemeSwitcher } from '@/components/dashboard/ThemeSwitcher';
 import { useTheme, type Theme, type AccentColor } from '@/hooks/useTheme';
 import { toast } from 'sonner';
@@ -1656,6 +1657,10 @@ export default function AdminPinReset() {
               <Settings className="h-3 w-3" />
               <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>
+            <TabsTrigger value="bonus-standards" className="text-xs gap-0.5 px-2 shrink-0">
+              <TrendingUp className="h-3 w-3" />
+              <span className="hidden sm:inline">Bonus Standards</span>
+            </TabsTrigger>
               </TabsList>
             </CardContent>
           </Card>
@@ -1701,6 +1706,9 @@ export default function AdminPinReset() {
           </TabsContent>
           <TabsContent value="settings">
             <SettingsTab adminSecret={adminSecret} />
+          </TabsContent>
+          <TabsContent value="bonus-standards">
+            <BonusStandardsManager adminSecret={adminSecret} />
           </TabsContent>
         </Tabs>
       </main>
