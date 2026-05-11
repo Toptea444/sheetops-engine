@@ -629,6 +629,7 @@ function parseDailyPerformanceSheet(
         const bonusValue = bonusCol >= 0 ? parseNumberLike(row[bonusCol]) : undefined;
         const rankingBonusValue = rankingBonusCol >= 0 ? parseNumberLike(row[rankingBonusCol]) : undefined;
         const recoveryValue = recoveryCol >= 0 ? parseNumberLike(row[recoveryCol]) : undefined;
+        const recoveryRaw = recoveryCol >= 0 ? (String(row[recoveryCol] ?? '').trim() || undefined) : undefined;
 
         // Calculate total as bonus + ranking bonus instead of using sheet total
         const calculatedValue = (bonusValue ?? 0) + (rankingBonusValue ?? 0);
@@ -646,6 +647,7 @@ function parseDailyPerformanceSheet(
           bonus: bonusValue,
           rankingBonus: rankingBonusValue,
           recoveryRate: recoveryValue,
+          recoveryRateRaw: recoveryRaw,
         });
         fallbackProcessedDates.add(dateKey);
 
