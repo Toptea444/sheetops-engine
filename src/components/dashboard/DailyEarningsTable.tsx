@@ -54,9 +54,14 @@ function formatRecoveryRate(value?: number, raw?: string): string {
 // Lower percentage = better performance.
 function recoveryTone(value?: number): string {
   if (value === undefined || value === null || !Number.isFinite(value)) return 'text-muted-foreground';
-  if (value <= 15) return 'text-emerald-600 dark:text-emerald-400';
-  if (value <= 35) return 'text-green-600 dark:text-green-400';
-  if (value <= 55) return 'text-amber-600 dark:text-amber-400';
+
+  // Sheets can store recovery values either as 30 (for 30%) or 0.3 (for 30%).
+  // Normalize so color tiers are consistent across all stages.
+  const percentValue = value > 1 ? value : value * 100;
+
+  if (percentValue <= 10) return 'text-emerald-600 dark:text-emerald-400';
+  if (percentValue <= 30) return 'text-green-600 dark:text-green-400';
+  if (percentValue <= 50) return 'text-amber-600 dark:text-amber-400';
   return 'text-red-600 dark:text-red-400';
 }
 
