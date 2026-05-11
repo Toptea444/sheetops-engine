@@ -524,6 +524,8 @@ function parseDailyPerformanceSheet(
             rankingBonusCol >= 0 ? parseNumberLike(dataRow[rankingBonusCol]) : undefined;
           const recoveryValue =
             recoveryCol >= 0 ? parseNumberLike(dataRow[recoveryCol]) : undefined;
+          const recoveryRaw =
+            recoveryCol >= 0 ? (String(dataRow[recoveryCol] ?? '').trim() || undefined) : undefined;
 
           // Calculate total as bonus + ranking bonus instead of using sheet total
           const calculatedValue = (bonusValue ?? 0) + (rankingBonusValue ?? 0);
@@ -537,6 +539,7 @@ function parseDailyPerformanceSheet(
             bonus: bonusValue,
             rankingBonus: rankingBonusValue,
             recoveryRate: recoveryValue,
+            recoveryRateRaw: recoveryRaw,
           });
           processedDates.add(dateKey);
           break; // found worker for this date block
