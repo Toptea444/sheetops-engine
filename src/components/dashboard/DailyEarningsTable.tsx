@@ -129,8 +129,9 @@ export function DailyEarningsTable({
     const hasSplit = sheetData.some(
       (d) => d.bonus !== undefined || d.rankingBonus !== undefined
     );
+    const hasRecovery = sheetData.some((d) => d.recoveryRate !== undefined && d.recoveryRate !== null);
     const avg = sheetData.length > 0 ? total / sheetData.length : 0;
-    return { total, avg, count: sheetData.length, bonusTotal, rankingBonusTotal, hasSplit };
+    return { total, avg, count: sheetData.length, bonusTotal, rankingBonusTotal, hasSplit, hasRecovery };
   }, [sheetData]);
 
   const formatCurrency = (value: number) => `₦${value.toLocaleString()}`;
