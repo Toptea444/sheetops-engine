@@ -257,7 +257,7 @@ export function DailyEarningsTable({
                         <TableHeader>
                           <TableRow className="hover:bg-transparent bg-muted/20">
                             <TableHead className="text-sm font-medium h-10">Date</TableHead>
-                            {stats.hasRecovery && !isPercent && (
+                            {stats.hasRecovery && (
                               <TableHead className="text-sm font-medium h-10 text-right">Target Met</TableHead>
                             )}
                             {stats.hasSplit && !isPercent ? (
