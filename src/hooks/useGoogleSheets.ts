@@ -230,6 +230,7 @@ export function useGoogleSheets() {
             rankingBonus: d.rankingBonus,
             total: d.total,
             recoveryRate: d.recoveryRate,
+            recoveryRateRaw: d.recoveryRateRaw,
           });
         }
       }
@@ -524,6 +525,8 @@ function parseDailyPerformanceSheet(
             rankingBonusCol >= 0 ? parseNumberLike(dataRow[rankingBonusCol]) : undefined;
           const recoveryValue =
             recoveryCol >= 0 ? parseNumberLike(dataRow[recoveryCol]) : undefined;
+          const recoveryRaw =
+            recoveryCol >= 0 ? (String(dataRow[recoveryCol] ?? '').trim() || undefined) : undefined;
 
           // Calculate total as bonus + ranking bonus instead of using sheet total
           const calculatedValue = (bonusValue ?? 0) + (rankingBonusValue ?? 0);
@@ -537,6 +540,7 @@ function parseDailyPerformanceSheet(
             bonus: bonusValue,
             rankingBonus: rankingBonusValue,
             recoveryRate: recoveryValue,
+            recoveryRateRaw: recoveryRaw,
           });
           processedDates.add(dateKey);
           break; // found worker for this date block
@@ -626,6 +630,7 @@ function parseDailyPerformanceSheet(
         const bonusValue = bonusCol >= 0 ? parseNumberLike(row[bonusCol]) : undefined;
         const rankingBonusValue = rankingBonusCol >= 0 ? parseNumberLike(row[rankingBonusCol]) : undefined;
         const recoveryValue = recoveryCol >= 0 ? parseNumberLike(row[recoveryCol]) : undefined;
+        const recoveryRaw = recoveryCol >= 0 ? (String(row[recoveryCol] ?? '').trim() || undefined) : undefined;
 
         // Calculate total as bonus + ranking bonus instead of using sheet total
         const calculatedValue = (bonusValue ?? 0) + (rankingBonusValue ?? 0);
@@ -643,6 +648,7 @@ function parseDailyPerformanceSheet(
           bonus: bonusValue,
           rankingBonus: rankingBonusValue,
           recoveryRate: recoveryValue,
+          recoveryRateRaw: recoveryRaw,
         });
         fallbackProcessedDates.add(dateKey);
 
@@ -764,6 +770,11 @@ function parseRankingBonusSheet(
     const usernameCol = findLabelIndex(labelRow, block.start, effectiveEnd, ['names', 'usernames', 'username', 'user id', 'user_id', 'name']);
     const stageCol = findLabelIndex(labelRow, block.start, effectiveEnd, ['stage', 'stages', 'ids']);
     const rankingBonusCol = findLabelIndex(labelRow, block.start, effectiveEnd, ['ranking bonus']);
+    const recoveryCol = findLabelIndex(labelRow, block.start, effectiveEnd, [
+      'recovery rate of amount',
+      'recovery rate',
+      'recovery',
+    ]);
 
     // If we can't find required columns in this block, skip it
     if (usernameCol < 0 || rankingBonusCol < 0) continue;
@@ -780,6 +791,8 @@ function parseRankingBonusSheet(
         }
         
         const value = parseNumberLike(row[rankingBonusCol]);
+        const recoveryValue = recoveryCol >= 0 ? parseNumberLike(row[recoveryCol]) : undefined;
+        const recoveryRaw = recoveryCol >= 0 ? (String(row[recoveryCol] ?? '').trim() || undefined) : undefined;
         const parsedDate = parseDateFromHeader(block.date, data.sheetName);
         const dateKey = parsedDate?.timestamp?.toString() || block.date;
         
@@ -790,7 +803,9 @@ function parseRankingBonusSheet(
             date: parsedDate?.formatted || block.date, 
             dayNumber: parsedDate?.day ?? extractDayFromDateString(block.date) ?? undefined,
             fullDate: parsedDate?.timestamp,
-            value 
+            value,
+            recoveryRate: recoveryValue,
+            recoveryRateRaw: recoveryRaw,
           });
         }
         break;
