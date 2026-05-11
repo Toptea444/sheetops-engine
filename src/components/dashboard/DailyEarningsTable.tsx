@@ -39,6 +39,7 @@ interface DayData {
   recoveryRate?: number;
   recoveryRateRaw?: string;
   sourceWorkerId?: string;
+  stage?: string;
 }
 
 function formatRecoveryRate(value?: number, raw?: string): string {
@@ -49,14 +50,31 @@ function formatRecoveryRate(value?: number, raw?: string): string {
   return `${value}%`;
 }
 
-// Recovery Rate of Amount thresholds map to bonus tiers (per stage standards):
-//   10% → top tier (₦1,500)   30% → ₦1,000   50% → ₦500   70% → ₦0
-// Lower percentage = better performance.
-function recoveryTone(value?: number): string {
+// Stage-aware target thresholds for Third Party recovery bonus standards.
+// Higher Target Met % = better tier/color for the worker's stage.
+const STAGE_TARGET_THRESHOLDS: Record<string, { top: number; mid: number; base: number }> = {
+  'T-1': { top: 52, mid: 46, base: 40 },
+  T0: { top: 24, mid: 20, base: 16 },
+  S1: { top: 6.5, mid: 4.5, base: 2.5 },
+  S2: { top: 1.3, mid: 0.9, base: 0.5 },
+  S3: { top: 0.4, mid: 0.3, base: 0.2 },
+  S4: { top: 0.08, mid: 0.05, base: 0.02 },
+};
+
+function normalizeStage(stage?: string): string {
+  if (!stage) return '';
+  return stage.trim().toUpperCase().replace(/\s+/g, '');
+}
+
+function recoveryTone(value?: number, stage?: string): string {
   if (value === undefined || value === null || !Number.isFinite(value)) return 'text-muted-foreground';
-  if (value <= 15) return 'text-emerald-600 dark:text-emerald-400';
-  if (value <= 35) return 'text-green-600 dark:text-green-400';
-  if (value <= 55) return 'text-amber-600 dark:text-amber-400';
+
+  const thresholds = STAGE_TARGET_THRESHOLDS[normalizeStage(stage)];
+  if (!thresholds) return 'text-muted-foreground';
+
+  if (value >= thresholds.top) return 'text-emerald-600 dark:text-emerald-400';
+  if (value >= thresholds.mid) return 'text-green-600 dark:text-green-400';
+  if (value >= thresholds.base) return 'text-amber-600 dark:text-amber-400';
   return 'text-red-600 dark:text-red-400';
 }
 
@@ -110,6 +128,7 @@ export function DailyEarningsTable({
           recoveryRate: day.recoveryRate,
           recoveryRateRaw: day.recoveryRateRaw,
           sourceWorkerId: day.sourceWorkerId,
+          stage: result.stage,
         });
       });
     });
@@ -304,7 +323,7 @@ export function DailyEarningsTable({
                                   </div>
                                 </TableCell>
                                 {stats.hasRecovery && (
-                                  <TableCell className={`text-sm py-2.5 text-right font-medium tabular-nums ${recoveryTone(day.recoveryRate)}`}>
+                                  <TableCell className={`text-sm py-2.5 text-right font-medium tabular-nums ${recoveryTone(day.recoveryRate, day.stage)}`}>
                                     {formatRecoveryRate(day.recoveryRate, day.recoveryRateRaw)}
                                   </TableCell>
                                 )}
