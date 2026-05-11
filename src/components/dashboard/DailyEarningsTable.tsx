@@ -73,8 +73,7 @@ function recoveryTone(value?: number, stage?: string): string {
   if (!thresholds) return 'text-muted-foreground';
 
   if (value >= thresholds.top) return 'text-emerald-600 dark:text-emerald-400';
-  if (value >= thresholds.mid) return 'text-green-600 dark:text-green-400';
-  if (value >= thresholds.base) return 'text-amber-600 dark:text-amber-400';
+  if (value >= thresholds.mid) return 'text-amber-600 dark:text-amber-400';
   return 'text-red-600 dark:text-red-400';
 }
 
