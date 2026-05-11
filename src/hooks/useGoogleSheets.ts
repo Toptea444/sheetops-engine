@@ -602,6 +602,11 @@ function parseDailyPerformanceSheet(
 
     const bonusCol = findLabelInRangeExact(labelRow, blockStart, blockEnd, ['bonus', 'daily bonus']);
     const rankingBonusCol = findLabelInRangeExact(labelRow, blockStart, blockEnd, ['ranking bonus', 'rank bonus']);
+    const recoveryCol = findLabelInRange(labelRow, blockStart, blockEnd, [
+      'recovery rate of amount',
+      'recovery rate',
+      'recovery',
+    ]);
 
     if (usernamesCol < 0) continue;
 
@@ -619,6 +624,7 @@ function parseDailyPerformanceSheet(
         const totalValue = totalCol >= 0 ? parseNumberLike(row[totalCol]) : 0;
         const bonusValue = bonusCol >= 0 ? parseNumberLike(row[bonusCol]) : undefined;
         const rankingBonusValue = rankingBonusCol >= 0 ? parseNumberLike(row[rankingBonusCol]) : undefined;
+        const recoveryValue = recoveryCol >= 0 ? parseNumberLike(row[recoveryCol]) : undefined;
 
         // Calculate total as bonus + ranking bonus instead of using sheet total
         const calculatedValue = (bonusValue ?? 0) + (rankingBonusValue ?? 0);
@@ -635,6 +641,7 @@ function parseDailyPerformanceSheet(
           total: calculatedValue,
           bonus: bonusValue,
           rankingBonus: rankingBonusValue,
+          recoveryRate: recoveryValue,
         });
         fallbackProcessedDates.add(dateKey);
 
