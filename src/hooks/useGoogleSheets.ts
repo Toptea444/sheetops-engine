@@ -319,6 +319,7 @@ function parseDailyPerformanceSheet(
     const fallback = {
       stagesCol: blockStart,
       usernamesCol: blockStart + 1,
+      recoveryCol: blockStart + 2,
       bonusCol: blockStart + 3,
       rankingBonusCol: blockStart + 6,
       totalCol: blockStart + 7,
@@ -328,6 +329,7 @@ function parseDailyPerformanceSheet(
     const boundedFallback = {
       stagesCol: fallback.stagesCol < effectiveEnd ? fallback.stagesCol : -1,
       usernamesCol: fallback.usernamesCol < effectiveEnd ? fallback.usernamesCol : -1,
+      recoveryCol: fallback.recoveryCol < effectiveEnd ? fallback.recoveryCol : -1,
       bonusCol: fallback.bonusCol < effectiveEnd ? fallback.bonusCol : -1,
       rankingBonusCol: fallback.rankingBonusCol < effectiveEnd ? fallback.rankingBonusCol : -1,
       totalCol: fallback.totalCol < effectiveEnd ? fallback.totalCol : -1,
@@ -360,6 +362,8 @@ function parseDailyPerformanceSheet(
 
     const inferredStagesCol =
       inferredUsernamesCol > blockStart ? inferredUsernamesCol - 1 : boundedFallback.stagesCol;
+    const inferredRecoveryCol =
+      inferredUsernamesCol + 1 < effectiveEnd ? inferredUsernamesCol + 1 : boundedFallback.recoveryCol;
     const inferredBonusCol =
       inferredUsernamesCol + 2 < effectiveEnd ? inferredUsernamesCol + 2 : boundedFallback.bonusCol;
     const inferredRankingBonusCol =
@@ -374,6 +378,7 @@ function parseDailyPerformanceSheet(
     return {
       stagesCol: inferredStagesCol,
       usernamesCol: inferredUsernamesCol,
+      recoveryCol: inferredRecoveryCol,
       bonusCol: inferredBonusCol,
       rankingBonusCol: inferredRankingBonusCol,
       totalCol: inferredTotalCol,
