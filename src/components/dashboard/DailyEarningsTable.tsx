@@ -37,6 +37,7 @@ interface DayData {
   rankingBonus?: number;
   total?: number;
   recoveryRate?: number;
+  recoveryRateRaw?: string;
   sourceWorkerId?: string;
 }
 
