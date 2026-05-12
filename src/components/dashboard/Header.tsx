@@ -1,5 +1,6 @@
-import { RefreshCw, Zap } from 'lucide-react';
+import { ExternalLink, RefreshCw, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 import { UserBadge } from './UserBadge';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { NotificationToggle } from './NotificationToggle';
@@ -22,6 +23,7 @@ interface HeaderProps {
   notificationPermission?: NotificationPermission;
   onEnableNotifications?: () => void;
   onDisableNotifications?: () => void;
+  previewPath?: string;
 }
 
 export function Header({
@@ -39,6 +41,7 @@ export function Header({
   notificationPermission,
   onEnableNotifications,
   onDisableNotifications,
+  previewPath,
 }: HeaderProps) {
   // Show user ID badge only if onSwitchUser is available (dropdown mode)
   // Otherwise show static display of user ID
@@ -81,6 +84,14 @@ export function Header({
               onEnable={onEnableNotifications}
               onDisable={onDisableNotifications}
             />
+          )}
+
+          {previewPath && (
+            <Button asChild variant="outline" size="sm" className="h-8">
+              <Link to={previewPath}>
+                Sheets Preview <ExternalLink className="ml-1 h-3.5 w-3.5" />
+              </Link>
+            </Button>
           )}
 
           {/* Theme Switcher */}
