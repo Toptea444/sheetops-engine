@@ -274,18 +274,18 @@ export function DailyEarningsTable({
                       <Table className="w-full">
                         <TableHeader>
                           <TableRow className="hover:bg-transparent bg-muted/20">
-                            <TableHead className="text-sm font-medium h-10 whitespace-nowrap px-4">Date</TableHead>
+                            <TableHead className="text-sm font-medium h-10 whitespace-nowrap px-4 min-w-max">Date</TableHead>
                             {stats.hasRecovery && (
-                              <TableHead className="text-sm font-medium h-10 text-right whitespace-nowrap px-4">Target Met</TableHead>
+                              <TableHead className="text-sm font-medium h-10 text-right whitespace-nowrap px-4 min-w-max">Target Met</TableHead>
                             )}
                             {stats.hasSplit && !isPercent ? (
                               <>
-                                <TableHead className="text-sm font-medium h-10 text-right whitespace-nowrap px-4">Bonus</TableHead>
-                                <TableHead className="text-sm font-medium h-10 text-right whitespace-nowrap px-4">Ranking Bonus</TableHead>
-                                <TableHead className="text-sm font-medium h-10 text-right whitespace-nowrap px-4">Total</TableHead>
+                                <TableHead className="text-sm font-medium h-10 text-right whitespace-nowrap px-4 min-w-max">Bonus</TableHead>
+                                <TableHead className="text-sm font-medium h-10 text-right whitespace-nowrap px-4 min-w-max">Ranking Bonus</TableHead>
+                                <TableHead className="text-sm font-medium h-10 text-right whitespace-nowrap px-4 min-w-max">Total</TableHead>
                               </>
                             ) : (
-                              <TableHead className="text-sm font-medium h-10 text-right whitespace-nowrap px-4">
+                              <TableHead className="text-sm font-medium h-10 text-right whitespace-nowrap px-4 min-w-max">
                                 {isPercent ? 'Bonus %' : 'Amount'}
                               </TableHead>
                             )}
@@ -296,28 +296,28 @@ export function DailyEarningsTable({
                             const transferInfo = getTransferIndicator(day);
                             return (
                               <TableRow key={day.fullDate}>
-                                <TableCell className="text-sm py-3 px-4 whitespace-nowrap">
+                                <TableCell className="text-sm py-3 px-4 whitespace-nowrap min-w-max">
                                   <span>{day.date}</span>
                                 </TableCell>
                                 {stats.hasRecovery && (
-                                  <TableCell className={`text-sm py-2.5 text-right font-medium tabular-nums px-4 whitespace-nowrap ${recoveryTone(day.recoveryRate, day.stage)}`}>
+                                  <TableCell className={`text-sm py-2.5 text-right font-medium tabular-nums px-4 whitespace-nowrap min-w-max ${recoveryTone(day.recoveryRate, day.stage)}`}>
                                     {formatRecoveryRate(day.recoveryRate, day.recoveryRateRaw)}
                                   </TableCell>
                                 )}
                                 {stats.hasSplit && !isPercent ? (
                                   <>
-                                    <TableCell className="text-sm py-2.5 text-right font-medium px-4 whitespace-nowrap">
+                                    <TableCell className="text-sm py-2.5 text-right font-medium px-4 whitespace-nowrap min-w-max">
                                       {formatCurrency(day.bonus ?? 0)}
                                     </TableCell>
-                                    <TableCell className="text-sm py-2.5 text-right font-medium px-4 whitespace-nowrap">
+                                    <TableCell className="text-sm py-2.5 text-right font-medium px-4 whitespace-nowrap min-w-max">
                                       {formatCurrency(day.rankingBonus ?? 0)}
                                     </TableCell>
-                                    <TableCell className="text-sm py-2.5 text-right font-semibold px-4 whitespace-nowrap">
+                                    <TableCell className="text-sm py-2.5 text-right font-semibold px-4 whitespace-nowrap min-w-max">
                                       {formatCurrency(day.total ?? day.value)}
                                     </TableCell>
                                   </>
                                 ) : (
-                                  <TableCell className="text-sm py-2.5 text-right font-medium px-4 whitespace-nowrap">
+                                  <TableCell className="text-sm py-2.5 text-right font-medium px-4 whitespace-nowrap min-w-max">
                                     {formatValue(day.value)}
                                   </TableCell>
                                 )}
