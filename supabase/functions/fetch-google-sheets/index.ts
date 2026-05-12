@@ -5,12 +5,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-type Action = "getSheets" | "getSheetData";
+type Action = "getSheets" | "getSheetData" | "getSpreadsheetPreview";
 
 interface RequestBody {
   action: Action;
   spreadsheetId: string;
   sheetName?: string;
+  gid?: number;
 }
 
 function jsonResponse(body: unknown, status = 200) {
@@ -68,7 +69,7 @@ serve(async (req) => {
     const spreadsheetId = body.spreadsheetId;
     const sheetName = body.sheetName;
 
-    if (action !== "getSheets" && action !== "getSheetData") {
+    if (action !== "getSheets" && action !== "getSheetData" && action !== "getSpreadsheetPreview") {
       return jsonResponse({ error: "Invalid action" }, 400);
     }
 
@@ -113,6 +114,65 @@ serve(async (req) => {
         }) || [];
 
       return jsonResponse({ sheets });
+    }
+
+
+    if (action === "getSpreadsheetPreview") {
+      const metadataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?key=${apiKey}&fields=properties(title),sheets(properties(sheetId,title,hidden,sheetType,gridProperties),merges)`;
+      const metadataResponse = await fetch(metadataUrl);
+      if (!metadataResponse.ok) {
+        const errorText = await metadataResponse.text();
+        const parsed = safeJsonParse(errorText);
+        const code = metadataResponse.status;
+        const reason = parsed?.error?.status || parsed?.error?.message || "";
+        return jsonResponse({ error: friendlyError(code, reason, "spreadsheet metadata") }, code);
+      }
+
+      const metadata = await metadataResponse.json();
+      const spreadsheetTitle = String(metadata?.properties?.title ?? "Untitled spreadsheet");
+      const sheets = (metadata?.sheets || [])
+        .map((sheet: any) => {
+          const props = sheet?.properties ?? {};
+          const name = String(props.title ?? "");
+          return {
+            id: Number(props.sheetId ?? -1),
+            name,
+            hidden: !!props.hidden,
+            sheetType: String(props.sheetType ?? "GRID"),
+            rowCount: Number(props?.gridProperties?.rowCount ?? 0),
+            columnCount: Number(props?.gridProperties?.columnCount ?? 0),
+            frozenRowCount: Number(props?.gridProperties?.frozenRowCount ?? 0),
+            frozenColumnCount: Number(props?.gridProperties?.frozenColumnCount ?? 0),
+            merges: Array.isArray(sheet?.merges) ? sheet.merges : [],
+          };
+        })
+        .filter((sheet: any) => sheet.sheetType === "GRID" && !sheet.hidden && sheet.name);
+
+      const ranges = sheets.map((s: any) => encodeURIComponent(`${s.name}!A1:ZZ1000`)).join("&ranges=");
+      const valuesUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?key=${apiKey}&valueRenderOption=FORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING&ranges=${ranges}`;
+      const valuesResponse = ranges ? await fetch(valuesUrl) : null;
+      let valueRanges: any[] = [];
+      if (valuesResponse) {
+        if (!valuesResponse.ok) {
+          const errorText = await valuesResponse.text();
+          const parsed = safeJsonParse(errorText);
+          const code = valuesResponse.status;
+          const reason = parsed?.error?.status || parsed?.error?.message || "";
+          return jsonResponse({ error: friendlyError(code, reason, "sheet data") }, code);
+        }
+        const valuesData = await valuesResponse.json();
+        valueRanges = valuesData?.valueRanges || [];
+      }
+
+      const previewSheets = sheets.map((sheet: any) => {
+        const valueRange = valueRanges.find((vr: any) => typeof vr.range === "string" && vr.range.startsWith(`${sheet.name}!`));
+        return {
+          ...sheet,
+          values: valueRange?.values || [],
+        };
+      });
+
+      return jsonResponse({ spreadsheetTitle, sheets: previewSheets });
     }
 
     // action === "getSheetData"

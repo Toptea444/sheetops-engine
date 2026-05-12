@@ -1520,6 +1520,7 @@ const Index = () => {
           notificationPermission={notificationPermission}
           onEnableNotifications={enableNotifications}
           onDisableNotifications={disableNotifications}
+          previewPath="/sheets-preview"
         />
 
         <main className="flex-1 w-full overflow-x-hidden px-4 sm:px-6 py-6">

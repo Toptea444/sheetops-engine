@@ -13,6 +13,7 @@ import Install from "./pages/Install";
 import SalaryBreakdown from "./pages/SalaryBreakdown";
 import AdoptionStory from "./pages/AdoptionStory";
 import NotFound from "./pages/NotFound";
+import SheetsPreview from "./pages/SheetsPreview";
 import { GlobalSessionMonitor } from "./components/GlobalSessionMonitor";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/adoption-story" element={<AdoptionStory />} />
           <Route path="/install" element={<Install />} />
           <Route path="/admin/pin-reset" element={<AdminPinReset />} />
+          <Route path="/sheets-preview" element={<RestrictedRoute><SheetsPreview /></RestrictedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<RestrictedRoute><NotFound /></RestrictedRoute>} />
         </Routes>
