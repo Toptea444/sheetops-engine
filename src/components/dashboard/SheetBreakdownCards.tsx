@@ -64,13 +64,14 @@ export function SheetBreakdownCards({
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-      {sheetBreakdown.map((sheet) => (
+      {sheetBreakdown.map((sheet, index) => (
         <div 
           key={sheet.name} 
-          className="shrink-0 px-3 py-2.5 rounded-lg border bg-card/70 min-w-[132px]"
+          className="shrink-0 px-3 py-2.5 rounded-2xl border-2 border-border min-w-[132px] shadow-[3px_3px_0_hsl(var(--border))] relative overflow-hidden"
+          style={{ backgroundColor: ['#ffd4e8', '#cde6ff', '#d7f4dd', '#ffeab5', '#e7d8ff', '#ffdccc'][index % 6] }}
         >
           <div className="flex items-center gap-2 mb-1">
-            <p className="text-xs text-muted-foreground truncate max-w-[110px]">
+            <p className="text-xs text-foreground/75 truncate max-w-[110px]">
               {sheet.name.split(' ')[0]}
             </p>
             {sheet.isPercent && (
@@ -80,7 +81,7 @@ export function SheetBreakdownCards({
           {displayMode === 'dots' ? (
             <div className="h-5 w-16 rounded-md bg-muted animate-pulse mt-0.5" />
           ) : (
-            <p className="text-base font-semibold">
+            <p className="text-base font-bold">
               {sheet.isPercent 
                 ? `${sheet.total.toFixed(1)}%`
                 : `₦${sheet.total.toLocaleString()}`
@@ -92,16 +93,16 @@ export function SheetBreakdownCards({
 
       {/* Transport Subsidy card */}
       {subsidyOptedIn && (
-        <div className="shrink-0 px-3 py-2.5 rounded-lg border bg-card/70 min-w-[132px]">
+        <div className="shrink-0 px-3 py-2.5 rounded-2xl border-2 border-border bg-card min-w-[132px] shadow-[3px_3px_0_hsl(var(--border))] relative overflow-hidden">
           <div className="flex items-center gap-2 mb-1">
-            <p className="text-xs text-muted-foreground truncate max-w-[110px]">
+            <p className="text-xs text-foreground/75 truncate max-w-[110px]">
               Transport
             </p>
           </div>
           {displayMode === 'dots' ? (
             <div className="h-5 w-16 rounded-md bg-muted animate-pulse mt-0.5" />
           ) : (
-            <p className="text-base font-semibold">
+            <p className="text-base font-bold">
               {subsidyData ? `₦${subsidyData.actualSubsidy.toLocaleString()}` : '—'}
             </p>
           )}

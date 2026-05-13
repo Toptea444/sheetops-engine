@@ -62,13 +62,17 @@ export function CycleSummaryCard({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 rounded-2xl border-2 border-border bg-card p-4 shadow-[4px_4px_0_hsl(var(--border))] relative overflow-hidden">
+      <div className="pointer-events-none absolute -top-6 -left-6 h-20 w-20 rounded-full bg-primary/45" />
+      <div className="pointer-events-none absolute -bottom-8 -right-5 h-24 w-24 rounded-full bg-secondary/50" />
+      <div className="pointer-events-none absolute top-5 right-8 text-xl">✨</div>
+      <div className="pointer-events-none absolute bottom-7 left-10 text-lg">⭐</div>
       {/* Header with toggle */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <p className="text-sm text-muted-foreground">Total Earnings</p>
+          <p className="text-sm text-foreground/80">Total Earnings</p>
           {includesRankingBonus && (
-            <span className="text-[11px] font-medium text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+            <span className="text-[11px] font-bold text-foreground bg-warning/70 border-2 border-border px-1.5 py-0.5 rounded-lg whitespace-nowrap">
               + ranking bonus
             </span>
           )}

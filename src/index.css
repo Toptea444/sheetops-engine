@@ -1,72 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Corporate/Enterprise Design System - Blue/Navy Professional Theme
-   All colors MUST be HSLL.
-*/
+/* Playful pastel design system */
 
 @layer base {
-  :root {
-    /* Corporate Navy/Blue Theme */
-    /* Slightly darker/tinted surface to reduce "too much white" */
-    --background: 215 25% 96%;
-    --foreground: 215 25% 15%;
+    :root {
+    --background: 44 45% 97%;
+    --foreground: 345 14% 18%;
 
-    --card: 215 25% 98%;
-    --card-foreground: 215 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 345 14% 18%;
 
-    --popover: 215 25% 98%;
-    --popover-foreground: 215 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 345 14% 18%;
 
-    /* Navy Blue Primary */
-    --primary: 215 70% 35%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 327 67% 77%;
+    --primary-foreground: 345 14% 18%;
+    --secondary: 207 58% 78%;
+    --secondary-foreground: 345 14% 18%;
 
-    /* Light Blue Secondary */
-    --secondary: 210 50% 95%;
-    --secondary-foreground: 215 70% 30%;
+    --muted: 44 60% 93%;
+    --muted-foreground: 345 10% 40%;
 
-    --muted: 210 25% 93%;
-    --muted-foreground: 215 15% 45%;
+    --accent: 152 43% 76%;
+    --accent-foreground: 345 14% 18%;
 
-    /* Corporate Accent - Steel Blue */
-    --accent: 210 60% 92%;
-    --accent-foreground: 215 70% 30%;
+    --destructive: 8 78% 72%;
+    --destructive-foreground: 345 14% 18%;
 
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 100%;
+    --success: 104 31% 72%;
+    --success-foreground: 345 14% 18%;
 
-    /* Success Green */
-    --success: 145 60% 40%;
-    --success-foreground: 0 0% 100%;
+    --warning: 46 84% 75%;
+    --warning-foreground: 345 14% 18%;
 
-    /* Warning Orange */
-    --warning: 35 90% 50%;
-    --warning-foreground: 0 0% 100%;
+    --border: 345 18% 28%;
+    --input: 40 35% 85%;
+    --ring: 271 42% 75%;
 
-    --border: 215 25% 88%;
-    --input: 215 25% 88%;
-    --ring: 215 70% 45%;
+    --radius: 1.2rem;
 
-    --radius: 1rem;
+    --sidebar-background: 44 45% 97%;
+    --sidebar-foreground: 345 14% 18%;
+    --sidebar-primary: 327 67% 77%;
+    --sidebar-primary-foreground: 345 14% 18%;
+    --sidebar-accent: 207 58% 90%;
+    --sidebar-accent-foreground: 345 14% 18%;
+    --sidebar-border: 345 18% 28%;
+    --sidebar-ring: 271 42% 75%;
 
-    /* Corporate Sidebar */
-    --sidebar-background: 215 30% 18%;
-    --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 210 80% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 30% 25%;
-    --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 215 30% 25%;
-    --sidebar-ring: 210 80% 55%;
-
-    /* Corporate Chart Colors */
-    --chart-1: 215 70% 45%;
-    --chart-2: 195 70% 50%;
-    --chart-3: 145 60% 45%;
-    --chart-4: 35 90% 55%;
-    --chart-5: 260 60% 55%;
+    --chart-1: 327 67% 77%;
+    --chart-2: 207 58% 78%;
+    --chart-3: 152 43% 76%;
+    --chart-4: 46 84% 75%;
+    --chart-5: 271 42% 75%;
   }
 
   .dark {
@@ -126,12 +116,13 @@
   }
 
   body {
-    @apply text-foreground font-sans antialiased overflow-x-hidden;
+    @apply text-foreground antialiased overflow-x-hidden;
+    font-family: "Baloo 2", "Comic Sans MS", "Nunito", sans-serif;
     background-color: hsl(var(--background));
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
+    @apply font-bold tracking-tight;
   }
 }
 
@@ -160,3 +151,39 @@
 }
 
 
+
+
+@layer base {
+  body::before,
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  body::before {
+    background-image:
+      radial-gradient(circle at 5% 10%, hsl(327 67% 77% / 0.5) 0 22px, transparent 23px),
+      radial-gradient(circle at 93% 8%, hsl(271 42% 75% / 0.45) 0 20px, transparent 21px),
+      radial-gradient(circle at 10% 90%, hsl(207 58% 78% / 0.45) 0 24px, transparent 25px),
+      radial-gradient(circle at 95% 85%, hsl(46 84% 75% / 0.45) 0 22px, transparent 23px);
+    opacity: 0.65;
+  }
+
+  body::after {
+    background-image: radial-gradient(hsl(345 14% 18% / 0.25) 1px, transparent 1.5px);
+    background-size: 24px 24px;
+    opacity: 0.15;
+  }
+}
+
+@layer utilities {
+  .playful-panel {
+    background: hsl(var(--card));
+    border: 2px solid hsl(var(--border));
+    border-radius: 1.25rem;
+    box-shadow: 4px 5px 0 hsl(var(--border) / 0.9);
+  }
+}
