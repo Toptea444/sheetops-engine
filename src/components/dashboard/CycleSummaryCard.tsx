@@ -66,9 +66,9 @@ export function CycleSummaryCard({
       {/* Header with toggle */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <p className="text-sm text-muted-foreground">Total Earnings</p>
+          <p className="text-sm font-semibold text-foreground/80">Total Earnings</p>
           {includesRankingBonus && (
-            <span className="text-[11px] font-medium text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+            <span className="text-[11px] font-semibold text-foreground bg-white/65 border border-foreground/20 px-2 py-0.5 rounded-full whitespace-nowrap">
               + ranking bonus
             </span>
           )}
@@ -99,7 +99,7 @@ export function CycleSummaryCard({
             variant="ghost"
             size="icon"
             onClick={handleToggle}
-            className="h-8 w-8"
+            className="h-8 w-8 rounded-full border border-foreground/15 bg-white/55 hover:bg-white/75"
             title={displayMode === 'dots' ? 'Show amount' : 'Show dots'}
           >
             {displayMode === 'dots' ? (
@@ -116,7 +116,7 @@ export function CycleSummaryCard({
         {isHidden ? (
           <div className="h-9 w-40 rounded-lg bg-muted animate-pulse" />
         ) : (
-          <p className="text-3xl font-bold tracking-tight">
+          <p className="text-3xl sm:text-4xl font-black tracking-tight text-foreground drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]">
             {formattedAmount}
           </p>
         )}
@@ -124,25 +124,25 @@ export function CycleSummaryCard({
 
       {/* Progress bar */}
       <div className="space-y-2">
-        <Progress value={progressPercent} className="h-1.5" />
-        <div className="flex justify-between text-xs text-muted-foreground">
+        <Progress value={progressPercent} className="h-2 rounded-full bg-white/50" />
+        <div className="flex justify-between text-xs font-medium text-foreground/70">
           <span>Day {daysElapsed}/{totalDays}</span>
           <span>{daysRemaining} days left</span>
         </div>
       </div>
 
       {/* Stats row */}
-      <div className="flex gap-8 pt-1">
+      <div className="flex gap-8 pt-2">
         <div>
-          <p className="text-xs text-muted-foreground">Days with Earnings</p>
-          <p className="text-lg font-semibold">{daysActive}</p>
+          <p className="text-xs font-semibold text-foreground/65">Days with Earnings</p>
+          <p className="text-lg font-extrabold">{daysActive}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Daily Avg</p>
+          <p className="text-xs font-semibold text-foreground/65">Daily Avg</p>
           {isHidden ? (
             <div className="h-7 w-20 rounded-md bg-muted animate-pulse mt-0.5" />
           ) : (
-            <p className="text-lg font-semibold">₦{Math.round(avgDaily).toLocaleString()}</p>
+            <p className="text-lg font-extrabold">₦{Math.round(avgDaily).toLocaleString()}</p>
           )}
         </div>
       </div>

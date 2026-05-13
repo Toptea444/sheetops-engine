@@ -18,6 +18,14 @@ interface SheetBreakdownCardsProps {
   subsidyOptedIn?: boolean;
 }
 
+const playfulCardThemes = [
+  'bg-[linear-gradient(145deg,hsl(330_92%_86%)_0%,hsl(330_84%_91%)_100%)] border-pink-300/70',
+  'bg-[linear-gradient(145deg,hsl(205_80%_82%)_0%,hsl(205_80%_90%)_100%)] border-sky-300/70',
+  'bg-[linear-gradient(145deg,hsl(148_55%_80%)_0%,hsl(148_60%_89%)_100%)] border-emerald-300/70',
+  'bg-[linear-gradient(145deg,hsl(50_98%_78%)_0%,hsl(50_95%_88%)_100%)] border-yellow-300/70',
+  'bg-[linear-gradient(145deg,hsl(269_74%_86%)_0%,hsl(269_76%_92%)_100%)] border-violet-300/70',
+];
+
 export function SheetBreakdownCards({
   results,
   sheetNames,
@@ -64,13 +72,13 @@ export function SheetBreakdownCards({
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-      {sheetBreakdown.map((sheet) => (
+      {sheetBreakdown.map((sheet, index) => (
         <div 
           key={sheet.name} 
-          className="shrink-0 px-3 py-2.5 rounded-lg border bg-card/70 min-w-[132px]"
+          className={`shrink-0 px-3 py-2.5 rounded-2xl border-2 min-w-[132px] shadow-[0_6px_0_rgba(15,23,42,0.08)] ${playfulCardThemes[index % playfulCardThemes.length]}`}
         >
           <div className="flex items-center gap-2 mb-1">
-            <p className="text-xs text-muted-foreground truncate max-w-[110px]">
+            <p className="text-xs font-semibold text-foreground/75 truncate max-w-[110px]">
               {sheet.name.split(' ')[0]}
             </p>
             {sheet.isPercent && (
@@ -80,7 +88,7 @@ export function SheetBreakdownCards({
           {displayMode === 'dots' ? (
             <div className="h-5 w-16 rounded-md bg-muted animate-pulse mt-0.5" />
           ) : (
-            <p className="text-base font-semibold">
+            <p className="text-base font-extrabold text-foreground">
               {sheet.isPercent 
                 ? `${sheet.total.toFixed(1)}%`
                 : `₦${sheet.total.toLocaleString()}`
@@ -92,16 +100,16 @@ export function SheetBreakdownCards({
 
       {/* Transport Subsidy card */}
       {subsidyOptedIn && (
-        <div className="shrink-0 px-3 py-2.5 rounded-lg border bg-card/70 min-w-[132px]">
+        <div className="shrink-0 px-3 py-2.5 rounded-2xl border-2 border-rose-300/70 min-w-[132px] bg-[linear-gradient(145deg,hsl(20_100%_88%)_0%,hsl(330_92%_92%)_100%)] shadow-[0_6px_0_rgba(15,23,42,0.08)]">
           <div className="flex items-center gap-2 mb-1">
-            <p className="text-xs text-muted-foreground truncate max-w-[110px]">
+            <p className="text-xs font-semibold text-foreground/75 truncate max-w-[110px]">
               Transport
             </p>
           </div>
           {displayMode === 'dots' ? (
             <div className="h-5 w-16 rounded-md bg-muted animate-pulse mt-0.5" />
           ) : (
-            <p className="text-base font-semibold">
+            <p className="text-base font-extrabold text-foreground">
               {subsidyData ? `₦${subsidyData.actualSubsidy.toLocaleString()}` : '—'}
             </p>
           )}

@@ -157,6 +157,18 @@
     box-shadow: 0 10px 15px -3px hsl(215 30% 15% / 0.1),
                 0 4px 6px -4px hsl(215 30% 15% / 0.1);
   }
+
+
+  .playful-page {
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(circle at 8% 10%, hsl(330 90% 87% / 0.7) 0 10px, transparent 11px),
+      radial-gradient(circle at 92% 14%, hsl(205 82% 82% / 0.65) 0 9px, transparent 10px),
+      radial-gradient(circle at 14% 90%, hsl(148 54% 81% / 0.6) 0 8px, transparent 9px),
+      radial-gradient(circle at 88% 90%, hsl(50 98% 80% / 0.65) 0 10px, transparent 11px),
+      radial-gradient(circle at 50% 0%, hsl(269 74% 87% / 0.55) 0 6px, transparent 7px);
+    background-repeat: no-repeat;
+  }
 }
 
 

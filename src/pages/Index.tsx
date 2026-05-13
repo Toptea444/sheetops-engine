@@ -1363,7 +1363,7 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col relative">
+    <div className="min-h-screen bg-background playful-page flex flex-col relative">
 
       {/* Feedback Modal */}
       <FeedbackModal userId={userId} identityConfirmed={identityConfirmed} autoShow={false} />
@@ -1601,7 +1601,10 @@ const Index = () => {
 
             {/* Hero Summary Section - Main Focus */}
             <div className="mb-8">
-              <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6 sm:p-8">
+              <div className="relative overflow-hidden rounded-[2rem] p-6 sm:p-8 border-2 border-foreground/10 bg-[linear-gradient(140deg,hsl(330_95%_90%)_0%,hsl(205_90%_88%)_35%,hsl(148_62%_87%)_68%,hsl(50_95%_84%)_100%)] shadow-[0_10px_0_rgba(15,23,42,0.08)]">
+                <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full border-[6px] border-white/60" />
+                <div className="pointer-events-none absolute -left-6 bottom-4 h-16 w-16 rounded-full border-4 border-white/50" />
+                <div className="pointer-events-none absolute left-1/2 top-3 h-3 w-3 -translate-x-1/2 rounded-full bg-white/70" />
                 <CycleSummaryCard
                   cycle={selectedCycle}
                   totalEarnings={cycleStats.totalEarnings}
@@ -1635,7 +1638,7 @@ const Index = () => {
 
             {/* Weekly Breakdown */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+              <div className="bg-card/95 border-2 border-border rounded-2xl p-6 sm:p-8 overflow-hidden shadow-[0_8px_0_rgba(15,23,42,0.05)]">
                 <WeeklyBreakdown 
                   results={displayResults} 
                   cycle={selectedCycle}
@@ -1647,7 +1650,7 @@ const Index = () => {
 
             {/* Daily Earnings Table - Detailed breakdown */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6">
+              <div className="bg-card/95 border-2 border-border rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6 shadow-[0_8px_0_rgba(15,23,42,0.05)]">
                 <DailyEarningsTable
                   results={displayResults}
                   sheetNames={displaySelectedSheets}
@@ -1672,7 +1675,7 @@ const Index = () => {
 
             {/* Leaderboard */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+              <div className="bg-card/95 border-2 border-border rounded-2xl p-6 sm:p-8 overflow-hidden shadow-[0_8px_0_rgba(15,23,42,0.05)]">
                 <LeaderboardPanel
                   sheetData={leaderboardSheetData}
                   currentUserId={userId}
