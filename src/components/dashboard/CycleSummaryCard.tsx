@@ -62,31 +62,31 @@ export function CycleSummaryCard({
   };
 
   return (
-    <div className="space-y-5">
-      {/* Bold header with gradient background */}
-      <div className="cotton-candy-accent rounded-2xl px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3 flex-wrap min-w-0">
-          <p className="text-sm font-bold">💰 Total Earnings</p>
+    <div className="space-y-4">
+      {/* Header with toggle */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <p className="text-sm font-bold text-foreground">Total Earnings</p>
           {includesRankingBonus && (
-            <span className="text-[10px] font-bold text-white bg-black/20 px-2 py-1 rounded-full whitespace-nowrap">
-              + Ranking Bonus ⭐
+            <span className="text-[11px] font-bold text-foreground bg-primary/20 px-2 py-0.5 rounded-full whitespace-nowrap">
+              + ranking bonus
             </span>
           )}
         </div>
         <div className="relative">
           {showTooltip && (
             <div className="absolute bottom-full right-0 mb-3 z-10 animate-in fade-in slide-in-from-bottom-1 duration-200">
-              <div className="bg-black/90 text-white rounded-2xl px-4 py-3 w-48 shadow-lg">
+              <div className="bg-foreground text-background rounded-2xl px-3 py-2 w-44 soft-shadow">
                 <p className="text-xs leading-relaxed font-medium">
                   {displayMode === 'dots' 
-                    ? '👀 Tap the eye to reveal your earnings' 
-                    : '🙈 Tap to hide your earnings'}
+                    ? 'Tap the eye to reveal your earnings' 
+                    : 'Tap to hide your earnings'}
                 </p>
                 <button
                   onClick={handleDismissTooltip}
-                  className="text-xs text-white/80 hover:text-white font-bold mt-2 transition-colors"
+                  className="text-xs text-background/70 hover:text-background font-bold mt-1.5 transition-colors"
                 >
-                  Got it! ✓
+                  Got it
                 </button>
               </div>
             </div>
@@ -95,55 +95,55 @@ export function CycleSummaryCard({
             variant="ghost"
             size="icon"
             onClick={handleToggle}
-            className="h-9 w-9 hover:bg-white/20 rounded-full"
+            className="h-8 w-8"
             title={displayMode === 'dots' ? 'Show amount' : 'Show dots'}
           >
             {displayMode === 'dots' ? (
-              <Eye className="h-5 w-5 text-white" />
+              <Eye className="h-4 w-4" />
             ) : (
-              <EyeOff className="h-5 w-5 text-white" />
+              <EyeOff className="h-4 w-4" />
             )}
           </Button>
         </div>
       </div>
 
-      {/* Main earnings display - Big and bold */}
-      <div className="bubble-card p-5">
+      {/* Main earnings display - SOFT PASTEL PINK */}
+      <div className="pastel-pink rounded-3xl p-6 soft-shadow">
         {isHidden ? (
-          <div className="h-12 w-48 rounded-2xl bg-gradient-to-r from-primary/30 to-accent/30 animate-pulse" />
+          <div className="h-9 w-40 rounded-2xl bg-black/10 animate-pulse" />
         ) : (
-          <p className="text-4xl font-black tracking-tight bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent">
+          <p className="text-4xl font-black tracking-tight text-foreground">
             {formattedAmount}
           </p>
         )}
       </div>
 
-      {/* Progress bar with colorful styling */}
-      <div className="space-y-3">
-        <div className="relative h-3 rounded-full bg-gradient-to-r from-primary/20 via-accent/20 to-success/20 overflow-hidden">
+      {/* Progress bar */}
+      <div className="space-y-2">
+        <div className="h-2 rounded-full bg-muted overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-primary via-accent to-success rounded-full transition-all duration-500"
+            className="h-full bg-primary rounded-full transition-all duration-500"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
         <div className="flex justify-between text-xs font-bold text-foreground">
-          <span>📅 Day {daysElapsed}/{totalDays}</span>
-          <span>⏰ {daysRemaining} days left</span>
+          <span>Day {daysElapsed}/{totalDays}</span>
+          <span>{daysRemaining} days left</span>
         </div>
       </div>
 
-      {/* Stats row - Colorful cards */}
+      {/* Stats row - SOFT PASTEL COLORS */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="sky-accent rounded-2xl px-4 py-3">
-          <p className="text-xs font-bold text-white/90 mb-1">💪 Active Days</p>
-          <p className="text-2xl font-black text-white">{daysActive}</p>
+        <div className="pastel-blue rounded-3xl px-4 py-3 soft-shadow">
+          <p className="text-xs font-bold text-foreground/80 mb-1">Days with Earnings</p>
+          <p className="text-2xl font-black text-foreground">{daysActive}</p>
         </div>
-        <div className="mint-accent rounded-2xl px-4 py-3">
-          <p className="text-xs font-bold text-white/90 mb-1">📊 Daily Avg</p>
+        <div className="pastel-mint rounded-3xl px-4 py-3 soft-shadow">
+          <p className="text-xs font-bold text-foreground/80 mb-1">Daily Avg</p>
           {isHidden ? (
-            <div className="h-7 w-24 rounded-lg bg-white/20 animate-pulse" />
+            <div className="h-6 w-20 rounded-lg bg-black/10 animate-pulse" />
           ) : (
-            <p className="text-xl font-black text-white">₦{Math.round(avgDaily).toLocaleString()}</p>
+            <p className="text-lg font-black text-foreground">₦{Math.round(avgDaily).toLocaleString()}</p>
           )}
         </div>
       </div>

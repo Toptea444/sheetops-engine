@@ -46,13 +46,13 @@ export function Header({
   const showUserBadgeStatic = userId && !onSwitchUser;
 
   return (
-    <header className="border-b-4 border-primary cotton-candy-accent sticky top-0 z-50 soft-shadow-lg">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+    <header className="pastel-blue sticky top-0 z-50 soft-shadow border-b border-primary/20">
+      <div className="container mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-2xl bg-white/90 flex items-center justify-center font-black text-xl">
-            🎯
+          <div className="h-8 w-8 rounded-2xl bg-black/15 flex items-center justify-center font-black text-lg">
+            📊
           </div>
-          <span className="font-black text-white text-lg">Bonus Tracker</span>
+          <span className="font-black text-foreground text-base">Bonus Tracker</span>
         </div>
         <div className="flex items-center gap-1">
           {/* User ID - always visible when logged in */}

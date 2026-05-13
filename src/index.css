@@ -9,68 +9,68 @@
 
 @layer base {
   :root {
-    /* Playful Candy Pastel Theme */
-    /* Clean white background with soft touches */
-    --background: 0 0% 99%;
-    --foreground: 0 0% 20%;
+    /* Soft Pastel Children's Color Palette Theme */
+    /* Clean white background */
+    --background: 0 0% 99.5%;
+    --foreground: 0 0% 15%;
 
-    /* Soft pastel card backgrounds */
-    --card: 330 100% 96%;
-    --card-foreground: 0 0% 20%;
+    /* White cards */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 20%;
+    --popover-foreground: 0 0% 15%;
 
-    /* Bubblegum Pink Primary */
-    --primary: 330 100% 65%;
-    --primary-foreground: 0 0% 100%;
+    /* SOFT Bubblegum Pink - desaturated */
+    --primary: 330 70% 76%;
+    --primary-foreground: 0 0% 15%;
 
-    /* Mint Green Secondary */
-    --secondary: 150 80% 70%;
-    --secondary-foreground: 0 0% 20%;
+    /* SOFT Mint Green - desaturated */
+    --secondary: 162 48% 74%;
+    --secondary-foreground: 0 0% 15%;
 
-    /* Soft pastels */
-    --muted: 210 40% 92%;
-    --muted-foreground: 0 0% 40%;
+    /* Very soft muted grays */
+    --muted: 0 0% 93%;
+    --muted-foreground: 0 0% 50%;
 
-    /* Baby Blue Accent */
-    --accent: 210 90% 75%;
-    --accent-foreground: 0 0% 20%;
+    /* SOFT Baby Blue - desaturated */
+    --accent: 217 75% 78%;
+    --accent-foreground: 0 0% 15%;
 
-    /* Warm peachy destructive */
-    --destructive: 15 100% 60%;
-    --destructive-foreground: 0 0% 100%;
+    /* SOFT Soft Coral/Peach - desaturated */
+    --destructive: 12 68% 75%;
+    --destructive-foreground: 0 0% 15%;
 
-    /* Lemon Yellow Success */
-    --success: 48 100% 70%;
-    --success-foreground: 0 0% 20%;
+    /* SOFT Lemon Yellow - desaturated */
+    --success: 47 75% 76%;
+    --success-foreground: 0 0% 15%;
 
-    /* Lavender Warning */
-    --warning: 280 70% 70%;
-    --warning-foreground: 0 0% 20%;
+    /* SOFT Lavender - desaturated */
+    --warning: 271 48% 77%;
+    --warning-foreground: 0 0% 15%;
 
-    --border: 210 20% 90%;
-    --input: 210 20% 94%;
-    --ring: 330 90% 60%;
+    --border: 0 0% 92%;
+    --input: 0 0% 95%;
+    --ring: 330 70% 76%;
 
-    --radius: 1.5rem;
+    --radius: 1.75rem;
 
-    /* Playful Sidebar */
-    --sidebar-background: 210 80% 75%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 330 100% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 150 80% 70%;
-    --sidebar-accent-foreground: 0 0% 20%;
-    --sidebar-border: 210 80% 70%;
-    --sidebar-ring: 330 100% 65%;
+    /* Sidebar styling */
+    --sidebar-background: 217 75% 78%;
+    --sidebar-foreground: 0 0% 15%;
+    --sidebar-primary: 330 70% 76%;
+    --sidebar-primary-foreground: 0 0% 15%;
+    --sidebar-accent: 162 48% 74%;
+    --sidebar-accent-foreground: 0 0% 15%;
+    --sidebar-border: 0 0% 88%;
+    --sidebar-ring: 330 70% 76%;
 
-    /* Playful Chart Colors */
-    --chart-1: 330 100% 65%;
-    --chart-2: 210 90% 75%;
-    --chart-3: 150 80% 70%;
-    --chart-4: 48 100% 70%;
-    --chart-5: 280 70% 70%;
+    /* Chart Colors */
+    --chart-1: 330 70% 76%;
+    --chart-2: 217 75% 78%;
+    --chart-3: 162 48% 74%;
+    --chart-4: 47 75% 76%;
+    --chart-5: 271 48% 77%;
   }
 
   .dark {
@@ -172,72 +172,53 @@
 }
 
 @layer utilities {
-  .playful-gradient {
-    background: linear-gradient(135deg, hsl(330 100% 65%) 0%, hsl(210 90% 75%) 50%, hsl(150 80% 70%) 100%);
-  }
-
   .soft-shadow {
-    box-shadow: 0 8px 16px -2px hsl(0 0% 0% / 0.08), 
-                0 2px 4px -2px hsl(0 0% 0% / 0.04);
+    box-shadow: 0 4px 12px hsl(0 0% 0% / 0.08);
   }
 
   .soft-shadow-lg {
-    box-shadow: 0 20px 25px -5px hsl(0 0% 0% / 0.1),
-                0 8px 10px -6px hsl(0 0% 0% / 0.08);
+    box-shadow: 0 8px 24px hsl(0 0% 0% / 0.12);
   }
 
-  .bubble-card {
-    background: linear-gradient(135deg, hsl(330 100% 96%) 0%, hsl(210 80% 95%) 100%);
-    border-radius: 1.5rem;
-    border: 2px solid hsl(330 90% 85%);
-    position: relative;
-    overflow: hidden;
+  /* SOLID Pastel Swatch Cards - like in reference image */
+  .pastel-pink {
+    background-color: hsl(330 70% 76%);
+    color: hsl(0 0% 15%);
   }
 
-  .bubble-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle, hsl(330 100% 85% / 0.3) 0%, transparent 70%);
-    pointer-events: none;
+  .pastel-blue {
+    background-color: hsl(217 75% 78%);
+    color: hsl(0 0% 15%);
   }
 
-  .mint-accent {
-    background: linear-gradient(135deg, hsl(150 80% 70%) 0%, hsl(150 70% 75%) 100%);
-    color: hsl(0 0% 100%);
+  .pastel-mint {
+    background-color: hsl(162 48% 74%);
+    color: hsl(0 0% 15%);
   }
 
-  .sky-accent {
-    background: linear-gradient(135deg, hsl(210 90% 75%) 0%, hsl(210 80% 80%) 100%);
-    color: hsl(0 0% 100%);
+  .pastel-yellow {
+    background-color: hsl(47 75% 76%);
+    color: hsl(0 0% 15%);
   }
 
-  .sunshine-accent {
-    background: linear-gradient(135deg, hsl(48 100% 70%) 0%, hsl(48 95% 75%) 100%);
-    color: hsl(0 0% 20%);
+  .pastel-peach {
+    background-color: hsl(12 68% 75%);
+    color: hsl(0 0% 15%);
   }
 
-  .cotton-candy-accent {
-    background: linear-gradient(135deg, hsl(330 100% 65%) 0%, hsl(330 90% 72%) 100%);
-    color: hsl(0 0% 100%);
+  .pastel-lavender {
+    background-color: hsl(271 48% 77%);
+    color: hsl(0 0% 15%);
   }
 
-  .peach-accent {
-    background: linear-gradient(135deg, hsl(15 100% 60%) 0%, hsl(15 95% 68%) 100%);
-    color: hsl(0 0% 100%);
+  .pastel-pistachio {
+    background-color: hsl(90 45% 75%);
+    color: hsl(0 0% 15%);
   }
 
-  .pistachio-accent {
-    background: linear-gradient(135deg, hsl(90 50% 65%) 0%, hsl(90 45% 72%) 100%);
-    color: hsl(0 0% 20%);
-  }
-
-  .lavender-accent {
-    background: linear-gradient(135deg, hsl(280 70% 70%) 0%, hsl(280 65% 77%) 100%);
-    color: hsl(0 0% 100%);
+  .pastel-coral {
+    background-color: hsl(12 58% 72%);
+    color: hsl(0 0% 15%);
   }
 
   /* Playful animations */

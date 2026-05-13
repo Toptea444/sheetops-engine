@@ -62,66 +62,60 @@ export function SheetBreakdownCards({
 
   if (sheetBreakdown.length === 0 && !subsidyOptedIn) return null;
 
-  // Assign colors to each sheet for variety
+  // Assign SOFT PASTEL colors to each sheet for variety
   const colorClasses = [
-    'cotton-candy-accent',
-    'sky-accent',
-    'mint-accent',
-    'sunshine-accent',
+    'pastel-pink',
+    'pastel-blue',
+    'pastel-mint',
+    'pastel-yellow',
   ];
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+    <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
       {sheetBreakdown.map((sheet, index) => {
         const colorClass = colorClasses[index % colorClasses.length];
         return (
           <div 
             key={sheet.name} 
-            className={`shrink-0 ${colorClass} px-4 py-3 rounded-2xl min-w-[140px] soft-shadow`}
+            className={`shrink-0 ${colorClass} px-4 py-3 rounded-3xl min-w-[140px] soft-shadow`}
           >
-            <div className="flex items-center gap-2 mb-2">
-              <p className="text-xs font-bold text-white truncate max-w-[110px]">
-                📊 {sheet.name.split(' ')[0]}
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-xs font-bold text-foreground truncate max-w-[110px]">
+                {sheet.name.split(' ')[0]}
               </p>
               {sheet.isPercent && (
-                <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-5 bg-white/20 border-white/30 text-white font-bold">%</Badge>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-black/15 border-black/20 text-foreground font-bold">%</Badge>
               )}
             </div>
             {displayMode === 'dots' ? (
-              <div className="h-6 w-16 rounded-lg bg-white/30 animate-pulse" />
+              <div className="h-5 w-16 rounded-lg bg-black/10 animate-pulse" />
             ) : (
-              <p className="text-lg font-black text-white">
+              <p className="text-base font-black text-foreground">
                 {sheet.isPercent 
                   ? `${sheet.total.toFixed(1)}%`
                   : `₦${sheet.total.toLocaleString()}`
                 }
               </p>
             )}
-            <p className="text-xs font-bold text-white/80 mt-2">
-              {sheet.daysCount === 1 ? '📅 1 day' : `📅 ${sheet.daysCount} days`}
-            </p>
           </div>
         );
       })}
 
-      {/* Transport Subsidy card - Special styling */}
+      {/* Transport Subsidy card - SOFT PASTEL PEACH */}
       {subsidyOptedIn && (
-        <div className="shrink-0 sunshine-accent px-4 py-3 rounded-2xl min-w-[140px] soft-shadow">
-          <div className="flex items-center gap-2 mb-2">
-            <p className="text-xs font-bold text-white truncate max-w-[110px]">
-              🚗 Transport
+        <div className="shrink-0 pastel-peach px-4 py-3 rounded-3xl min-w-[140px] soft-shadow">
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-xs font-bold text-foreground truncate max-w-[110px]">
+              Transport
             </p>
           </div>
           {displayMode === 'dots' ? (
-            <div className="h-6 w-16 rounded-lg bg-white/30 animate-pulse" />
+            <div className="h-5 w-16 rounded-lg bg-black/10 animate-pulse" />
           ) : (
-            <p className="text-lg font-black text-white">
+            <p className="text-base font-black text-foreground">
               {subsidyData ? `₦${subsidyData.actualSubsidy.toLocaleString()}` : '—'}
             </p>
           )}
-          <p className="text-xs font-bold text-white/80 mt-2">
-            💰 Subsidy
-          </p>
         </div>
       )}
     </div>
