@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, Bus, User, CalendarDays, BarChart3 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -91,6 +92,8 @@ export function DailyEarningsTable({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showAll, setShowAll] = useState(false);
   const [activeTab, setActiveTab] = useState(sheetNames[0] || '');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
 
   useEffect(() => {
     const availableTabs = subsidyOptedIn
@@ -101,6 +104,12 @@ export function DailyEarningsTable({
       setActiveTab(sheetNames[0]);
     }
   }, [sheetNames, activeTab, subsidyOptedIn]);
+
+  // Handle scroll position for sticky column animation
+  const handleTableScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    setScrollPosition(target.scrollLeft);
+  };
 
   const sheetData = useMemo(() => {
     // Merge ALL results for this sheet (handles swap scenario where there are
@@ -270,11 +279,27 @@ export function DailyEarningsTable({
                   </p>
                 ) : (
                   <>
-                    <div className="border rounded-lg overflow-x-auto">
+                    <motion.div 
+                      key={`table-${activeTab}`}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                      className="border rounded-lg overflow-x-auto"
+                      ref={scrollContainerRef}
+                      onScroll={handleTableScroll}
+                    >
                       <Table className="w-full">
                         <TableHeader>
                           <TableRow className="hover:bg-transparent bg-muted/20">
-                            <TableHead className="text-sm font-medium h-10 whitespace-nowrap px-4 min-w-max">Date</TableHead>
+                            <TableHead 
+                              className="text-sm font-medium h-10 whitespace-nowrap px-4 min-w-max sticky left-0 z-10 bg-muted/20"
+                              style={{
+                                opacity: scrollPosition > 0 ? 0.95 : 1,
+                                transition: 'opacity 0.2s ease-out',
+                              }}
+                            >
+                              Date
+                            </TableHead>
                             {stats.hasRecovery && (
                               <TableHead className="text-sm font-medium h-10 text-center whitespace-nowrap px-4 min-w-max">Target Met</TableHead>
                             )}
@@ -296,7 +321,13 @@ export function DailyEarningsTable({
                             const transferInfo = getTransferIndicator(day);
                             return (
                               <TableRow key={day.fullDate}>
-                                <TableCell className="text-sm py-3 px-4 whitespace-nowrap min-w-max">
+                                <TableCell 
+                                  className="text-sm py-3 px-4 whitespace-nowrap min-w-max sticky left-0 z-10 bg-white dark:bg-slate-950"
+                                  style={{
+                                    opacity: scrollPosition > 0 ? 0.98 : 1,
+                                    transition: 'opacity 0.2s ease-out, background-color 0.2s ease-out',
+                                  }}
+                                >
                                   <span>{day.date}</span>
                                 </TableCell>
                                 {stats.hasRecovery && (
@@ -326,7 +357,7 @@ export function DailyEarningsTable({
                           })}
                         </TableBody>
                       </Table>
-                    </div>
+                    </motion.div>
                     
                     {sheetData.length > 6 && (
                       <div className="flex justify-center pt-3">
