@@ -281,8 +281,8 @@ export function DailyEarningsTable({
                   <>
                     <motion.div 
                       key={`table-${activeTab}`}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
                       transition={{ duration: 0.3, ease: 'easeOut' }}
                       className="border rounded-lg overflow-x-auto"
                       ref={scrollContainerRef}
@@ -292,10 +292,13 @@ export function DailyEarningsTable({
                         <TableHeader>
                           <TableRow className="hover:bg-transparent bg-muted/20">
                             <TableHead 
-                              className="text-sm font-medium h-10 whitespace-nowrap px-4 min-w-max sticky left-0 z-10 bg-muted/20"
+                              className={`text-sm font-medium h-10 whitespace-nowrap px-4 min-w-max ${
+                                scrollPosition > 0 
+                                  ? 'sticky left-0 z-50 bg-muted/20' 
+                                  : ''
+                              }`}
                               style={{
-                                opacity: scrollPosition > 0 ? 0.95 : 1,
-                                transition: 'opacity 0.2s ease-out',
+                                transition: 'background-color 0.2s ease-out',
                               }}
                             >
                               Date
@@ -322,10 +325,13 @@ export function DailyEarningsTable({
                             return (
                               <TableRow key={day.fullDate}>
                                 <TableCell 
-                                  className="text-sm py-3 px-4 whitespace-nowrap min-w-max sticky left-0 z-10 bg-white dark:bg-slate-950"
+                                  className={`text-sm py-3 px-4 whitespace-nowrap min-w-max ${
+                                    scrollPosition > 0 
+                                      ? 'sticky left-0 z-50 bg-white dark:bg-slate-950' 
+                                      : ''
+                                  }`}
                                   style={{
-                                    opacity: scrollPosition > 0 ? 0.98 : 1,
-                                    transition: 'opacity 0.2s ease-out, background-color 0.2s ease-out',
+                                    transition: 'background-color 0.2s ease-out',
                                   }}
                                 >
                                   <span>{day.date}</span>
