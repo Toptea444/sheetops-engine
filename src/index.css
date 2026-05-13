@@ -1,162 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Corporate/Enterprise Design System - Blue/Navy Professional Theme
-   All colors MUST be HSLL.
-*/
-
 @layer base {
   :root {
-    /* Corporate Navy/Blue Theme */
-    /* Slightly darker/tinted surface to reduce "too much white" */
-    --background: 215 25% 96%;
-    --foreground: 215 25% 15%;
-
-    --card: 215 25% 98%;
-    --card-foreground: 215 25% 15%;
-
-    --popover: 215 25% 98%;
-    --popover-foreground: 215 25% 15%;
-
-    /* Navy Blue Primary */
-    --primary: 215 70% 35%;
-    --primary-foreground: 0 0% 100%;
-
-    /* Light Blue Secondary */
-    --secondary: 210 50% 95%;
-    --secondary-foreground: 215 70% 30%;
-
-    --muted: 210 25% 93%;
-    --muted-foreground: 215 15% 45%;
-
-    /* Corporate Accent - Steel Blue */
-    --accent: 210 60% 92%;
-    --accent-foreground: 215 70% 30%;
-
+    --background: 40 40% 98%;
+    --foreground: 218 20% 18%;
+    --card: 0 0% 100%;
+    --card-foreground: 218 20% 18%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 218 20% 18%;
+    --primary: 327 63% 76%;
+    --primary-foreground: 218 20% 18%;
+    --secondary: 205 64% 80%;
+    --secondary-foreground: 218 20% 18%;
+    --muted: 128 42% 84%;
+    --muted-foreground: 218 16% 32%;
+    --accent: 48 82% 81%;
+    --accent-foreground: 218 20% 18%;
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
-
-    /* Success Green */
-    --success: 145 60% 40%;
-    --success-foreground: 0 0% 100%;
-
-    /* Warning Orange */
-    --warning: 35 90% 50%;
-    --warning-foreground: 0 0% 100%;
-
-    --border: 215 25% 88%;
-    --input: 215 25% 88%;
-    --ring: 215 70% 45%;
-
+    --success: 145 45% 55%;
+    --success-foreground: 218 20% 18%;
+    --warning: 35 85% 62%;
+    --warning-foreground: 218 20% 18%;
+    --border: 278 38% 82%;
+    --input: 24 70% 86%;
+    --ring: 278 45% 70%;
     --radius: 1rem;
-
-    /* Corporate Sidebar */
-    --sidebar-background: 215 30% 18%;
-    --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 210 80% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 30% 25%;
-    --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 215 30% 25%;
-    --sidebar-ring: 210 80% 55%;
-
-    /* Corporate Chart Colors */
-    --chart-1: 215 70% 45%;
-    --chart-2: 195 70% 50%;
-    --chart-3: 145 60% 45%;
-    --chart-4: 35 90% 55%;
-    --chart-5: 260 60% 55%;
+    --sidebar-background: 248 24% 20%;
+    --sidebar-foreground: 40 25% 95%;
+    --sidebar-primary: 327 63% 76%;
+    --sidebar-primary-foreground: 218 20% 18%;
+    --sidebar-accent: 248 20% 30%;
+    --sidebar-accent-foreground: 40 25% 95%;
+    --sidebar-border: 248 20% 30%;
+    --sidebar-ring: 278 45% 70%;
+    --chart-1: 327 63% 76%;
+    --chart-2: 205 64% 80%;
+    --chart-3: 128 42% 84%;
+    --chart-4: 48 82% 81%;
+    --chart-5: 278 38% 82%;
   }
 
   .dark {
-    --background: 215 30% 10%;
-    --foreground: 210 20% 95%;
-
-    --card: 215 30% 14%;
-    --card-foreground: 210 20% 95%;
-
-    --popover: 215 30% 14%;
-    --popover-foreground: 210 20% 95%;
-
-    --primary: 210 80% 55%;
-    --primary-foreground: 215 30% 10%;
-
-    --secondary: 215 30% 20%;
-    --secondary-foreground: 210 20% 95%;
-
-    --muted: 215 30% 18%;
-    --muted-foreground: 210 15% 60%;
-
-    --accent: 215 30% 22%;
-    --accent-foreground: 210 20% 95%;
-
+    --background: 248 23% 14%;
+    --foreground: 40 25% 95%;
+    --card: 248 22% 18%;
+    --card-foreground: 40 25% 95%;
+    --popover: 248 22% 18%;
+    --popover-foreground: 40 25% 95%;
+    --primary: 326 62% 68%;
+    --primary-foreground: 246 30% 14%;
+    --secondary: 201 48% 45%;
+    --secondary-foreground: 40 25% 95%;
+    --muted: 156 22% 28%;
+    --muted-foreground: 40 16% 79%;
+    --accent: 48 46% 46%;
+    --accent-foreground: 40 25% 95%;
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
-
-    --success: 145 60% 45%;
-    --success-foreground: 0 0% 100%;
-
-    --warning: 35 90% 55%;
-    --warning-foreground: 0 0% 100%;
-
-    --border: 215 30% 22%;
-    --input: 215 30% 22%;
-    --ring: 210 80% 55%;
-
-    --sidebar-background: 215 30% 8%;
-    --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 210 80% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 30% 15%;
-    --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 215 30% 15%;
-    --sidebar-ring: 210 80% 55%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
+    --success: 145 38% 42%;
+    --success-foreground: 40 25% 95%;
+    --warning: 35 70% 52%;
+    --warning-foreground: 40 25% 95%;
+    --border: 278 22% 34%;
+    --input: 24 24% 36%;
+    --ring: 278 40% 66%;
+    --sidebar-background: 248 28% 11%;
+    --sidebar-foreground: 40 25% 95%;
+    --sidebar-primary: 326 62% 68%;
+    --sidebar-primary-foreground: 246 30% 14%;
+    --sidebar-accent: 248 20% 20%;
+    --sidebar-accent-foreground: 40 25% 95%;
+    --sidebar-border: 248 20% 20%;
+    --sidebar-ring: 278 40% 66%;
   }
 
-  html {
-    position: relative;
-    overflow-x: hidden;
-  }
-
+  * { @apply border-border; }
+  html { position: relative; overflow-x: hidden; }
   body {
-    @apply text-foreground font-sans antialiased overflow-x-hidden;
+    @apply text-foreground antialiased overflow-x-hidden;
+    font-family: 'Baloo 2', system-ui, sans-serif;
     background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(circle at 3% 4%, hsl(327 63% 76% / 0.35) 0 7px, transparent 8px),
+      radial-gradient(circle at 96% 7%, hsl(205 64% 80% / 0.35) 0 7px, transparent 8px),
+      radial-gradient(circle at 7% 96%, hsl(128 42% 84% / 0.35) 0 8px, transparent 9px),
+      radial-gradient(circle at 95% 95%, hsl(48 82% 81% / 0.33) 0 8px, transparent 9px);
   }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
-  }
+  h1, h2, h3, h4, h5, h6 { @apply font-semibold tracking-tight; }
 }
 
 @layer components {
-  #root {
-    @apply relative;
-    position: relative;
-    z-index: 0;
-  }
+  #root { @apply relative; position: relative; z-index: 0; }
 }
 
 @layer utilities {
-  .corporate-gradient {
-    background: linear-gradient(135deg, hsl(215 70% 35%) 0%, hsl(210 80% 45%) 100%);
+  .playful-card {
+    background-color: hsl(var(--card));
+    border: 2px solid hsl(var(--border));
+    border-radius: 1.5rem;
+    position: relative;
+    overflow: hidden;
   }
-
-  .corporate-shadow {
-    box-shadow: 0 4px 6px -1px hsl(215 30% 15% / 0.1), 
-                0 2px 4px -2px hsl(215 30% 15% / 0.1);
-  }
-
-  .corporate-shadow-lg {
-    box-shadow: 0 10px 15px -3px hsl(215 30% 15% / 0.1),
-                0 4px 6px -4px hsl(215 30% 15% / 0.1);
+  .playful-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle at 80% 18%, hsl(327 63% 76% / 0.18) 0, transparent 34%), radial-gradient(circle at 12% 85%, hsl(205 64% 80% / 0.22) 0, transparent 38%);
   }
 }
-
-

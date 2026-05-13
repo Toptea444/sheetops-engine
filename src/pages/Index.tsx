@@ -28,6 +28,7 @@ import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCar
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
 import { SheetSettingsModal } from '@/components/dashboard/SheetSettingsModal';
 import { RankingBonusMomentumBanner } from '@/components/dashboard/RankingBonusMomentumBanner';
+import { ChildrensDayModal } from '@/components/dashboard/ChildrensDayModal';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
@@ -1365,6 +1366,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col relative">
 
+      <ChildrensDayModal />
+
       {/* Feedback Modal */}
       <FeedbackModal userId={userId} identityConfirmed={identityConfirmed} autoShow={false} />
 
@@ -1601,7 +1604,7 @@ const Index = () => {
 
             {/* Hero Summary Section - Main Focus */}
             <div className="mb-8">
-              <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6 sm:p-8">
+              <div className="playful-card p-6 sm:p-8 overflow-hidden">
                 <CycleSummaryCard
                   cycle={selectedCycle}
                   totalEarnings={cycleStats.totalEarnings}
@@ -1635,7 +1638,7 @@ const Index = () => {
 
             {/* Weekly Breakdown */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+              <div className="playful-card p-6 sm:p-8 overflow-hidden">
                 <WeeklyBreakdown 
                   results={displayResults} 
                   cycle={selectedCycle}
@@ -1647,7 +1650,7 @@ const Index = () => {
 
             {/* Daily Earnings Table - Detailed breakdown */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6">
+              <div className="playful-card p-6 sm:p-8 overflow-hidden">
                 <DailyEarningsTable
                   results={displayResults}
                   sheetNames={displaySelectedSheets}
@@ -1672,7 +1675,7 @@ const Index = () => {
 
             {/* Leaderboard */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+              <div className="playful-card p-6 sm:p-8 overflow-hidden">
                 <LeaderboardPanel
                   sheetData={leaderboardSheetData}
                   currentUserId={userId}
@@ -1686,7 +1689,7 @@ const Index = () => {
             {/* Secondary Panels Grid - Goals, Streaks, Projection at the end */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {/* Goals Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="playful-card p-6 overflow-hidden">
                 <GoalsPanel
                   results={adjustedResults}
                   cycle={selectedCycle}
@@ -1696,7 +1699,7 @@ const Index = () => {
               </div>
 
               {/* Streaks Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="playful-card p-6 overflow-hidden">
                 <StreaksPanel
                   streakData={streakData}
                   achievements={achievements}
@@ -1706,7 +1709,7 @@ const Index = () => {
               </div>
 
               {/* Earnings Projection */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="playful-card p-6 overflow-hidden">
                 <EarningsProjection
                   results={adjustedResults}
                   cycle={selectedCycle}
@@ -1716,7 +1719,7 @@ const Index = () => {
               </div>
 
               {/* Activity Feed */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="playful-card p-6 overflow-hidden">
                 <ActivityFeed
                   sheetData={leaderboardSheetData}
                   currentUserId={userId}
