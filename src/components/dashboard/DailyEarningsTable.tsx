@@ -283,7 +283,7 @@ export function DailyEarningsTable({
                       key={`table-${activeTab}`}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                      transition={{ duration: 0.5, ease: 'easeOut' }}
                       className="border rounded-lg overflow-x-auto"
                       ref={scrollContainerRef}
                       onScroll={handleTableScroll}
@@ -294,7 +294,7 @@ export function DailyEarningsTable({
                             <TableHead 
                               className={`text-sm font-medium h-10 whitespace-nowrap px-4 min-w-max ${
                                 scrollPosition > 0 
-                                  ? 'sticky left-0 z-50 bg-muted/20' 
+                                  ? 'sticky left-0 z-50 bg-background border-r shadow-[2px_0_6px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_6px_rgba(0,0,0,0.4)]' 
                                   : ''
                               }`}
                               style={{
@@ -327,7 +327,7 @@ export function DailyEarningsTable({
                                 <TableCell 
                                   className={`text-sm py-3 px-4 whitespace-nowrap min-w-max ${
                                     scrollPosition > 0 
-                                      ? 'sticky left-0 z-50 bg-white dark:bg-slate-950' 
+                                      ? 'sticky left-0 z-40 bg-background border-r shadow-[2px_0_6px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_6px_rgba(0,0,0,0.4)]' 
                                       : ''
                                   }`}
                                   style={{
