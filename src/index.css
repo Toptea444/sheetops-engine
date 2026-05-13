@@ -2,116 +2,117 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Corporate/Enterprise Design System - Blue/Navy Professional Theme
-   All colors MUST be HSLL.
+/* Playful, Adorable Children's Color Palette Theme
+   Bright soft candy pastels with whimsical, cute aesthetic
+   All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    /* Corporate Navy/Blue Theme */
-    /* Slightly darker/tinted surface to reduce "too much white" */
-    --background: 215 25% 96%;
-    --foreground: 215 25% 15%;
+    /* Clean white background */
+    --background: 0 0% 99%;
+    --foreground: 0 0% 15%;
 
-    --card: 215 25% 98%;
-    --card-foreground: 215 25% 15%;
+    /* Card backgrounds with soft pastels */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 15%;
 
-    --popover: 215 25% 98%;
-    --popover-foreground: 215 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 15%;
 
-    /* Navy Blue Primary */
-    --primary: 215 70% 35%;
+    /* Primary: Bubblegum Pink */
+    --primary: 330 85% 65%;
     --primary-foreground: 0 0% 100%;
 
-    /* Light Blue Secondary */
-    --secondary: 210 50% 95%;
-    --secondary-foreground: 215 70% 30%;
+    /* Secondary: Baby Blue */
+    --secondary: 200 80% 75%;
+    --secondary-foreground: 0 0% 15%;
 
-    --muted: 210 25% 93%;
-    --muted-foreground: 215 15% 45%;
+    --muted: 0 0% 92%;
+    --muted-foreground: 0 0% 45%;
 
-    /* Corporate Accent - Steel Blue */
-    --accent: 210 60% 92%;
-    --accent-foreground: 215 70% 30%;
+    /* Accent: Mint Green */
+    --accent: 150 70% 70%;
+    --accent-foreground: 0 0% 15%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Success Green */
-    --success: 145 60% 40%;
+    /* Success: Mint Green */
+    --success: 150 70% 60%;
     --success-foreground: 0 0% 100%;
 
-    /* Warning Orange */
-    --warning: 35 90% 50%;
-    --warning-foreground: 0 0% 100%;
+    /* Warning: Lemon Yellow */
+    --warning: 50 95% 65%;
+    --warning-foreground: 0 0% 15%;
 
-    --border: 215 25% 88%;
-    --input: 215 25% 88%;
-    --ring: 215 70% 45%;
+    --border: 0 0% 90%;
+    --input: 0 0% 95%;
+    --ring: 330 85% 60%;
 
-    --radius: 1rem;
+    --radius: 1.5rem;
 
-    /* Corporate Sidebar */
-    --sidebar-background: 215 30% 18%;
-    --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 210 80% 55%;
+    /* Sidebar with complementary colors */
+    --sidebar-background: 200 80% 75%;
+    --sidebar-foreground: 0 0% 15%;
+    --sidebar-primary: 330 85% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 30% 25%;
-    --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 215 30% 25%;
-    --sidebar-ring: 210 80% 55%;
+    --sidebar-accent: 150 70% 70%;
+    --sidebar-accent-foreground: 0 0% 15%;
+    --sidebar-border: 0 0% 85%;
+    --sidebar-ring: 330 85% 60%;
 
-    /* Corporate Chart Colors */
-    --chart-1: 215 70% 45%;
-    --chart-2: 195 70% 50%;
-    --chart-3: 145 60% 45%;
-    --chart-4: 35 90% 55%;
-    --chart-5: 260 60% 55%;
+    /* Chart Colors - Playful palette */
+    --chart-1: 330 85% 65%;
+    --chart-2: 200 80% 75%;
+    --chart-3: 150 70% 70%;
+    --chart-4: 50 95% 65%;
+    --chart-5: 270 80% 75%;
   }
 
   .dark {
-    --background: 215 30% 10%;
-    --foreground: 210 20% 95%;
+    --background: 0 0% 12%;
+    --foreground: 0 0% 95%;
 
-    --card: 215 30% 14%;
-    --card-foreground: 210 20% 95%;
+    --card: 0 0% 18%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 215 30% 14%;
-    --popover-foreground: 210 20% 95%;
+    --popover: 0 0% 18%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 210 80% 55%;
-    --primary-foreground: 215 30% 10%;
+    --primary: 330 85% 65%;
+    --primary-foreground: 0 0% 12%;
 
-    --secondary: 215 30% 20%;
-    --secondary-foreground: 210 20% 95%;
+    --secondary: 200 80% 65%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 215 30% 18%;
-    --muted-foreground: 210 15% 60%;
+    --muted: 0 0% 25%;
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 215 30% 22%;
-    --accent-foreground: 210 20% 95%;
+    --accent: 150 70% 65%;
+    --accent-foreground: 0 0% 12%;
 
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 145 60% 45%;
+    --success: 150 70% 55%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 35 90% 55%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 50 95% 55%;
+    --warning-foreground: 0 0% 12%;
 
-    --border: 215 30% 22%;
-    --input: 215 30% 22%;
-    --ring: 210 80% 55%;
+    --border: 0 0% 28%;
+    --input: 0 0% 22%;
+    --ring: 330 85% 65%;
 
-    --sidebar-background: 215 30% 8%;
-    --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 210 80% 55%;
+    --sidebar-background: 200 50% 25%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 330 85% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 30% 15%;
-    --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 215 30% 15%;
-    --sidebar-ring: 210 80% 55%;
+    --sidebar-accent: 150 70% 65%;
+    --sidebar-accent-foreground: 0 0% 12%;
+    --sidebar-border: 0 0% 35%;
+    --sidebar-ring: 330 85% 65%;
   }
 }
 
@@ -144,18 +145,48 @@
 }
 
 @layer utilities {
-  .corporate-gradient {
-    background: linear-gradient(135deg, hsl(215 70% 35%) 0%, hsl(210 80% 45%) 100%);
+  .playful-gradient {
+    background: linear-gradient(135deg, hsl(330 85% 65%) 0%, hsl(200 80% 75%) 50%, hsl(150 70% 70%) 100%);
   }
 
-  .corporate-shadow {
-    box-shadow: 0 4px 6px -1px hsl(215 30% 15% / 0.1), 
-                0 2px 4px -2px hsl(215 30% 15% / 0.1);
+  .card-gradient-pink {
+    background: linear-gradient(135deg, hsl(330 85% 75%) 0%, hsl(330 85% 60%) 100%);
   }
 
-  .corporate-shadow-lg {
-    box-shadow: 0 10px 15px -3px hsl(215 30% 15% / 0.1),
-                0 4px 6px -4px hsl(215 30% 15% / 0.1);
+  .card-gradient-blue {
+    background: linear-gradient(135deg, hsl(200 80% 80%) 0%, hsl(200 80% 70%) 100%);
+  }
+
+  .card-gradient-mint {
+    background: linear-gradient(135deg, hsl(150 70% 75%) 0%, hsl(150 70% 60%) 100%);
+  }
+
+  .card-gradient-yellow {
+    background: linear-gradient(135deg, hsl(50 95% 75%) 0%, hsl(50 95% 60%) 100%);
+  }
+
+  .card-gradient-lavender {
+    background: linear-gradient(135deg, hsl(270 80% 80%) 0%, hsl(270 80% 70%) 100%);
+  }
+
+  .cute-shadow {
+    box-shadow: 0 8px 16px -2px hsl(330 85% 65% / 0.15),
+                0 4px 8px -2px hsl(200 80% 75% / 0.1);
+  }
+
+  .cute-shadow-lg {
+    box-shadow: 0 20px 25px -5px hsl(330 85% 65% / 0.2),
+                0 8px 12px -4px hsl(200 80% 75% / 0.15);
+  }
+
+  .whimsy-dots {
+    position: relative;
+    background-image: 
+      radial-gradient(circle, hsl(330 85% 65% / 0.08) 1px, transparent 1px),
+      radial-gradient(circle, hsl(200 80% 75% / 0.08) 1px, transparent 1px),
+      radial-gradient(circle, hsl(150 70% 70% / 0.08) 1px, transparent 1px);
+    background-size: 30px 30px, 60px 60px, 90px 90px;
+    background-position: 0 0, 15px 15px, 30px 30px;
   }
 }
 

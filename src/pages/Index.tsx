@@ -1601,19 +1601,17 @@ const Index = () => {
 
             {/* Hero Summary Section - Main Focus */}
             <div className="mb-8">
-              <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6 sm:p-8">
-                <CycleSummaryCard
-                  cycle={selectedCycle}
-                  totalEarnings={cycleStats.totalEarnings}
-                  daysActive={cycleStats.daysActive}
-                  isLoading={isLoading}
-                  displayMode={earningsDisplay}
-                  onDisplayModeChange={setEarningsDisplay}
-                  tooltipDismissed={tooltipDismissed}
-                  onDismissTooltip={dismissTooltip}
-                  includesRankingBonus={rankingBonusContributesToTotal}
-                />
-              </div>
+              <CycleSummaryCard
+                cycle={selectedCycle}
+                totalEarnings={cycleStats.totalEarnings}
+                daysActive={cycleStats.daysActive}
+                isLoading={isLoading}
+                displayMode={earningsDisplay}
+                onDisplayModeChange={setEarningsDisplay}
+                tooltipDismissed={tooltipDismissed}
+                onDismissTooltip={dismissTooltip}
+                includesRankingBonus={rankingBonusContributesToTotal}
+              />
             </div>
 
             {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
