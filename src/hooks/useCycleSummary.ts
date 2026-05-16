@@ -81,10 +81,10 @@ export function markSummaryAsSeen(cycleKey: string): void {
 
 
 const DOUBLE_BONUS_PERIOD = {
-  startMonth: 1, // February (0-indexed)
-  startDay: 23,
-  endMonth: 1,
-  endDay: 28,
+  startMonth: 3, // April (0-indexed)
+  startDay: 22,
+  endMonth: 3,
+  endDay: 30,
   maxPossible: 24000,
 };
 
@@ -248,8 +248,8 @@ export function useCycleSummary(
       hasRankingBonusData: rankingBonusResults.length > 0,
       hasDailyPerformanceData: dailyPerformanceResults.length > 0,
       doubleBonusPeriod: {
-        startLabel: 'Feb 23',
-        endLabel: 'Feb 28',
+        startLabel: 'Apr 22',
+        endLabel: 'Apr 30',
         maxPossible: DOUBLE_BONUS_PERIOD.maxPossible,
         totalEarned: doubleBonusTotal,
         daysWithEarnings: doubleBonusBreakdown.filter((day) => day.amount > 0).length,
