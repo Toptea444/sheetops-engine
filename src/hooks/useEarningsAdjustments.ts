@@ -211,10 +211,12 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     }
 
     // Walk the timeline: at each swap, ownership of workerId toggles between uid and the other party.
-    // Determine whether uid owned workerId just BEFORE the first swap.
+    // Determine whether uid owned workerId just BEFORE the first relevant swap.
     const firstSwap = relevantSwaps[0];
-    // Before the first swap: uid owned workerId iff uid === workerId
-    let uidOwnsIt = uid === workerId;
+    const uidGainsWorkerIdAtFirstSwap =
+      (firstSwap.new_worker_id === uid && firstSwap.old_worker_id === workerId) ||
+      (firstSwap.old_worker_id === uid && firstSwap.new_worker_id === workerId);
+    let uidOwnsIt = !uidGainsWorkerIdAtFirstSwap;
 
     const windows: Array<{ from: string | null; to: string | null }> = [];
     let windowStart: string | null = uidOwnsIt ? null : undefined as any;
