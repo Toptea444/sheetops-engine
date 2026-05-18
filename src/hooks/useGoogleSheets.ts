@@ -497,10 +497,15 @@ function parseDailyPerformanceSheet(
         const stageLabel = normalizeLabel(stageCell);
         const userLabel = normalizeLabel(userCell);
         const totalLabel = normalizeLabel(String(dataRow[totalCol] ?? '').trim());
+        const userHeaderLabels = ['username', 'usernames', 'user name', 'user_name', 'product', 'id', 'name', 'names'];
+        const hasStageHeader = stageLabel === 'stage' || stageLabel === 'stages';
+        const hasUserHeader = userHeaderLabels.includes(userLabel);
+        const hasTotalHeader = totalLabel === 'total';
+
+        // Some summary tables do not repeat TOTAL on the same row (or use merged cells).
+        // Treat any stage+username header shape as an embedded table header and stop the block scan.
         const looksLikeEmbeddedHeader =
-          (stageLabel === 'stage' || stageLabel === 'stages') &&
-          ['username', 'usernames', 'user name', 'user_name', 'product', 'id', 'name', 'names'].includes(userLabel) &&
-          totalLabel === 'total';
+          hasStageHeader && (hasUserHeader || hasTotalHeader);
 
         if (looksLikeEmbeddedHeader) {
           break;
