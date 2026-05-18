@@ -390,26 +390,15 @@ function parseDailyPerformanceSheet(
   // --------------------------------------------------------------------------
   // PASS 1 (preferred): Find date blocks in ROWS (date row + header row)
   // --------------------------------------------------------------------------
-  // Helper function to find a date for a block, with fallback to scanning upward
+  // Helper function to find a date for a block.
+  // We intentionally require the date to exist on the same row where block starts were detected.
+  // This prevents unrelated summary blocks (e.g. "total bonuses earned") from inheriting the
+  // previous date and being mis-labeled as the last daily date.
   const getBlockDate = (blockCol: number, primaryRowIdx: number, matrix: string[][]): { day: number; formatted: string; timestamp: number } | null => {
-    // First try to get the date from the primary location (same row where we found other dates)
     const primaryCell = String(matrix[primaryRowIdx]?.[blockCol] ?? '').trim();
-    if (primaryCell && !primaryCell.toUpperCase().includes('COLLECTOR BONUS')) {
-      const parsed = parseDateFromHeader(primaryCell, data.sheetName);
-      if (parsed) return parsed;
-    }
+    if (!primaryCell || primaryCell.toUpperCase().includes('COLLECTOR BONUS')) return null;
 
-    // Fallback: scan upward in the same column to find the date at the top (usually row 0 or higher)
-    for (let scanRow = primaryRowIdx - 1; scanRow >= 0; scanRow--) {
-      const cell = String(matrix[scanRow]?.[blockCol] ?? '').trim();
-      if (!cell) continue;
-      if (cell.toUpperCase().includes('COLLECTOR BONUS')) continue;
-
-      const parsed = parseDateFromHeader(cell, data.sheetName);
-      if (parsed) return parsed;
-    }
-
-    return null;
+    return parseDateFromHeader(primaryCell, data.sheetName);
   };
 
   for (let rowIdx = 0; rowIdx < matrix.length - 2; rowIdx++) {
@@ -450,7 +439,7 @@ function parseDailyPerformanceSheet(
       const blockStart = starts[sIdx].col;
       const blockEnd = starts[sIdx + 1]?.col ?? widestDataRow;
 
-      // Get the date for this block using primary location + fallback to scanning upward
+      // Get the date for this block (must be present on the current date-header row)
       const blockDate = getBlockDate(blockStart, rowIdx, matrix);
       if (!blockDate) continue; // Skip if we can't find a date for this block
 
