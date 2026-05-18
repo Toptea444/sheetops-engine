@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
+import { ChildrensDayThemeAnnouncement } from '@/components/dashboard/ChildrensDayThemeAnnouncement';
 import { IdentityConfirmationModal } from '@/components/dashboard/IdentityConfirmationModal';
 import { SessionPinGate } from '@/components/dashboard/SessionPinGate';
 import { SwapDetectionModal } from '@/components/dashboard/SwapDetectionModal';
@@ -1463,6 +1464,9 @@ const Index = () => {
         onAcknowledge={handlePinResetAcknowledge}
       />
 
+
+
+      <ChildrensDayThemeAnnouncement />
 
       <AdelajaIntro onComplete={() => setIntroDone(true)} />
 
