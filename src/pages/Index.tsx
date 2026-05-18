@@ -23,6 +23,7 @@ import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
+import { ChildrensDayThemeModal } from '@/components/ChildrensDayThemeModal';
 import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
 import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCard';
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
@@ -1373,6 +1374,7 @@ const Index = () => {
         identityConfirmed={identityConfirmed}
         openRequestId={downloadModalRequestId}
       />
+      <ChildrensDayThemeModal enabled={identityConfirmed && introDone} />
 
       {/* Transport Subsidy Modal */}
       <TransportSubsidyModal
