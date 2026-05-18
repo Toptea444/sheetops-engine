@@ -28,6 +28,7 @@ import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCar
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
 import { SheetSettingsModal } from '@/components/dashboard/SheetSettingsModal';
 import { RankingBonusMomentumBanner } from '@/components/dashboard/RankingBonusMomentumBanner';
+import { ChildrensDayDesignNotice } from '@/components/dashboard/ChildrensDayDesignNotice';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
@@ -1414,6 +1415,8 @@ const Index = () => {
         subsidyOptedIn={subsidyOptedIn}
         subsidyKId={subsidyKId}
       />
+
+      <ChildrensDayDesignNotice />
 
       {/* Admin Alerts Display */}
       <AlertsDisplay />
