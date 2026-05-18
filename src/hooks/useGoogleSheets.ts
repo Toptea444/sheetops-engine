@@ -490,6 +490,22 @@ function parseDailyPerformanceSheet(
         const stageCell = String(dataRow[stagesCol] ?? '').trim();
         const userCell = String(dataRow[usernamesCol] ?? '').trim();
 
+        // Stop at repeated table headers inside the same columns.
+        // Some sheets append summary tables (e.g. "Stages | usernames | total")
+        // after the final date block. Without this guard, those rows are treated
+        // as if they belong to the last dated block.
+        const stageLabel = normalizeLabel(stageCell);
+        const userLabel = normalizeLabel(userCell);
+        const totalLabel = normalizeLabel(String(dataRow[totalCol] ?? '').trim());
+        const looksLikeEmbeddedHeader =
+          (stageLabel === 'stage' || stageLabel === 'stages') &&
+          ['username', 'usernames', 'user name', 'user_name', 'product', 'id', 'name', 'names'].includes(userLabel) &&
+          totalLabel === 'total';
+
+        if (looksLikeEmbeddedHeader) {
+          break;
+        }
+
         // Stage divider rows (blue rows in the sheet) usually have stage but no username
         if (stageCell && !userCell && looksLikeStage(stageCell)) {
           currentStage = stageCell;
