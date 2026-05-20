@@ -23,6 +23,7 @@ import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
+import { ChildrensDayThemeModal } from '@/components/ChildrensDayThemeModal';
 import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
 import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCard';
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
@@ -175,6 +176,7 @@ const Index = () => {
   } = useTransportSubsidy();
 
   const [showSubsidyModal, setShowSubsidyModal] = useState(false);
+  const [themeModalRequestId, setThemeModalRequestId] = useState(0);
 
   // Show subsidy modal after identity is confirmed + PIN verified + data loaded, if setup not done
   useEffect(() => {
@@ -1374,6 +1376,11 @@ const Index = () => {
         openRequestId={downloadModalRequestId}
       />
 
+      <ChildrensDayThemeModal
+        identityConfirmed={identityConfirmed}
+        openRequestId={themeModalRequestId}
+      />
+
       {/* Transport Subsidy Modal */}
       <TransportSubsidyModal
         open={showSubsidyModal}
@@ -1545,12 +1552,23 @@ const Index = () => {
                     isLoading={isLoading}
                   />
                 </div>
-                {identityConfirmed && showDownloadBanner && (
-                  <DownloadAppBanner
-                    visible={true}
-                    onOpenModal={() => setDownloadModalRequestId((current) => current + 1)}
-                  />
-                )}
+                <div className="flex items-center gap-1.5">
+                  {identityConfirmed && (
+                    <button
+                      onClick={() => setThemeModalRequestId((current) => current + 1)}
+                      className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 active:scale-[0.97] transition-all shrink-0 py-1 px-2 rounded-lg border border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100/80"
+                    >
+                      <span>🎈</span>
+                      <span>Children’s Day Theme</span>
+                    </button>
+                  )}
+                  {identityConfirmed && showDownloadBanner && (
+                    <DownloadAppBanner
+                      visible={true}
+                      onOpenModal={() => setDownloadModalRequestId((current) => current + 1)}
+                    />
+                  )}
+                </div>
               </div>
               <div className="min-w-0 flex items-center gap-2">
                 <SheetSelector
