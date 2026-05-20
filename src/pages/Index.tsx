@@ -23,6 +23,8 @@ import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
+import { ChildrensDayModal } from '@/components/ChildrensDayModal';
+import { ChildrensDayCountdown } from '@/components/ChildrensDayCountdown';
 import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
 import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCard';
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
@@ -190,6 +192,21 @@ const Index = () => {
     setShowSubsidyModal(false);
   }, [markSubsidySetupDone]);
 
+  // Show children's day modal after identity is confirmed + PIN verified (once per session)
+  const CHILDREN_DAY_MODAL_KEY = 'childrensDayModal_seen_2026_05_21';
+  useEffect(() => {
+    if (identityConfirmed && pinVerifiedThisSession && !isInitializing) {
+      const hasSeenModal = sessionStorage.getItem(CHILDREN_DAY_MODAL_KEY) === 'true';
+      if (!hasSeenModal) {
+        // Delay to let other modals show first
+        const timer = setTimeout(() => {
+          setChildrensDayModalRequestId((current) => current + 1);
+          sessionStorage.setItem(CHILDREN_DAY_MODAL_KEY, 'true');
+        }, 3500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [identityConfirmed, pinVerifiedThisSession, isInitializing]);
 
   const {
     swaps: earningsSwaps,
@@ -465,6 +482,8 @@ const Index = () => {
   const showDownloadBanner = true;
   const [downloadModalRequestId, setDownloadModalRequestId] = useState(0);
 
+  // Children's Day modal
+  const [childrensDayModalRequestId, setChildrensDayModalRequestId] = useState(0);
 
   // Safety: never keep sensitive data on screen before identity is confirmed
   useEffect(() => {
@@ -1373,6 +1392,15 @@ const Index = () => {
         identityConfirmed={identityConfirmed}
         openRequestId={downloadModalRequestId}
       />
+
+      {/* Children's Day Modal */}
+      <ChildrensDayModal
+        identityConfirmed={identityConfirmed}
+        openRequestId={childrensDayModalRequestId}
+      />
+
+      {/* Children's Day Countdown */}
+      <ChildrensDayCountdown />
 
       {/* Transport Subsidy Modal */}
       <TransportSubsidyModal
