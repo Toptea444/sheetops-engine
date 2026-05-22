@@ -23,6 +23,7 @@ import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
 import { ChildrensDayModal } from '@/components/ChildrensDayModal';
+import { ChildrensDayFab } from '@/components/ChildrensDayFab';
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
 import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
 import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCard';
@@ -1376,6 +1377,7 @@ const Index = () => {
       />
 
       <ChildrensDayModal identityConfirmed={identityConfirmed} />
+      <ChildrensDayFab />
 
       {/* Transport Subsidy Modal */}
       <TransportSubsidyModal
