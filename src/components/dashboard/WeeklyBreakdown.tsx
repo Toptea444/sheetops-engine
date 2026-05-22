@@ -138,7 +138,7 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
               </div>
               <div className="h-2 w-full rounded-full bg-muted/40 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  className="h-full rounded-full bg-primary transition-all duration-500 weekly-progress-animated"
                   style={{ width: `${Math.max(pct, week.total > 0 ? 2 : 0)}%` }}
                 />
               </div>
