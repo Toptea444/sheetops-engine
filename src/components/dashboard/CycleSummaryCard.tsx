@@ -62,11 +62,13 @@ export function CycleSummaryCard({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 rounded-3xl border-2 border-border bg-card p-5 shadow-[0_8px_0_hsl(var(--border))] relative overflow-hidden">
+      <div className="pointer-events-none absolute -top-10 -right-8 h-28 w-28 rounded-full bg-secondary/40" />
+      <div className="pointer-events-none absolute -bottom-10 -left-8 h-24 w-24 rounded-full bg-accent/45" />
       {/* Header with toggle */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <p className="text-sm text-muted-foreground">Total Earnings</p>
+          <p className="text-sm text-foreground/80">Total Earnings</p>
           {includesRankingBonus && (
             <span className="text-[11px] font-medium text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
               + ranking bonus
@@ -116,7 +118,7 @@ export function CycleSummaryCard({
         {isHidden ? (
           <div className="h-9 w-40 rounded-lg bg-muted animate-pulse" />
         ) : (
-          <p className="text-3xl font-bold tracking-tight">
+          <p className="text-3xl font-extrabold tracking-tight">
             {formattedAmount}
           </p>
         )}
@@ -124,7 +126,7 @@ export function CycleSummaryCard({
 
       {/* Progress bar */}
       <div className="space-y-2">
-        <Progress value={progressPercent} className="h-1.5" />
+        <Progress value={progressPercent} className="h-2 [&>div]:bg-secondary" />
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>Day {daysElapsed}/{totalDays}</span>
           <span>{daysRemaining} days left</span>
