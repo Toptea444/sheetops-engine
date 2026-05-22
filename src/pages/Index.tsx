@@ -22,6 +22,7 @@ import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
 import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
+import { ChildrensDayModal } from '@/components/ChildrensDayModal';
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
 import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
 import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCard';
@@ -1374,6 +1375,8 @@ const Index = () => {
         openRequestId={downloadModalRequestId}
       />
 
+      <ChildrensDayModal identityConfirmed={identityConfirmed} />
+
       {/* Transport Subsidy Modal */}
       <TransportSubsidyModal
         open={showSubsidyModal}
@@ -1635,7 +1638,7 @@ const Index = () => {
 
             {/* Weekly Breakdown */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+              <div className="celebration-card celebration-blobs p-6 sm:p-8 overflow-hidden">
                 <WeeklyBreakdown 
                   results={displayResults} 
                   cycle={selectedCycle}
@@ -1647,7 +1650,7 @@ const Index = () => {
 
             {/* Daily Earnings Table - Detailed breakdown */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6">
+              <div className="celebration-card celebration-blobs p-6 sm:p-8 overflow-x-auto space-y-6">
                 <DailyEarningsTable
                   results={displayResults}
                   sheetNames={displaySelectedSheets}
@@ -1672,7 +1675,7 @@ const Index = () => {
 
             {/* Leaderboard */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+              <div className="celebration-card celebration-blobs p-6 sm:p-8 overflow-hidden">
                 <LeaderboardPanel
                   sheetData={leaderboardSheetData}
                   currentUserId={userId}
@@ -1686,7 +1689,7 @@ const Index = () => {
             {/* Secondary Panels Grid - Goals, Streaks, Projection at the end */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {/* Goals Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="celebration-card celebration-blobs p-6 overflow-hidden">
                 <GoalsPanel
                   results={adjustedResults}
                   cycle={selectedCycle}
@@ -1696,7 +1699,7 @@ const Index = () => {
               </div>
 
               {/* Streaks Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="celebration-card celebration-blobs p-6 overflow-hidden">
                 <StreaksPanel
                   streakData={streakData}
                   achievements={achievements}
@@ -1706,7 +1709,7 @@ const Index = () => {
               </div>
 
               {/* Earnings Projection */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="celebration-card celebration-blobs p-6 overflow-hidden">
                 <EarningsProjection
                   results={adjustedResults}
                   cycle={selectedCycle}
@@ -1716,7 +1719,7 @@ const Index = () => {
               </div>
 
               {/* Activity Feed */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="celebration-card celebration-blobs p-6 overflow-hidden">
                 <ActivityFeed
                   sheetData={leaderboardSheetData}
                   currentUserId={userId}

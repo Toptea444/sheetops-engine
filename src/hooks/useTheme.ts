@@ -57,7 +57,7 @@ const accentColors: Record<AccentColor, { primary: string; chart1: string }> = {
 };
 
 export function useTheme(): UseThemeResult {
-  const [theme, setThemeState] = useState<Theme>('system');
+  const [theme, setThemeState] = useState<Theme>('light');
   const [accentColor, setAccentState] = useState<AccentColor>('blue');
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
 
@@ -67,7 +67,10 @@ export function useTheme(): UseThemeResult {
     const savedAccent = localStorage.getItem(ACCENT_KEY) as AccentColor | null;
     const accentInitialized = localStorage.getItem(ACCENT_INITIALIZED_KEY);
 
-    if (savedTheme) setThemeState(savedTheme);
+    if (savedTheme) {
+      // Children’s day theme rollout: temporarily force everyone to light mode.
+      localStorage.setItem(THEME_KEY, 'light');
+    }
     
     if (savedAccent) {
       setAccentState(savedAccent);
@@ -82,16 +85,8 @@ export function useTheme(): UseThemeResult {
 
   // Handle system theme changes and apply theme
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
     const updateResolvedTheme = () => {
-      let resolved: 'light' | 'dark';
-
-      if (theme === 'system') {
-        resolved = mediaQuery.matches ? 'dark' : 'light';
-      } else {
-        resolved = theme;
-      }
+      const resolved: 'light' | 'dark' = 'light';
 
       setResolvedTheme(resolved);
 
@@ -108,9 +103,7 @@ export function useTheme(): UseThemeResult {
     };
 
     updateResolvedTheme();
-    mediaQuery.addEventListener('change', updateResolvedTheme);
-
-    return () => mediaQuery.removeEventListener('change', updateResolvedTheme);
+    return undefined;
   }, [theme]);
 
   // Apply accent color
@@ -126,8 +119,9 @@ export function useTheme(): UseThemeResult {
   }, [accentColor]);
 
   const setTheme = useCallback((newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem(THEME_KEY, newTheme);
+    // Ignore requested value and keep everyone in light mode.
+    setThemeState('light');
+    localStorage.setItem(THEME_KEY, 'light');
   }, []);
 
   const setAccentColor = useCallback((newAccent: AccentColor) => {
