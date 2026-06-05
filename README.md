@@ -2,7 +2,7 @@
 
 A short description of the project — add a one-line summary of what sheetops-engine does.
 
-## Project infoo
+## Project info
 
 Repository: https://github.com/Toptea444/sheetops-engine
 
