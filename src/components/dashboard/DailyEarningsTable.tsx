@@ -23,7 +23,7 @@ interface DailyEarningsTableProps {
   sheetNames: string[];
   cycle: CyclePeriod;
   isLoading?: boolean;
-  getTransferInfo?: (workerId: string, dateStr: string, sheetName?: string) => { type: 'credit' | 'debit'; amount: number } | null;
+  getTransferInfo?: (workerId: string, dateStr: string, sheetName?: string) => { type: 'credit' | 'debit'; amount: number; label?: string } | null;
   currentUserId?: string | null;
   subsidyData?: TransportSubsidyData | null;
   subsidyOptedIn?: boolean;
@@ -334,7 +334,18 @@ export function DailyEarningsTable({
                                     transition: 'background-color 0.2s ease-out',
                                   }}
                                 >
-                                  <span>{day.date}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span>{day.date}</span>
+                                    {transferInfo && (
+                                      <Badge
+                                        variant="secondary"
+                                        className={`h-4 px-1.5 text-[10px] ${transferInfo.type === 'credit' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}
+                                        title={`${transferInfo.label || (transferInfo.type === 'credit' ? 'Added' : 'Deducted')} ${formatCurrency(transferInfo.amount)}`}
+                                      >
+                                        {transferInfo.type === 'credit' ? '+' : '-'} {transferInfo.label || (transferInfo.type === 'credit' ? 'Added' : 'Deducted')}
+                                      </Badge>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 {stats.hasRecovery && (
                                   <TableCell className={`text-sm py-2.5 text-center font-medium tabular-nums px-4 whitespace-nowrap min-w-max ${recoveryTone(day.recoveryRate, day.stage)}`}>

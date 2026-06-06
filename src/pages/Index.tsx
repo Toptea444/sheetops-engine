@@ -27,6 +27,8 @@ import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
 import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCard';
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
 import { SheetSettingsModal } from '@/components/dashboard/SheetSettingsModal';
+import { UserEarningsAdjustmentModal } from '@/components/dashboard/UserEarningsAdjustmentModal';
+import { UserEarningsUpdateModal } from '@/components/dashboard/UserEarningsUpdateModal';
 import { RankingBonusMomentumBanner } from '@/components/dashboard/RankingBonusMomentumBanner';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
@@ -111,6 +113,7 @@ const Index = () => {
   const [showRankingPreferenceModal, setShowRankingPreferenceModal] = useState(false);
   const [rankingPreferenceFromSettings, setRankingPreferenceFromSettings] = useState(false);
   const [showSheetSettingsModal, setShowSheetSettingsModal] = useState(false);
+  const [showUserEarningsAdjustmentModal, setShowUserEarningsAdjustmentModal] = useState(false);
   const [showRankingDefaultUpdateModal, setShowRankingDefaultUpdateModal] = useState(false);
 
   // Cycle Summary Modal states
@@ -197,6 +200,7 @@ const Index = () => {
     applyAdjustments,
     getWorkerIdsToFetch,
     getTransferInfoForDate,
+    reload: reloadEarningsAdjustments,
     isLoading: adjustmentsLoading,
   } = useEarningsAdjustments(userId, selectedCycle);
 
@@ -428,6 +432,11 @@ const Index = () => {
 
   const openTransportSubsidyFromSettings = () => {
     setShowSubsidyModal(true);
+    setShowSheetSettingsModal(false);
+  };
+
+  const openUserEarningsAdjustmentFromSettings = () => {
+    setShowUserEarningsAdjustmentModal(true);
     setShowSheetSettingsModal(false);
   };
   
@@ -1186,6 +1195,29 @@ const Index = () => {
     }
   }, [selectedSheets, sheetDataCache, userId, fetchSheetData, searchWorker, calculateBonus, getWorkerIdsToFetch]);
 
+  const adjustmentSheetNames = useMemo(() => {
+    const available = sheets
+      .filter((sheet) => !sheet.disabled && !isTransportSubsidySheet(sheet.name))
+      .map((sheet) => sheet.name)
+      .filter((sheetName) => sheetMatchesCycle(sheetName, selectedCycle, sheetDataCache[sheetName]));
+    return available.length > 0 ? available : selectedSheets;
+  }, [sheets, selectedCycle, sheetDataCache, selectedSheets, sheetMatchesCycle]);
+
+  const getSheetDataForAdjustment = useCallback(async (sheetName: string): Promise<SheetData | null> => {
+    const cached = sheetDataCache[sheetName];
+    if (cached) return cached;
+    const data = await fetchSheetData(sheetName);
+    if (data) {
+      setSheetDataCache((prev) => ({ ...prev, [sheetName]: data }));
+    }
+    return data;
+  }, [sheetDataCache, fetchSheetData]);
+
+  const handleUserEarningsAdjustmentSubmitted = useCallback(() => {
+    reloadEarningsAdjustments();
+    fetchUserData(true);
+  }, [reloadEarningsAdjustments, fetchUserData]);
+
   const cycleStats = useMemo(() => {
     let totalEarnings = 0;
     const activeDays = new Set<number>();
@@ -1410,10 +1442,27 @@ const Index = () => {
         onClose={() => setShowSheetSettingsModal(false)}
         onOpenRankingBonus={openRankingPreferenceFromSettings}
         onOpenTransportSubsidy={openTransportSubsidyFromSettings}
+        onOpenUserEarningsAdjustment={openUserEarningsAdjustmentFromSettings}
         rankingIncludedInTotal={includeRankingBonusInTotal}
         subsidyOptedIn={subsidyOptedIn}
         subsidyKId={subsidyKId}
       />
+
+
+      <UserEarningsAdjustmentModal
+        open={showUserEarningsAdjustmentModal}
+        onClose={() => setShowUserEarningsAdjustmentModal(false)}
+        userId={userId}
+        cycle={selectedCycle}
+        selectedSheets={adjustmentSheetNames}
+        currentResults={results}
+        getSheetData={getSheetDataForAdjustment}
+        searchWorker={searchWorker}
+        calculateBonus={calculateBonus}
+        onSubmitted={handleUserEarningsAdjustmentSubmitted}
+      />
+
+      <UserEarningsUpdateModal identityConfirmed={identityConfirmed && pinVerifiedThisSession && !isInitializing} />
 
       {/* Admin Alerts Display */}
       <AlertsDisplay />
@@ -1555,7 +1604,7 @@ const Index = () => {
               <div className="min-w-0 flex items-center gap-2">
                 <SheetSelector
                   sheets={sheets.filter(s => !isTransportSubsidySheet(s.name))}
-                  selectedSheets={selectedSheets}
+                  selectedSheets={adjustmentSheetNames}
                   onSelectionChange={handleSheetSelectionChange}
                   isLoading={isLoading}
                 />
