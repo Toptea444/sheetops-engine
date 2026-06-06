@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, Bus, SlidersHorizontal } from 'lucide-react';
+import { ChevronRight, Bus, SlidersHorizontal, CalendarCog } from 'lucide-react';
 
 interface SheetSettingsModalProps {
   open: boolean;
   onClose: () => void;
   onOpenRankingBonus: () => void;
   onOpenTransportSubsidy: () => void;
+  onOpenEarningsAdjust: () => void;
   rankingIncludedInTotal: boolean;
   subsidyOptedIn: boolean;
   subsidyKId?: string | null;
@@ -16,6 +17,7 @@ export function SheetSettingsModal({
   onClose,
   onOpenRankingBonus,
   onOpenTransportSubsidy,
+  onOpenEarningsAdjust,
   rankingIncludedInTotal,
   subsidyOptedIn,
   subsidyKId,
@@ -88,6 +90,24 @@ export function SheetSettingsModal({
                   {subsidyOptedIn
                     ? `Linked${subsidyKId ? ` • ${subsidyKId}` : ''}`
                     : 'Not linked'}
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </div>
+          </button>
+
+          <button
+            onClick={onOpenEarningsAdjust}
+            className="w-full rounded-xl border border-border bg-background/70 p-3.5 text-left hover:bg-muted/60 transition-colors"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                <CalendarCog className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground">Earnings adjustments</p>
+                <p className="text-xs text-muted-foreground">
+                  Mark a day off or add a day you worked on another ID
                 </p>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />

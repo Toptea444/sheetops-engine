@@ -27,6 +27,8 @@ import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
 import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCard';
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
 import { SheetSettingsModal } from '@/components/dashboard/SheetSettingsModal';
+import { UserEarningsAdjustModal } from '@/components/dashboard/UserEarningsAdjustModal';
+import { FeatureUpdateModal } from '@/components/FeatureUpdateModal';
 import { RankingBonusMomentumBanner } from '@/components/dashboard/RankingBonusMomentumBanner';
 
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
@@ -198,7 +200,9 @@ const Index = () => {
     getWorkerIdsToFetch,
     getTransferInfoForDate,
     isLoading: adjustmentsLoading,
+    reload: reloadAdjustments,
   } = useEarningsAdjustments(userId, selectedCycle);
+  const [showUserAdjustModal, setShowUserAdjustModal] = useState(false);
 
   // Apply adjustments to results
   const { adjustedResults, netAdjustment } = useMemo(() => {
@@ -1410,10 +1414,22 @@ const Index = () => {
         onClose={() => setShowSheetSettingsModal(false)}
         onOpenRankingBonus={openRankingPreferenceFromSettings}
         onOpenTransportSubsidy={openTransportSubsidyFromSettings}
+        onOpenEarningsAdjust={() => { setShowSheetSettingsModal(false); setShowUserAdjustModal(true); }}
         rankingIncludedInTotal={includeRankingBonusInTotal}
         subsidyOptedIn={subsidyOptedIn}
         subsidyKId={subsidyKId}
       />
+
+      <UserEarningsAdjustModal
+        open={showUserAdjustModal}
+        onClose={() => setShowUserAdjustModal(false)}
+        workerId={userId}
+        cycle={selectedCycle}
+        availableSheetNames={selectedSheets}
+        onChanged={reloadAdjustments}
+      />
+
+      <FeatureUpdateModal identityConfirmed={identityConfirmed && pinVerifiedThisSession} />
 
       {/* Admin Alerts Display */}
       <AlertsDisplay />

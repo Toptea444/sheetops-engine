@@ -28,14 +28,36 @@ export interface DayTransfer {
   reason: string | null;
   created_at: string;
   sheet_amounts?: Record<string, number> | null;
+  created_by_user_id?: string | null;
+  kind?: string | null;
 }
 
 export interface AdjustmentNote {
-  type: 'swap_in' | 'swap_out' | 'transfer_credit' | 'transfer_debit';
+  type: 'swap_in' | 'swap_out' | 'transfer_credit' | 'transfer_debit' | 'user_deduction' | 'user_addition_self' | 'user_addition_other';
   date: string;
   amount: number;
   description: string;
   created_at: string;
+  adjustment_id?: string;
+}
+
+const SELF_DEDUCT_SENTINEL = '__SELF_DEDUCT__';
+
+function shortSheetLabel(name: string): string {
+  const u = (name || '').toUpperCase();
+  if (u.includes('RANKING')) return 'ranking bonus';
+  if (u.includes('DAILY') || u.includes('PERFORMANCE')) return 'daily performance';
+  return (name || '').toLowerCase().trim() || 'all sheets';
+}
+
+function summariseSheets(sheetAmounts: Record<string, number> | null | undefined): string {
+  if (!sheetAmounts) return 'all sheets';
+  const labels = new Set<string>();
+  Object.entries(sheetAmounts).forEach(([k, v]) => {
+    if ((Number(v) || 0) > 0) labels.add(shortSheetLabel(k));
+  });
+  if (labels.size === 0) return 'all sheets';
+  return Array.from(labels).join(' and ');
 }
 
 /** Convert a timestamp to YYYY-MM-DD in local time (avoids UTC shift) */
@@ -143,6 +165,48 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
 
       allTransfers.forEach(t => {
         const dateLabel = new Date(t.transfer_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const sheetsList = summariseSheets(t.sheet_amounts);
+        const kind = t.kind || 'admin_transfer';
+        const isUserMade = !!t.created_by_user_id;
+
+        // User-made deduction (self only — no counterparty)
+        if (kind === 'user_deduction' && t.source_worker_id === uid) {
+          notes.push({
+            type: 'user_deduction',
+            date: t.transfer_date,
+            amount: -t.amount,
+            description: `You marked ${dateLabel} as a day you didn't work. We removed ₦${t.amount.toLocaleString()} from your earnings across ${sheetsList}.${t.reason ? ` Note: ${t.reason}` : ''}`,
+            created_at: t.created_at,
+            adjustment_id: t.id,
+          });
+          return;
+        }
+
+        // User-made addition: the user worked on another ID and pulled that day to themselves
+        if (kind === 'user_addition') {
+          if (t.target_worker_id === uid) {
+            notes.push({
+              type: 'user_addition_self',
+              date: t.transfer_date,
+              amount: t.amount,
+              description: `You added ${dateLabel} from ID ${t.source_worker_id} to your earnings. ${t.source_worker_id} saw ₦${t.amount.toLocaleString()} on that date across ${sheetsList}, so we added it to you and removed it from them.${t.reason ? ` Note: ${t.reason}` : ''}`,
+              created_at: t.created_at,
+              adjustment_id: t.id,
+            });
+          }
+          if (t.source_worker_id === uid) {
+            notes.push({
+              type: 'user_addition_other',
+              date: t.transfer_date,
+              amount: -t.amount,
+              description: `${t.target_worker_id} reported that they worked on your ID on ${dateLabel}. ₦${t.amount.toLocaleString()} was moved from your ${sheetsList} earnings to ${t.target_worker_id}.${t.reason ? ` Note: ${t.reason}` : ''}`,
+              created_at: t.created_at,
+            });
+          }
+          return;
+        }
+
+        // Admin-made (legacy) transfers
         if (t.source_worker_id === uid) {
           notes.push({
             type: 'transfer_debit',
