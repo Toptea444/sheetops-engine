@@ -155,25 +155,31 @@ export function useSessionLock(): UseSessionLockResult {
     try {
       const normalizedId = workerId.toUpperCase();
 
-      // Check if this device already has a session for this worker
+      // Check if this device already has a session for this worker.
+      // Stale rows cannot be updated by RLS, so delete/re-create them instead.
       const { data: existing } = await supabase
         .from('worker_sessions')
-        .select('id, device_fingerprint')
+        .select('id, device_fingerprint, last_heartbeat')
         .eq('worker_id', normalizedId)
         .eq('device_fingerprint', deviceFingerprint.current)
         .maybeSingle();
 
-      if (existing) {
-        // Already have a session, just update heartbeat
+      const nowIso = new Date().toISOString();
+      const staleCutoffIso = new Date(Date.now() - SESSION_TIMEOUT_MS).toISOString();
+      const existingIsFresh = existing
+        ? Date.now() - new Date(existing.last_heartbeat).getTime() <= SESSION_TIMEOUT_MS
+        : false;
+
+      if (existing && existingIsFresh) {
+        // Already have an active session, just update heartbeat
         await supabase
           .from('worker_sessions')
-          .update({ last_heartbeat: new Date().toISOString() })
+          .update({ last_heartbeat: nowIso })
           .eq('id', existing.id);
         return true;
       }
 
-      // Delete any stale sessions for this worker (from any device)
-      const staleCutoffIso = new Date(Date.now() - SESSION_TIMEOUT_MS).toISOString();
+      // Delete any stale sessions for this worker (including this device's row).
       await supabase
         .from('worker_sessions')
         .delete()
@@ -186,7 +192,7 @@ export function useSessionLock(): UseSessionLockResult {
         .insert({
           worker_id: normalizedId,
           device_fingerprint: deviceFingerprint.current,
-          last_heartbeat: new Date().toISOString(),
+          last_heartbeat: nowIso,
         });
 
       if (insertError) {

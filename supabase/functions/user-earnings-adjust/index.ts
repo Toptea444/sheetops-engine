@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
 
   const action = body.action;
   const workerId = String(body.worker_id || '').trim().toUpperCase();
-  const params: any = body.params || {};
+  const params: Record<string, unknown> = body.params || {};
 
   if (!workerId) return bad('worker_id is required');
 
@@ -59,8 +59,9 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  // Lightweight session check — the worker must have an active session row.
-  // This stops casual abuse while keeping the existing PIN flow as the real gate.
+  // Lightweight presence check — the worker must have a recent worker_sessions
+  // heartbeat row. This is separate from the app's local PIN/login state; it
+  // stops casual abuse while keeping the existing PIN flow as the real gate.
   const { data: session } = await supabase
     .from('worker_sessions')
     .select('id, last_heartbeat')
@@ -70,11 +71,11 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (!session) {
-    return bad('No active session for this worker. Please log in again.');
+    return bad('No active worker presence session was found. Please refresh the page and try again.');
   }
   const ageMs = Date.now() - new Date(session.last_heartbeat).getTime();
   if (ageMs > 1000 * 60 * 30) {
-    return bad('Session expired. Please log in again.');
+    return bad('Worker presence session expired. Please refresh the page and try again.');
   }
 
   switch (action) {
