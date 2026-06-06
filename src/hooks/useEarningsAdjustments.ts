@@ -27,6 +27,7 @@ export interface DayTransfer {
   cycle_key: string;
   reason: string | null;
   created_at: string;
+  created_by?: string | null;
   sheet_amounts?: Record<string, number> | null;
 }
 
@@ -63,6 +64,32 @@ function transferAppliesToSheet(t: DayTransfer, sheetName: string): boolean {
     return sheetName in (t.sheet_amounts as Record<string, number>);
   }
   return t.sheet_name === sheetName;
+}
+
+function formatCurrency(value: number): string {
+  return `₦${Math.round(value).toLocaleString()}`;
+}
+
+function shortSheetName(sheetName: string): string {
+  const upper = sheetName.toUpperCase();
+  if (upper.includes('DAILY') || upper.includes('PERFORMANCE')) return 'daily performance';
+  if (upper.includes('RANKING')) return 'ranking bonus';
+  return sheetName;
+}
+
+function describeTransferSheets(t: DayTransfer): string {
+  const amounts = t.sheet_amounts && typeof t.sheet_amounts === 'object'
+    ? Object.entries(t.sheet_amounts as Record<string, number>).filter(([, amount]) => Number(amount) > 0)
+    : [[t.sheet_name, t.amount] as [string, number]];
+
+  const parts = amounts.map(([sheet, amount]) => `${formatCurrency(Number(amount))} from ${shortSheetName(sheet)}`);
+  if (parts.length <= 1) return parts[0] || `${formatCurrency(t.amount)} from ${shortSheetName(t.sheet_name)}`;
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+}
+
+function getSubmittingUser(t: DayTransfer): string | null {
+  return t.created_by?.startsWith('user:') ? t.created_by.slice(5).toUpperCase() : null;
 }
 
 /**
@@ -143,21 +170,33 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
 
       allTransfers.forEach(t => {
         const dateLabel = new Date(t.transfer_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const sheetDetails = describeTransferSheets(t);
+        const submittedBy = getSubmittingUser(t);
+        const isUserSubmitted = Boolean(submittedBy);
+        const isUnworkedDayDeduction = t.target_worker_id === '__UNWORKED_DAY__';
+
         if (t.source_worker_id === uid) {
+          let description = t.reason || `${t.target_worker_id} worked for you on ${dateLabel}. Earnings for that day transferred to them.`;
+          if (isUnworkedDayDeduction) {
+            description = t.reason || `You marked ${dateLabel} as a day you did not work. The system found ${sheetDetails}, so ${formatCurrency(t.amount)} was deducted from your earnings for that date.`;
+          } else if (isUserSubmitted) {
+            description = `${t.target_worker_id} said they worked on your ID on ${dateLabel}. The system found ${sheetDetails}, so ${formatCurrency(t.amount)} was deducted from your earnings and added to them. This adjustment was submitted by ${submittedBy}.`;
+          }
           notes.push({
             type: 'transfer_debit',
             date: t.transfer_date,
             amount: -t.amount,
-            description: `${t.target_worker_id} worked for you on ${dateLabel}. Earnings for that day transferred to them.`,
+            description,
             created_at: t.created_at,
           });
         }
         if (t.target_worker_id === uid) {
+          const description = t.reason || `You worked for ${t.source_worker_id} on ${dateLabel}. The system found ${sheetDetails}, so ${formatCurrency(t.amount)} was added to your earnings.`;
           notes.push({
             type: 'transfer_credit',
             date: t.transfer_date,
             amount: t.amount,
-            description: `You worked for ${t.source_worker_id} on ${dateLabel}. Earnings for that day transferred to you.`,
+            description,
             created_at: t.created_at,
           });
         }
@@ -370,7 +409,8 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
    */
   const getTransferInfoForDate = useCallback((workerId: string, dateStr: string, sheetName?: string): { 
     type: 'credit' | 'debit'; 
-    amount: number 
+    amount: number;
+    label: string;
   } | null => {
     if (!workerId) return null;
     const uid = workerId.toUpperCase();
@@ -385,10 +425,10 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       if (perSheetAmount <= 0) continue;
       
       if (t.target_worker_id === uid) {
-        return { type: 'credit', amount: perSheetAmount };
+        return { type: 'credit', amount: perSheetAmount, label: 'Added' };
       }
       if (t.source_worker_id === uid) {
-        return { type: 'debit', amount: perSheetAmount };
+        return { type: 'debit', amount: perSheetAmount, label: t.target_worker_id === '__UNWORKED_DAY__' ? 'Deducted' : 'Moved' };
       }
     }
     return null;
