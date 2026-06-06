@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, Bus, SlidersHorizontal } from 'lucide-react';
+import { ChevronRight, Bus, SlidersHorizontal, CalendarCog } from 'lucide-react';
 
 interface SheetSettingsModalProps {
   open: boolean;
   onClose: () => void;
   onOpenRankingBonus: () => void;
   onOpenTransportSubsidy: () => void;
+  onOpenEarningsAdjust: () => void;
   rankingIncludedInTotal: boolean;
   subsidyOptedIn: boolean;
   subsidyKId?: string | null;
@@ -16,6 +17,7 @@ export function SheetSettingsModal({
   onClose,
   onOpenRankingBonus,
   onOpenTransportSubsidy,
+  onOpenEarningsAdjust,
   rankingIncludedInTotal,
   subsidyOptedIn,
   subsidyKId,
