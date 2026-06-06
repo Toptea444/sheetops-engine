@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeftRight, ArrowRight, ArrowDown, ArrowUp, Calendar, FileText, Info, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeftRight, ArrowDown, ArrowUp, Calendar, FileText, Info, ChevronDown, ChevronRight, CalendarX, UserPlus, UserMinus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,11 +15,14 @@ interface Props {
 export function AdjustmentsPanel({ notes, netAdjustment, isLoading }: Props) {
   if (notes.length === 0) return null;
 
-  const typeConfig = {
+  const typeConfig: Record<AdjustmentNote['type'], { icon: any; color: string; bg: string; border: string; label: string }> = {
     swap_in: { icon: ArrowLeftRight, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-200 dark:border-blue-800', label: 'ID Swap' },
     swap_out: { icon: ArrowLeftRight, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-200 dark:border-blue-800', label: 'ID Swap' },
     transfer_credit: { icon: ArrowDown, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200 dark:border-emerald-800', label: 'Earnings Added' },
     transfer_debit: { icon: ArrowUp, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-200 dark:border-red-800', label: 'Earnings Deducted' },
+    user_deduction: { icon: CalendarX, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-200 dark:border-red-800', label: 'Day Off (by you)' },
+    user_addition_self: { icon: UserPlus, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200 dark:border-emerald-800', label: 'Day Added (by you)' },
+    user_addition_other: { icon: UserMinus, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200 dark:border-amber-800', label: 'Worker Claimed Your Day' },
   };
 
   return (
