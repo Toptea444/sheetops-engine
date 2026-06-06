@@ -28,14 +28,36 @@ export interface DayTransfer {
   reason: string | null;
   created_at: string;
   sheet_amounts?: Record<string, number> | null;
+  created_by_user_id?: string | null;
+  kind?: string | null;
 }
 
 export interface AdjustmentNote {
-  type: 'swap_in' | 'swap_out' | 'transfer_credit' | 'transfer_debit';
+  type: 'swap_in' | 'swap_out' | 'transfer_credit' | 'transfer_debit' | 'user_deduction' | 'user_addition_self' | 'user_addition_other';
   date: string;
   amount: number;
   description: string;
   created_at: string;
+  adjustment_id?: string;
+}
+
+const SELF_DEDUCT_SENTINEL = '__SELF_DEDUCT__';
+
+function shortSheetLabel(name: string): string {
+  const u = (name || '').toUpperCase();
+  if (u.includes('RANKING')) return 'ranking bonus';
+  if (u.includes('DAILY') || u.includes('PERFORMANCE')) return 'daily performance';
+  return (name || '').toLowerCase().trim() || 'all sheets';
+}
+
+function summariseSheets(sheetAmounts: Record<string, number> | null | undefined): string {
+  if (!sheetAmounts) return 'all sheets';
+  const labels = new Set<string>();
+  Object.entries(sheetAmounts).forEach(([k, v]) => {
+    if ((Number(v) || 0) > 0) labels.add(shortSheetLabel(k));
+  });
+  if (labels.size === 0) return 'all sheets';
+  return Array.from(labels).join(' and ');
 }
 
 /** Convert a timestamp to YYYY-MM-DD in local time (avoids UTC shift) */
