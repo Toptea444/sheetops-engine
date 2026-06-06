@@ -185,8 +185,10 @@ export type Database = {
           bonus_amount: number | null
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           cycle_key: string
           id: string
+          kind: string
           ranking_bonus_amount: number | null
           reason: string | null
           sheet_amounts: Json | null
@@ -200,8 +202,10 @@ export type Database = {
           bonus_amount?: number | null
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           cycle_key: string
           id?: string
+          kind?: string
           ranking_bonus_amount?: number | null
           reason?: string | null
           sheet_amounts?: Json | null
@@ -215,8 +219,10 @@ export type Database = {
           bonus_amount?: number | null
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           cycle_key?: string
           id?: string
+          kind?: string
           ranking_bonus_amount?: number | null
           reason?: string | null
           sheet_amounts?: Json | null
