@@ -260,20 +260,8 @@ export function UserEarningsAdjustModal({
     }
   }, [workerId, aDate, aId, aAmounts, fullSourceId, cycleKey, loadMine, onChanged]);
 
-  const handleDelete = useCallback(async () => {
-    if (!workerId || !deleteId) return;
-    const { data, error } = await supabase.functions.invoke('user-earnings-adjust', {
-      body: { action: 'delete_my_adjustment', worker_id: workerId, params: { adjustment_id: deleteId } },
-    });
-    if (error || data?.success === false) {
-      toast.error(data?.error || 'Failed to delete');
-    } else {
-      toast.success('Adjustment removed');
-      await loadMine();
-      onChanged();
-    }
-    setDeleteId(null);
-  }, [workerId, deleteId, loadMine, onChanged]);
+  // (Users cannot delete their own adjustments — admin is the only one who can undo them.)
+
 
   if (!open) return null;
 
