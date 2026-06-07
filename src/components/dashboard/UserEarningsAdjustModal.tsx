@@ -473,42 +473,37 @@ export function UserEarningsAdjustModal({
         </div>
       </div>
 
-      {/* Confirmation for addition */}
+      {/* Warning-style confirmation for addition */}
       <AlertDialog open={aConfirming} onOpenChange={(o) => !o && setAConfirming(false)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="border-amber-300 dark:border-amber-700">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You're about to claim <strong>{new Date((aDate || today) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</strong> from <strong>{fullSourceId}</strong>.
-              <br /><br />
-              ₦{aTotal.toLocaleString()} will be added to your earnings. The same amount will be <strong>removed from {fullSourceId}'s account</strong>, and they will see a note that you did this.
-              <br /><br />
-              Please make sure this is correct — only do this if you actually worked that day for them.
-            </AlertDialogDescription>
+            <div className="flex items-start gap-3">
+              <div className="h-9 w-9 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <AlertDialogTitle className="text-amber-900 dark:text-amber-200">Heads up — this is permanent</AlertDialogTitle>
+                <AlertDialogDescription className="mt-2">
+                  You're claiming <strong>{new Date((aDate || today) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</strong> from <strong>{fullSourceId}</strong>.
+                  <br /><br />
+                  <span className="block rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-2.5 text-[12px] text-amber-900 dark:text-amber-200">
+                    ₦{aTotal.toLocaleString()} will be added to your earnings, removed from <strong>{fullSourceId}'s</strong> account, and a note will be left on their record.
+                    <br /><br />
+                    You <strong>cannot undo this yourself</strong> — only an admin can reverse it. Only continue if you really worked that day for them.
+                  </span>
+                </AlertDialogDescription>
+              </div>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={aSubmitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={submitAddition} disabled={aSubmitting}>
+            <AlertDialogAction
+              onClick={submitAddition}
+              disabled={aSubmitting}
+              className="bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-600 dark:hover:bg-amber-700"
+            >
               {aSubmitting ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> : null}
-              Yes, add it
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Delete confirmation */}
-      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove this adjustment?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your earnings will go back to what the sheets show. If this was an addition from another ID, the other person also gets their earnings back.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Remove
+              I'm sure, add it
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -516,3 +511,4 @@ export function UserEarningsAdjustModal({
     </div>
   );
 }
+
