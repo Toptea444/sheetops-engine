@@ -361,7 +361,9 @@ function TransfersSection({ adminSecret }: Props) {
   const [fetchingEarnings, setFetchingEarnings] = useState(false);
   const [earningsFetched, setEarningsFetched] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [originFilter, setOriginFilter] = useState<'all' | 'user' | 'admin'>('all');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
 
   // Per-date per-sheet fetched amounts (editable): { "2026-02-26": { "Daily Sheet": 500, ... }, ... }
   const [perDateSheetTotals, setPerDateSheetTotals] = useState<Record<string, Record<string, number>>>({});
