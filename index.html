@@ -11,20 +11,20 @@
     <link id="app-manifest" rel="manifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
     <script>
       (function () {
-        var isAdminPath = window.location.pathname.startsWith(`+"`"+`/admin`+"`"+`) || window.location.pathname.startsWith(`+"`"+`/tl`+"`"+`);
-        var manifestLink = document.getElementById(`+"`"+`app-manifest`+"`"+`);
-        var appleTitle = document.getElementById(`+"`"+`apple-web-app-title`+"`"+`);
-        var manifestPath = isAdminPath ? `+"`"+`/manifest-admin.webmanifest?v=admin`+"`"+` : `+"`"+`/manifest.webmanifest?v=home`+"`"+`;
+        var isAdminPath = window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/tl');
+        var manifestLink = document.getElementById('app-manifest');
+        var appleTitle = document.getElementById('apple-web-app-title');
+        var manifestPath = isAdminPath ? '/manifest-admin.webmanifest?v=admin' : '/manifest.webmanifest?v=home';
 
         if (manifestLink) {
-          manifestLink.setAttribute(`+"`"+`href`+"`"+`, manifestPath);
+          manifestLink.setAttribute('href', manifestPath);
         }
 
         if (isAdminPath && appleTitle) {
-          appleTitle.setAttribute(`+"`"+`content`+"`"+`, `+"`"+`Bonus Admin`+"`"+`);
+          appleTitle.setAttribute('content', 'Bonus Admin');
         }
       })();
     </script>
@@ -32,15 +32,18 @@
     <title>Bonus Calculator</title>
     <meta name="description" content="Bonus Calculator — compute bonus amounts quickly from base salary and bonus percentage." />
     <meta name="author" content="Toptea444" />
+
     <meta property="og:title" content="Bonus Calculator" />
     <meta property="og:description" content="Calculate staffs bonuses and percentage." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 630' preserveAspectRatio='xMidYMid meet'><rect width='1200' height='630' fill='dodgerblue'/><g transform='translate(420,110)'><rect width='360' height='410' rx='32' fill='white' opacity='0.98'/><rect x='28' y='26' width='304' height='58' rx='10' fill='whitesmoke'/><g transform='translate(36,110)' fill='dodgerblue'><rect width='44' height='44' rx='8'/><rect x='56' width='44' height='44' rx='8'/><rect x='112' width='44' height='44' rx='8'/><rect y='56' width='44' height='44' rx='8'/><rect x='56' y='56' width='44' height='44' rx='8'/><rect x='112' y='56' width='44' height='44' rx='8'/><rect y='112' width='120' height='44' rx='8'/></g></g></svg>" />
+
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Bonus Calculator" />
     <meta name="twitter:description" content="Calculate employee bonuses quickly from base salary and bonus percentage." />
     <meta name="twitter:image" content="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 630' preserveAspectRatio='xMidYMid meet'><rect width='1200' height='630' fill='dodgerblue'/><g transform='translate(420,110)'><rect width='360' height='410' rx='32' fill='white' opacity='0.98'/><rect x='28' y='26' width='304' height='58' rx='10' fill='whitesmoke'/><g transform='translate(36,110)' fill='dodgerblue'><rect width='44' height='44' rx='8'/><rect x='56' width='44' height='44' rx='8'/><rect x='112' width='44' height='44' rx='8'/><rect y='56' width='44' height='44' rx='8'/><rect x='56' y='56' width='44' height='44' rx='8'/><rect x='112' y='56' width='44' height='44' rx='8'/><rect y='112' width='120' height='44' rx='8'/></g></g></svg>" />
   </head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
