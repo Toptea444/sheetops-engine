@@ -462,9 +462,8 @@ export function UserEarningsAdjustModal({
                           <p className="text-[10px] text-muted-foreground mt-0.5">From {adj.source_worker_id}</p>
                         )}
                       </div>
-                      <button onClick={() => setDeleteId(adj.id)} className="text-muted-foreground hover:text-destructive shrink-0">
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                      <div className="text-[10px] text-muted-foreground italic shrink-0 self-center">locked</div>
+
                     </div>
                   );
                 })}
