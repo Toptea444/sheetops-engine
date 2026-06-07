@@ -116,7 +116,7 @@ export function CycleSummaryCard({
         {isHidden ? (
           <div className="h-9 w-40 rounded-lg bg-muted animate-pulse" />
         ) : (
-          <p className="text-3xl font-bold tracking-tight">
+          <p className="text-3xl font-extrabold tracking-tight text-foreground">
             {formattedAmount}
           </p>
         )}
