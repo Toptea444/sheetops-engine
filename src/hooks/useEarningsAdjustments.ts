@@ -381,44 +381,57 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
         
         const transferDateStr = t.transfer_date;
         
-        // For source: zero out the day's value on the matching date
+        // For source: zero out the day's value on the matching date.
+        // IMPORTANT: only touch split fields (bonus / rankingBonus / total) when they
+        // were already defined on the row. Otherwise we'd introduce them on sheets
+        // that don't have a split (e.g. the Ranking Bonus sheet, whose rows only
+        // carry `value`) — that flips `hasSplit=true` and breaks the table headers.
         if (t.source_worker_id === uid && resultId === uid) {
           adjusted.dailyBreakdown = adjusted.dailyBreakdown.map(day => {
             if (!day.fullDate) return day;
             const dayStr = toLocalDateStr(day.fullDate);
             if (dayStr === transferDateStr) {
               netAdjustment -= day.value;
-              return { ...day, value: 0, bonus: 0, rankingBonus: 0, total: 0 };
+              const next: typeof day = { ...day, value: 0 };
+              if (day.bonus !== undefined) next.bonus = 0;
+              if (day.rankingBonus !== undefined) next.rankingBonus = 0;
+              if (day.total !== undefined) next.total = 0;
+              return next;
             }
             return day;
           });
         }
-        
+
         // For target: add the per-sheet transfer amount on the correct date
         if (t.target_worker_id === uid && resultId === uid) {
           const existing = adjusted.dailyBreakdown.find(day => {
             if (!day.fullDate) return false;
             return toLocalDateStr(day.fullDate) === transferDateStr;
           });
-          
+
           if (existing) {
             existing.value += perSheetAmount;
+            // Only add to split fields that already exist on the row; on
+            // ranking-only / single-value sheets they are undefined and we must
+            // NOT introduce them.
             if (existing.bonus !== undefined) existing.bonus += perSheetAmount;
+            if (existing.rankingBonus !== undefined) existing.rankingBonus += perSheetAmount;
             if (existing.total !== undefined) existing.total += perSheetAmount;
           } else {
             const transferDate = new Date(transferDateStr + 'T12:00:00');
+            // Push a minimal row — `value` only. Matches the parent sheet's shape
+            // so the breakdown headers stay correct.
             adjusted.dailyBreakdown.push({
               date: transferDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
               fullDate: transferDate.getTime(),
               value: perSheetAmount,
-              bonus: perSheetAmount,
-              rankingBonus: 0,
-              total: perSheetAmount,
             });
           }
           netAdjustment += perSheetAmount;
         }
       });
+
+
       
       // Recalculate total after all adjustments
       adjusted.totalBonus = adjusted.dailyBreakdown.reduce((sum, d) => sum + d.value, 0);

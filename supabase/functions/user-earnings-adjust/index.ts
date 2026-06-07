@@ -59,23 +59,25 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  // Lightweight session check — the worker must have an active session row.
-  // This stops casual abuse while keeping the existing PIN flow as the real gate.
-  const { data: session } = await supabase
-    .from('worker_sessions')
-    .select('id, last_heartbeat')
+  // Lightweight gate: confirm this worker has set up a PIN (i.e. is a real
+  // confirmed user). The PIN flow on the client is the actual authentication
+  // gate; this just blocks calls from completely unknown worker_ids.
+  //
+  // We intentionally do NOT check `worker_sessions.last_heartbeat` here:
+  // on mobile, the heartbeat setInterval pauses when the screen sleeps, so the
+  // row can go stale within minutes even though the user is actively on the
+  // page — that was producing spurious "Session expired" errors when opening
+  // the modal or submitting an adjustment.
+  const { data: pinRow } = await supabase
+    .from('worker_pins')
+    .select('id')
     .eq('worker_id', workerId)
-    .order('last_heartbeat', { ascending: false })
-    .limit(1)
     .maybeSingle();
 
-  if (!session) {
-    return bad('No active session for this worker. Please log in again.');
+  if (!pinRow) {
+    return bad('We could not verify your account. Please log in again.');
   }
-  const ageMs = Date.now() - new Date(session.last_heartbeat).getTime();
-  if (ageMs > 1000 * 60 * 30) {
-    return bad('Session expired. Please log in again.');
-  }
+
 
   switch (action) {
     case 'create_deduction': {
