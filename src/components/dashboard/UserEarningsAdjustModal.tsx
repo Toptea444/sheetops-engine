@@ -76,8 +76,8 @@ export function UserEarningsAdjustModal({
   // My adjustments list
   const [myAdjustments, setMyAdjustments] = useState<any[]>([]);
   const [loadingMine, setLoadingMine] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+
 
   useEffect(() => {
     if (!open) {
