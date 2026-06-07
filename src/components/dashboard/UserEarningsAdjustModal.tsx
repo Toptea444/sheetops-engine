@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { CalendarX, UserPlus, Loader2, X, AlertTriangle, Check, Trash2, RefreshCw, Calendar as CalendarIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { CalendarX, UserPlus, Loader2, X, AlertTriangle, Check, RefreshCw, Calendar as CalendarIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
