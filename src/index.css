@@ -122,38 +122,38 @@
   html {
     position: relative;
     overflow-x: hidden;
-    font-size: 14px;
+    font-size: 15px;
   }
 
   body {
     @apply text-foreground font-sans antialiased overflow-x-hidden;
     background-color: hsl(var(--background));
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     line-height: 1.6;
     letter-spacing: 0.01em;
   }
 
   h1 {
     @apply font-semibold tracking-tight;
-    font-size: 1.6rem;
+    font-size: 1.75rem;
     line-height: 1.2;
   }
 
   h2 {
     @apply font-semibold tracking-tight;
-    font-size: 1.3rem;
+    font-size: 1.4rem;
     line-height: 1.3;
   }
 
   h3 {
     @apply font-semibold tracking-tight;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     line-height: 1.4;
   }
 
   h4, h5, h6 {
     @apply font-semibold tracking-tight;
-    font-size: 0.95rem;
+    font-size: 1rem;
   }
 }
 
