@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Users can delete their own adjustments" ON public.day_transfers;
