@@ -738,50 +738,94 @@ function TransfersSection({ adminSecret }: Props) {
         />
       </div>
 
+      {/* Origin filter — admin vs user-made */}
+      <div className="flex items-center gap-1.5">
+        {(['all', 'user', 'admin'] as const).map(k => (
+          <button
+            key={k}
+            onClick={() => setOriginFilter(k)}
+            className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
+              originFilter === k
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted/60'
+            }`}
+          >
+            {k === 'all' ? 'All' : k === 'user' ? 'Made by users' : 'Made by admin'}
+          </button>
+        ))}
+      </div>
+
       {/* Transfers list */}
       <ScrollArea className="h-[350px]">
         <div className="space-y-2">
           {(() => {
-            const filtered = searchQuery.trim()
-              ? transfers.filter(t => {
-                  const q = searchQuery.trim().toUpperCase();
-                  return t.source_worker_id?.toUpperCase().includes(q) || t.target_worker_id?.toUpperCase().includes(q);
-                })
-              : transfers;
+            const q = searchQuery.trim().toUpperCase();
+            const filtered = transfers.filter(t => {
+              if (q && !(t.source_worker_id?.toUpperCase().includes(q) || t.target_worker_id?.toUpperCase().includes(q))) return false;
+              const isUserMade = !!t.created_by_user_id;
+              if (originFilter === 'user' && !isUserMade) return false;
+              if (originFilter === 'admin' && isUserMade) return false;
+              return true;
+            });
             if (filtered.length === 0) return (
               <p className="text-sm text-muted-foreground text-center py-8">
-                {searchQuery.trim() ? 'No transfers found for this search' : 'No day transfers recorded for this cycle'}
+                {q || originFilter !== 'all' ? 'No transfers match the current filter' : 'No day transfers recorded for this cycle'}
               </p>
             );
-            return filtered.map(t => (
-              <Card key={t.id} className="p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-1.5 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <Badge variant="outline" className="text-[10px] font-mono text-red-600 dark:text-red-400 border-red-300">{t.source_worker_id}</Badge>
-                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                      <Badge variant="outline" className="text-[10px] font-mono text-green-600 dark:text-green-400 border-green-300">{t.target_worker_id}</Badge>
+            return filtered.map(t => {
+              const isUserMade = !!t.created_by_user_id;
+              const kind = t.kind || 'admin_transfer';
+              const isDeduction = kind === 'user_deduction';
+              const isAddition = kind === 'user_addition';
+              return (
+                <Card
+                  key={t.id}
+                  className={`p-3 ${isUserMade ? 'border-l-4 border-l-blue-400 dark:border-l-blue-500' : ''}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {isUserMade && (
+                          <Badge className="text-[9px] h-4 bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-300 dark:border-blue-700 hover:bg-blue-100">
+                            {isDeduction ? 'User • Day off' : isAddition ? 'User • Added day' : 'User'}
+                          </Badge>
+                        )}
+                        {!isUserMade && (
+                          <Badge variant="secondary" className="text-[9px] h-4">Admin</Badge>
+                        )}
+                        <Badge variant="outline" className="text-[10px] font-mono text-red-600 dark:text-red-400 border-red-300">{t.source_worker_id}</Badge>
+                        {!isDeduction && (
+                          <>
+                            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                            <Badge variant="outline" className="text-[10px] font-mono text-green-600 dark:text-green-400 border-green-300">{t.target_worker_id}</Badge>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="secondary" className="text-[10px]">₦{Number(t.amount).toLocaleString()}</Badge>
+                        <span className="text-[10px] text-muted-foreground">{t.sheet_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
+                        <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />Date: {new Date(t.transfer_date).toLocaleDateString()}</span>
+                        <span>Recorded: {new Date(t.created_at).toLocaleString()}</span>
+                        {isUserMade && t.created_by_user_id && (
+                          <span className="font-mono">by {t.created_by_user_id}</span>
+                        )}
+                      </div>
+                      {t.reason && <p className="text-[11px] text-muted-foreground italic">{t.reason}</p>}
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="secondary" className="text-[10px]">₦{Number(t.amount).toLocaleString()}</Badge>
-                      <span className="text-[10px] text-muted-foreground">{t.sheet_name}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                      <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />Date: {new Date(t.transfer_date).toLocaleDateString()}</span>
-                      <span>Recorded: {new Date(t.created_at).toLocaleString()}</span>
-                    </div>
-                    {t.reason && <p className="text-[11px] text-muted-foreground italic">{t.reason}</p>}
+                    <Button variant="ghost" size="sm" className="h-7 text-destructive hover:text-destructive shrink-0"
+                      onClick={() => setDeleteId(t.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-destructive hover:text-destructive shrink-0"
-                    onClick={() => setDeleteId(t.id)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </Card>
-            ));
+                </Card>
+              );
+            });
           })()}
         </div>
       </ScrollArea>
+
 
       <Button variant="outline" size="sm" onClick={load} disabled={isLoading}>
         <RefreshCw className={`h-3 w-3 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />Refresh
