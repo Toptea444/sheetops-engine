@@ -103,6 +103,20 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (existing) return bad('You already marked this date as not worked.');
 
+      // Smart merge: if someone has already claimed they worked for you on this
+      // date (a user_addition with source = self), the money has already been
+      // moved off your account — no need (and no way) to deduct it again.
+      const { data: alreadyClaimed } = await supabase
+        .from('day_transfers')
+        .select('id, target_worker_id, created_by_user_id')
+        .eq('source_worker_id', workerId)
+        .eq('transfer_date', date)
+        .eq('kind', 'user_addition')
+        .maybeSingle();
+      if (alreadyClaimed) {
+        return bad(`${alreadyClaimed.created_by_user_id || alreadyClaimed.target_worker_id} has already claimed they worked for you on this date, so the earnings were moved off your account. There is nothing more to deduct.`);
+      }
+
       const { data, error } = await supabase
         .from('day_transfers')
         .insert({
