@@ -20,6 +20,7 @@ import { LeaderboardPanel } from '@/components/dashboard/LeaderboardPanel';
 import { LeaderboardWelcome } from '@/components/dashboard/LeaderboardWelcome';
 import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
 import { AlertsDisplay } from '@/components/AlertsDisplay';
+import { ClaimedDayAlerts } from '@/components/dashboard/ClaimedDayAlerts';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
