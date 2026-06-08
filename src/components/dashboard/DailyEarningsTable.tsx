@@ -23,7 +23,7 @@ interface DailyEarningsTableProps {
   sheetNames: string[];
   cycle: CyclePeriod;
   isLoading?: boolean;
-  getTransferInfo?: (workerId: string, dateStr: string, sheetName?: string) => { type: 'credit' | 'debit'; amount: number } | null;
+  getTransferInfo?: (workerId: string, dateStr: string, sheetName?: string) => { type: 'credit' | 'debit'; amount: number; kind?: 'admin_transfer' | 'user_deduction' | 'user_addition'; byUser?: boolean } | null;
   currentUserId?: string | null;
   subsidyData?: TransportSubsidyData | null;
   subsidyOptedIn?: boolean;
