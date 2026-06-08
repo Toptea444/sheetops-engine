@@ -20,6 +20,7 @@ import { LeaderboardPanel } from '@/components/dashboard/LeaderboardPanel';
 import { LeaderboardWelcome } from '@/components/dashboard/LeaderboardWelcome';
 import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
 import { AlertsDisplay } from '@/components/AlertsDisplay';
+import { ClaimedDayAlerts } from '@/components/dashboard/ClaimedDayAlerts';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
 import { DownloadAppBanner } from '@/components/DownloadAppBanner';
@@ -195,6 +196,7 @@ const Index = () => {
 
   const {
     swaps: earningsSwaps,
+    transfers: earningsTransfers,
     adjustmentNotes,
     applyAdjustments,
     getWorkerIdsToFetch,
@@ -1433,7 +1435,14 @@ const Index = () => {
 
       {/* Admin Alerts Display */}
       <AlertsDisplay />
-      
+
+      {/* Alerts when someone else claimed a day on this user's ID */}
+      <ClaimedDayAlerts
+        workerId={userId}
+        ownedWorkerIds={getWorkerIdsToFetch()}
+        transfers={earningsTransfers}
+      />
+
       {/* Weekly Bonus Alert */}
       <WeeklyBonusAlert />
       
