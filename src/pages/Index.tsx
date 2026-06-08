@@ -1435,7 +1435,14 @@ const Index = () => {
 
       {/* Admin Alerts Display */}
       <AlertsDisplay />
-      
+
+      {/* Alerts when someone else claimed a day on this user's ID */}
+      <ClaimedDayAlerts
+        workerId={userId}
+        ownedWorkerIds={getWorkerIdsToFetch()}
+        transfers={earningsTransfers}
+      />
+
       {/* Weekly Bonus Alert */}
       <WeeklyBonusAlert />
       
