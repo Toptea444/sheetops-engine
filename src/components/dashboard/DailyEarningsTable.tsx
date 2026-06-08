@@ -23,7 +23,7 @@ interface DailyEarningsTableProps {
   sheetNames: string[];
   cycle: CyclePeriod;
   isLoading?: boolean;
-  getTransferInfo?: (workerId: string, dateStr: string, sheetName?: string) => { type: 'credit' | 'debit'; amount: number } | null;
+  getTransferInfo?: (workerId: string, dateStr: string, sheetName?: string) => { type: 'credit' | 'debit'; amount: number; kind?: 'admin_transfer' | 'user_deduction' | 'user_addition'; byUser?: boolean } | null;
   currentUserId?: string | null;
   subsidyData?: TransportSubsidyData | null;
   subsidyOptedIn?: boolean;
@@ -334,7 +334,33 @@ export function DailyEarningsTable({
                                     transition: 'background-color 0.2s ease-out',
                                   }}
                                 >
-                                  <span>{day.date}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span>{day.date}</span>
+                                    {transferInfo?.byUser && transferInfo.kind === 'user_deduction' && (
+                                      <span
+                                        title="You marked this date as a day you didn't work"
+                                        className="inline-flex items-center rounded-md border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:text-red-300"
+                                      >
+                                        Day off
+                                      </span>
+                                    )}
+                                    {transferInfo?.byUser && transferInfo.kind === 'user_addition' && transferInfo.type === 'credit' && (
+                                      <span
+                                        title="You added this date from another ID to your earnings"
+                                        className="inline-flex items-center rounded-md border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300"
+                                      >
+                                        Added by you
+                                      </span>
+                                    )}
+                                    {transferInfo?.byUser && transferInfo.kind === 'user_addition' && transferInfo.type === 'debit' && (
+                                      <span
+                                        title="Another worker reported they worked your ID on this date"
+                                        className="inline-flex items-center rounded-md border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
+                                      >
+                                        Moved out
+                                      </span>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 {stats.hasRecovery && (
                                   <TableCell className={`text-sm py-2.5 text-center font-medium tabular-nums px-4 whitespace-nowrap min-w-max ${recoveryTone(day.recoveryRate, day.stage)}`}>
