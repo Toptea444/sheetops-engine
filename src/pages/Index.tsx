@@ -195,6 +195,7 @@ const Index = () => {
 
   const {
     swaps: earningsSwaps,
+    transfers: earningsTransfers,
     adjustmentNotes,
     applyAdjustments,
     getWorkerIdsToFetch,
