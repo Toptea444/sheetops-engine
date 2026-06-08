@@ -6,7 +6,7 @@ interface Props {
 }
 
 const STORAGE_KEY = 'performanceTracker_seenUserAdjustmentsUpdate_v1';
-const DISABLE_SECONDS = 10;
+const DISABLE_SECONDS = 20;
 
 function AdjustIcon({ className }: { className?: string }) {
   return (
