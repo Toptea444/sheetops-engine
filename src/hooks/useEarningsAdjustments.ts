@@ -445,27 +445,32 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
   /**
    * Get transfer info for a specific worker, date, and sheet for showing +/- indicators
    */
-  const getTransferInfoForDate = useCallback((workerId: string, dateStr: string, sheetName?: string): { 
-    type: 'credit' | 'debit'; 
-    amount: number 
+  const getTransferInfoForDate = useCallback((workerId: string, dateStr: string, sheetName?: string): {
+    type: 'credit' | 'debit';
+    amount: number;
+    kind?: 'admin_transfer' | 'user_deduction' | 'user_addition';
+    byUser?: boolean;
   } | null => {
     if (!workerId) return null;
     const uid = workerId.toUpperCase();
-    
+
     for (const t of transfers) {
       if (t.transfer_date !== dateStr) continue;
-      
+
       const sheet = sheetName || '';
       if (sheet && !transferAppliesToSheet(t, sheet)) continue;
-      
+
       const perSheetAmount = sheet ? getTransferAmountForSheet(t, sheet) : t.amount;
       if (perSheetAmount <= 0) continue;
-      
+
+      const kind = (t.kind || 'admin_transfer') as 'admin_transfer' | 'user_deduction' | 'user_addition';
+      const byUser = !!t.created_by_user_id;
+
       if (t.target_worker_id === uid) {
-        return { type: 'credit', amount: perSheetAmount };
+        return { type: 'credit', amount: perSheetAmount, kind, byUser };
       }
       if (t.source_worker_id === uid) {
-        return { type: 'debit', amount: perSheetAmount };
+        return { type: 'debit', amount: perSheetAmount, kind, byUser };
       }
     }
     return null;
