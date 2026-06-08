@@ -174,6 +174,35 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (existing) return bad('This day has already been transferred from that ID to you.');
 
+      // Smart merge: if the source user already marked this date as "not worked"
+      // (a self-deduction), supersede their record — the money has already been
+      // taken off their side; turning this into a real transfer credits us
+      // without debiting them twice.
+      const { data: supersededDeduction } = await supabase
+        .from('day_transfers')
+        .select('id')
+        .eq('source_worker_id', sourceId)
+        .eq('target_worker_id', SELF_DEDUCT_SENTINEL)
+        .eq('transfer_date', date)
+        .eq('kind', 'user_deduction')
+        .maybeSingle();
+
+      if (supersededDeduction) {
+        const { error: delErr } = await supabase
+          .from('day_transfers')
+          .delete()
+          .eq('id', supersededDeduction.id);
+        if (delErr) return bad(`Could not merge with the existing day-off record: ${delErr.message}`);
+
+        await supabase.from('audit_logs').insert({
+          action: 'user_addition_superseded_deduction',
+          actor: workerId,
+          target_type: 'transfer',
+          target_id: supersededDeduction.id,
+          details: { source_id: sourceId, date, note: 'Replaced source user\'s self-deduction with a transfer to claimant.' },
+        });
+      }
+
       const { data, error } = await supabase
         .from('day_transfers')
         .insert({
