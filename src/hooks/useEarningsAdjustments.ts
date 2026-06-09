@@ -336,7 +336,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
 
     const adjustedResults = results.map(result => {
       const resultId = result.workerId.toUpperCase();
-      const adjusted = { ...result };
+      const adjusted = { ...result, dailyBreakdown: result.dailyBreakdown.map(d => ({ ...d })) };
       const resultSheet = result.sheetName || '';
       
       // ── Swaps: filter daily breakdown based on ownership windows ──
@@ -348,7 +348,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
           // uid never owned this resultId — drop all days
           adjusted.dailyBreakdown = [];
         } else {
-          adjusted.dailyBreakdown = result.dailyBreakdown.filter(day => {
+          adjusted.dailyBreakdown = result.dailyBreakdown.map(d => ({ ...d })).filter(day => {
             if (!day.fullDate) return true;
             const dayStr = toLocalDateStr(day.fullDate);
             // Keep the day if it falls within ANY ownership window
@@ -391,11 +391,14 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
             if (!day.fullDate) return day;
             const dayStr = toLocalDateStr(day.fullDate);
             if (dayStr === transferDateStr) {
-              netAdjustment -= day.value;
-              const next: typeof day = { ...day, value: 0 };
-              if (day.bonus !== undefined) next.bonus = 0;
-              if (day.rankingBonus !== undefined) next.rankingBonus = 0;
-              if (day.total !== undefined) next.total = 0;
+              // Use perSheetAmount (not day.value) so the deduction is always
+              // the correct fixed amount — unaffected by any prior additions
+              // that may have already mutated day.value.
+              netAdjustment -= perSheetAmount;
+              const next: typeof day = { ...day, value: Math.max(0, day.value - perSheetAmount) };
+              if (day.bonus !== undefined) next.bonus = Math.max(0, (day.bonus ?? 0) - perSheetAmount);
+              if (day.rankingBonus !== undefined) next.rankingBonus = Math.max(0, (day.rankingBonus ?? 0) - perSheetAmount);
+              if (day.total !== undefined) next.total = Math.max(0, (day.total ?? 0) - perSheetAmount);
               return next;
             }
             return day;
@@ -521,3 +524,4 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     reload: load,
   };
 }
+
