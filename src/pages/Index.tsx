@@ -183,7 +183,7 @@ const Index = () => {
   useEffect(() => {
     if (identityConfirmed && pinVerifiedThisSession && !subsidySetupDone && !isInitializing) {
       // Delay to let other modals (earnings reveal etc.) show first
-      const timer = setTimeout(() => setShowSubsidyModal(true), 2000);
+      const timer = setTimeout(() => { /* temporarily disabled: setShowSubsidyModal(true) */ }, 2000);
       return () => clearTimeout(timer);
     }
   }, [identityConfirmed, pinVerifiedThisSession, subsidySetupDone, isInitializing]);
@@ -1382,7 +1382,7 @@ const Index = () => {
 
       {/* Transport Subsidy Modal */}
       <TransportSubsidyModal
-        open={showSubsidyModal}
+        open={false} /* temporarily disabled */
         hasExistingLink={subsidyOptedIn}
         onComplete={handleSubsidyComplete}
         onFetchSubsidy={fetchSubsidyData}
@@ -1401,7 +1401,7 @@ const Index = () => {
         }}
       />
       <RankingBonusPreferenceModal
-        open={showRankingDefaultUpdateModal && identityConfirmed && !isInitializing}
+        open={false} /* temporarily disabled */
         isDefaultUpdateNotice
         currentPreference={includeRankingBonusInTotal}
         onSavePreference={saveRankingBonusPreference}
