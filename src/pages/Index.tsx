@@ -352,7 +352,19 @@ const Index = () => {
       if (sheetNameMatchesCycle(sheetName, cycle)) return true;
       const verdict = sheetContentCycleMatch(sheetData, cycle);
       if (verdict === 'match') return true;
-      if (verdict === 'no-dates') return true; // accept aggregate / undated sheets
+      // For sheets with no parseable dates, accept them ONLY if they are not
+      // ranking/weekly bonus sheets. Ranking bonus sheets are explicitly dated
+      // by name (e.g. "RANKING BONUS GH 16 MAY - 15 JUN") so if the name did
+      // not match above, this sheet belongs to a different cycle — reject it.
+      // Without this guard, a ranking bonus sheet stored under one cycle key
+      // was leaking into adjacent cycles (appearing doubled).
+      if (verdict === 'no-dates') {
+        const n = sheetName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const isRanking = n.includes('RANKINGBONUS') || (n.includes('RANKING') && n.includes('BONUS'));
+        const isWeekly  = n.includes('WEEKLYBONUS')  || (n.includes('WEEKLY')  && n.includes('BONUS'));
+        if (isRanking || isWeekly) return false; // must match by name — reject if it didn't
+        return true; // genuine undated aggregate sheet — accept
+      }
       return false; // 'mismatch' — sheet has dates and none belong to this cycle
     },
     [sheetNameMatchesCycle, sheetContentCycleMatch]
