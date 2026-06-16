@@ -525,12 +525,19 @@ const Index = () => {
           const key = `${cacheId}:${row.sheetName}`;
           if (seen.has(key)) continue;
           seen.add(key);
-          // Only trust cached rows that actually have in-cycle daily data.
+          // Only trust cached rows that actually have in-cycle daily data
+          // AND whose sheet name belongs to the selected cycle. The second check
+          // prevents ranking/weekly bonus sheets that were saved under this
+          // cycle key (because they were selected at the time) from leaking in
+          // when they actually belong to a neighbouring cycle.
           const hasInCycleData = row.dailyBreakdown?.some((d) => {
             if (d.fullDate === undefined) return false;
             return isDateInCycle(new Date(d.fullDate), selectedCycle);
           });
-          if (hasInCycleData) cachedResults.push(row);
+          const sheetNameOk = row.sheetName
+            ? sheetMatchesCycle(row.sheetName, selectedCycle, newCache[row.sheetName])
+            : true;
+          if (hasInCycleData && sheetNameOk) cachedResults.push(row);
         }
       }
       // Also pre-load cached sheet snapshots so leaderboard / breakdowns work.
