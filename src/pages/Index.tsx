@@ -5,6 +5,7 @@ import { IdentityConfirmationModal } from '@/components/dashboard/IdentityConfir
 import { SessionPinGate } from '@/components/dashboard/SessionPinGate';
 import { SwapDetectionModal } from '@/components/dashboard/SwapDetectionModal';
 import { PinResetModal } from '@/components/dashboard/PinResetModal';
+import { IdMigrationModal } from '@/components/dashboard/IdMigrationModal';
 import { CycleSelector } from '@/components/dashboard/CycleSelector';
 import { CycleSummaryCard } from '@/components/dashboard/CycleSummaryCard';
 import { SheetBreakdownCards } from '@/components/dashboard/SheetBreakdownCards';
@@ -108,6 +109,10 @@ const Index = () => {
   const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
   const [swapDetected, setSwapDetected] = useState<{ currentUserId: string; swappedWithId: string; swapId: string } | null>(null);
   const [pinResetDetected, setPinResetDetected] = useState<{ workerId: string; message: string } | null>(null);
+  // Forced ID migration (Worker ID format change). Bump the version to re-trigger for everyone.
+  const ID_MIGRATION_VERSION = 'v1_2026_new_ids';
+  const ID_MIGRATION_ACK_KEY = `performanceTracker_idMigrationAck_${ID_MIGRATION_VERSION}`;
+  const [showIdMigration, setShowIdMigration] = useState(false);
   const RANKING_BONUS_TOTAL_PREF_KEY = 'performanceTracker_includeRankingBonusInTotal';
   const RANKING_BONUS_TOTAL_DEFAULT_UPDATE_KEY = 'performanceTracker_rankingBonusDefaultUpdateSeen_v1';
   const [includeRankingBonusInTotal, setIncludeRankingBonusInTotal] = useState(true);
@@ -1147,6 +1152,37 @@ const Index = () => {
     setShowWelcome(true);
   };
 
+  // ID migration: show forced logout modal once per user until acknowledged.
+  // Only target users that already have a session (new sign-ups don't need this).
+  useEffect(() => {
+    if (isInitializing) return;
+    const acked = localStorage.getItem(ID_MIGRATION_ACK_KEY) === 'true';
+    if (acked) return;
+    // Only show to users who were already logged in before the change.
+    if (userId) {
+      setShowIdMigration(true);
+    } else {
+      // Fresh device — mark as acked so we don't ever show it to new users.
+      localStorage.setItem(ID_MIGRATION_ACK_KEY, 'true');
+    }
+  }, [isInitializing, userId, ID_MIGRATION_ACK_KEY]);
+
+  const handleIdMigrationLogout = useCallback(async () => {
+    localStorage.setItem(ID_MIGRATION_ACK_KEY, 'true');
+    if (userId) await releaseSession(userId);
+    localStorage.removeItem(PIN_VERIFIED_KEY);
+    setPinVerifiedThisSession(false);
+    clearIdentity();
+    setResults([]);
+    setDataError(null);
+    setSwapDetected(null);
+    setPinResetDetected(null);
+    setShowPinGate(false);
+    setShowIdMigration(false);
+    setShowWelcome(true);
+    toast.info('Logged out. Please log in with your new Worker ID.');
+  }, [clearIdentity, releaseSession, userId, ID_MIGRATION_ACK_KEY]);
+
   const handleSheetSelectionChange = useCallback(async (newSelection: string[]) => {
     const previousSelection = selectedSheets;
     setSelectedSheets(newSelection);
@@ -1506,6 +1542,13 @@ const Index = () => {
         message={pinResetDetected?.message}
         onAcknowledge={handlePinResetAcknowledge}
       />
+
+      <IdMigrationModal
+        open={showIdMigration}
+        currentUserId={userId || ''}
+        onLogout={handleIdMigrationLogout}
+      />
+
 
 
       <AdelajaIntro onComplete={() => setIntroDone(true)} />
