@@ -1152,6 +1152,37 @@ const Index = () => {
     setShowWelcome(true);
   };
 
+  // ID migration: show forced logout modal once per user until acknowledged.
+  // Only target users that already have a session (new sign-ups don't need this).
+  useEffect(() => {
+    if (isInitializing) return;
+    const acked = localStorage.getItem(ID_MIGRATION_ACK_KEY) === 'true';
+    if (acked) return;
+    // Only show to users who were already logged in before the change.
+    if (userId) {
+      setShowIdMigration(true);
+    } else {
+      // Fresh device — mark as acked so we don't ever show it to new users.
+      localStorage.setItem(ID_MIGRATION_ACK_KEY, 'true');
+    }
+  }, [isInitializing, userId, ID_MIGRATION_ACK_KEY]);
+
+  const handleIdMigrationLogout = useCallback(async () => {
+    localStorage.setItem(ID_MIGRATION_ACK_KEY, 'true');
+    if (userId) await releaseSession(userId);
+    localStorage.removeItem(PIN_VERIFIED_KEY);
+    setPinVerifiedThisSession(false);
+    clearIdentity();
+    setResults([]);
+    setDataError(null);
+    setSwapDetected(null);
+    setPinResetDetected(null);
+    setShowPinGate(false);
+    setShowIdMigration(false);
+    setShowWelcome(true);
+    toast.info('Logged out. Please log in with your new Worker ID.');
+  }, [clearIdentity, releaseSession, userId, ID_MIGRATION_ACK_KEY]);
+
   const handleSheetSelectionChange = useCallback(async (newSelection: string[]) => {
     const previousSelection = selectedSheets;
     setSelectedSheets(newSelection);
