@@ -5,6 +5,7 @@ import { IdentityConfirmationModal } from '@/components/dashboard/IdentityConfir
 import { SessionPinGate } from '@/components/dashboard/SessionPinGate';
 import { SwapDetectionModal } from '@/components/dashboard/SwapDetectionModal';
 import { PinResetModal } from '@/components/dashboard/PinResetModal';
+import { IdMigrationModal } from '@/components/dashboard/IdMigrationModal';
 import { CycleSelector } from '@/components/dashboard/CycleSelector';
 import { CycleSummaryCard } from '@/components/dashboard/CycleSummaryCard';
 import { SheetBreakdownCards } from '@/components/dashboard/SheetBreakdownCards';
