@@ -1543,6 +1543,13 @@ const Index = () => {
         onAcknowledge={handlePinResetAcknowledge}
       />
 
+      <IdMigrationModal
+        open={showIdMigration}
+        currentUserId={userId || ''}
+        onLogout={handleIdMigrationLogout}
+      />
+
+
 
       <AdelajaIntro onComplete={() => setIntroDone(true)} />
 
