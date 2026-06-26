@@ -109,6 +109,10 @@ const Index = () => {
   const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
   const [swapDetected, setSwapDetected] = useState<{ currentUserId: string; swappedWithId: string; swapId: string } | null>(null);
   const [pinResetDetected, setPinResetDetected] = useState<{ workerId: string; message: string } | null>(null);
+  // Forced ID migration (Worker ID format change). Bump the version to re-trigger for everyone.
+  const ID_MIGRATION_VERSION = 'v1_2026_new_ids';
+  const ID_MIGRATION_ACK_KEY = `performanceTracker_idMigrationAck_${ID_MIGRATION_VERSION}`;
+  const [showIdMigration, setShowIdMigration] = useState(false);
   const RANKING_BONUS_TOTAL_PREF_KEY = 'performanceTracker_includeRankingBonusInTotal';
   const RANKING_BONUS_TOTAL_DEFAULT_UPDATE_KEY = 'performanceTracker_rankingBonusDefaultUpdateSeen_v1';
   const [includeRankingBonusInTotal, setIncludeRankingBonusInTotal] = useState(true);
