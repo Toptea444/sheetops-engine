@@ -8,7 +8,7 @@ interface RestrictedRouteProps {
 }
 
 export function RestrictedRoute({ children }: RestrictedRouteProps) {
-  const { isRestricted, message, isLoading } = useSiteRestriction();
+  const { isRestricted, title, message, customText, isLoading } = useSiteRestriction();
 
   if (isLoading) {
     return (
@@ -23,7 +23,7 @@ export function RestrictedRoute({ children }: RestrictedRouteProps) {
   }
 
   if (isRestricted) {
-    return <MaintenancePage message={message} />;
+    return <MaintenancePage title={title} message={message} customText={customText} />;
   }
 
   return <>{children}</>;
