@@ -1,10 +1,16 @@
 import { RefreshCw, Wrench } from 'lucide-react';
 
 interface MaintenancePageProps {
+  title?: string;
   message?: string;
+  customText?: string;
 }
 
-export function MaintenancePage({ message = 'The site is currently under maintenance. Please check back later.' }: MaintenancePageProps) {
+export function MaintenancePage({
+  title = "We're Back Soon",
+  message = 'The site is currently under maintenance. Please check back later.',
+  customText = 'Thank you for your patience',
+}: MaintenancePageProps) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center space-y-8">
@@ -18,9 +24,9 @@ export function MaintenancePage({ message = 'The site is currently under mainten
         {/* Content */}
         <div className="space-y-3">
           <h1 className="text-4xl font-bold text-foreground">
-            We're Back Soon
+            {title}
           </h1>
-          <p className="text-muted-foreground text-base leading-relaxed">
+          <p className="text-muted-foreground text-base leading-relaxed whitespace-pre-line">
             {message}
           </p>
         </div>
@@ -43,10 +49,13 @@ export function MaintenancePage({ message = 'The site is currently under mainten
           Try Again
         </button>
 
-        <p className="text-xs text-muted-foreground/70 pt-2">
-          Thank you for your patience
-        </p>
+        {customText ? (
+          <p className="text-xs text-muted-foreground/70 pt-2 whitespace-pre-line">
+            {customText}
+          </p>
+        ) : null}
       </div>
     </div>
   );
 }
+

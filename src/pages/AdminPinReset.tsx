@@ -968,20 +968,39 @@ function ActivityTab({ adminSecret }: { adminSecret: string }) {
 
 // ─── Settings Tab ────────────────────────────────────────────
 function SettingsTab({ adminSecret }: { adminSecret: string }) {
-  const { isRestricted, message, toggle, isLoading: settingsLoading } = useSiteRestrictionAdmin(adminSecret);
+  const { isRestricted, title, message, customText, toggle, saveTexts, isLoading: settingsLoading } = useSiteRestrictionAdmin(adminSecret);
+  const [restrictionTitle, setRestrictionTitle] = useState('');
   const [restrictionMessage, setRestrictionMessage] = useState('');
+  const [restrictionCustom, setRestrictionCustom] = useState('');
   const [initialized, setInitialized] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!settingsLoading && !initialized) {
+      setRestrictionTitle(title || "We're Back Soon");
       setRestrictionMessage(message || 'The site is currently under maintenance. Please check back later.');
+      setRestrictionCustom(customText || 'Thank you for your patience');
       setInitialized(true);
     }
-  }, [settingsLoading, message, initialized]);
+  }, [settingsLoading, title, message, customText, initialized]);
 
   const handleToggleRestriction = async () => {
-    const newState = await toggle(restrictionMessage);
+    const newState = await toggle(restrictionMessage, {
+      title: restrictionTitle,
+      customText: restrictionCustom,
+    });
     toast.success(`Site ${newState ? 'restricted' : 'unrestricted'}`);
+  };
+
+  const handleSaveTexts = async () => {
+    setSaving(true);
+    const ok = await saveTexts({
+      title: restrictionTitle,
+      message: restrictionMessage,
+      customText: restrictionCustom,
+    });
+    setSaving(false);
+    toast[ok ? 'success' : 'error'](ok ? 'Maintenance text saved' : 'Failed to save');
   };
 
   return (
@@ -1012,6 +1031,18 @@ function SettingsTab({ adminSecret }: { adminSecret: string }) {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="maint-title" className="text-xs font-medium">Title</Label>
+            <Input
+              id="maint-title"
+              placeholder="e.g. We're Back Soon"
+              value={restrictionTitle}
+              onChange={(e) => setRestrictionTitle(e.target.value)}
+              className="text-sm"
+            />
+            <p className="text-[11px] text-muted-foreground">Big heading shown on the maintenance page</p>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="message" className="text-xs font-medium">Maintenance Message</Label>
             <Textarea
               id="message"
@@ -1020,7 +1051,25 @@ function SettingsTab({ adminSecret }: { adminSecret: string }) {
               onChange={(e) => setRestrictionMessage(e.target.value)}
               className="min-h-[80px] text-sm"
             />
-            <p className="text-[11px] text-muted-foreground">This message will be shown to users when the site is restricted</p>
+            <p className="text-[11px] text-muted-foreground">Main paragraph shown under the title</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="maint-custom" className="text-xs font-medium">Custom Footer Text</Label>
+            <Textarea
+              id="maint-custom"
+              placeholder="e.g. Thank you for your patience"
+              value={restrictionCustom}
+              onChange={(e) => setRestrictionCustom(e.target.value)}
+              className="min-h-[60px] text-sm"
+            />
+            <p className="text-[11px] text-muted-foreground">Small line shown at the bottom of the page (leave empty to hide)</p>
+          </div>
+
+          <div className="flex justify-end">
+            <Button size="sm" onClick={handleSaveTexts} disabled={saving || settingsLoading}>
+              {saving ? 'Saving…' : 'Save Text Changes'}
+            </Button>
           </div>
         </CardContent>
       </Card>

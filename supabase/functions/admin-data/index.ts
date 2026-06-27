@@ -408,12 +408,14 @@ Deno.serve(async (req) => {
           .eq('setting_key', 'currency_symbol')
           .maybeSingle();
 
-        const restrictedVal = restrictedRow?.setting_value as { enabled?: boolean; message?: string } | null;
+        const restrictedVal = restrictedRow?.setting_value as { enabled?: boolean; message?: string; title?: string; custom_text?: string } | null;
         const currencyVal = currencyRow?.setting_value as string | null;
 
         result = {
           is_restricted: restrictedVal?.enabled ?? false,
+          restriction_title: restrictedVal?.title ?? "We're Back Soon",
           restriction_message: restrictedVal?.message ?? 'The site is currently under maintenance. Please check back later.',
+          restriction_custom_text: restrictedVal?.custom_text ?? 'Thank you for your patience',
           currency_symbol: currencyVal ?? '₦',
         };
         break;
@@ -422,8 +424,10 @@ Deno.serve(async (req) => {
       case 'toggle_site_restriction': {
         const isRestricted = params?.is_restricted ?? false;
         const message = params?.restriction_message ?? 'The site is currently under maintenance. Please check back later.';
+        const title = params?.restriction_title ?? "We're Back Soon";
+        const customText = params?.restriction_custom_text ?? 'Thank you for your patience';
 
-        const newValue = { enabled: isRestricted, message };
+        const newValue = { enabled: isRestricted, message, title, custom_text: customText };
 
         const { data: existing } = await supabase
           .from('admin_settings')
