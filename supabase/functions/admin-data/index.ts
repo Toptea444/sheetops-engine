@@ -408,12 +408,14 @@ Deno.serve(async (req) => {
           .eq('setting_key', 'currency_symbol')
           .maybeSingle();
 
-        const restrictedVal = restrictedRow?.setting_value as { enabled?: boolean; message?: string } | null;
+        const restrictedVal = restrictedRow?.setting_value as { enabled?: boolean; message?: string; title?: string; custom_text?: string } | null;
         const currencyVal = currencyRow?.setting_value as string | null;
 
         result = {
           is_restricted: restrictedVal?.enabled ?? false,
+          restriction_title: restrictedVal?.title ?? "We're Back Soon",
           restriction_message: restrictedVal?.message ?? 'The site is currently under maintenance. Please check back later.',
+          restriction_custom_text: restrictedVal?.custom_text ?? 'Thank you for your patience',
           currency_symbol: currencyVal ?? '₦',
         };
         break;
