@@ -427,6 +427,7 @@ Deno.serve(async (req) => {
         const title = params?.restriction_title ?? "We're Back Soon";
         const customText = params?.restriction_custom_text ?? 'Thank you for your patience';
 
+        // v2: persist title + custom_text alongside enabled/message
         const newValue = { enabled: isRestricted, message, title, custom_text: customText };
 
         const { data: existing } = await supabase
