@@ -424,8 +424,10 @@ Deno.serve(async (req) => {
       case 'toggle_site_restriction': {
         const isRestricted = params?.is_restricted ?? false;
         const message = params?.restriction_message ?? 'The site is currently under maintenance. Please check back later.';
+        const title = params?.restriction_title ?? "We're Back Soon";
+        const customText = params?.restriction_custom_text ?? 'Thank you for your patience';
 
-        const newValue = { enabled: isRestricted, message };
+        const newValue = { enabled: isRestricted, message, title, custom_text: customText };
 
         const { data: existing } = await supabase
           .from('admin_settings')
