@@ -444,12 +444,15 @@ function parseDailyPerformanceSheet(
       if (!blockDate) continue; // Skip if we can't find a date for this block
 
       // The *next* row after the date must contain the required headers
-      let stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage']);
+      let stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage', 'ids']);
       let usernamesCol = findLabelInRange(headerRow, blockStart, blockEnd, [
         'usernames',
         'username',
         'user_name',
         'user name',
+        // June 22-30 2026 sheet uses NAMES for worker IDs
+        'names',
+        'name',
         // Some sheets label this column as PRODUCT
         'product',
         'id',
