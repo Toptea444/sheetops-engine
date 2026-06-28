@@ -62,6 +62,26 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
 import { Settings, CalendarDays } from 'lucide-react';
 
+// Cookie-based tracking for the "former Worker ID" prompt. Once a user has
+// viewed (and closed/skipped/submitted) the prompt, we set a cookie so it
+// never shows again for them. If the cookie is absent, the prompt keeps
+// showing on every login.
+const FORMER_ID_PROMPT_COOKIE = 'sheetops_formerIdPromptViewed';
+
+const hasViewedFormerIdPrompt = (userId: string): boolean => {
+  if (typeof document === 'undefined') return false;
+  const key = `${FORMER_ID_PROMPT_COOKIE}_${userId}`;
+  return document.cookie.split('; ').some((c) => c.startsWith(`${key}=`));
+};
+
+const markFormerIdPromptViewed = (userId: string): void => {
+  if (typeof document === 'undefined') return;
+  const key = `${FORMER_ID_PROMPT_COOKIE}_${userId}`;
+  // Persist for ~1 year.
+  const maxAge = 60 * 60 * 24 * 365;
+  document.cookie = `${key}=1; path=/; max-age=${maxAge}; SameSite=Lax`;
+};
+
 const Index = () => {
   const toLocalDateStr = (ts: number) => {
     const d = new Date(ts);
@@ -688,59 +708,19 @@ const Index = () => {
     }
   }, [earningsSwaps, adjustmentsLoading, userId, identityConfirmed, isInitializing, selectedSheets, fetchUserData]);
 
-  // Auto-prompt the user to enter their former Worker ID when the selected cycle
-  // overlaps the June 16–21 window but we have NO earnings breakdown for those
-  // days. After the June 22 2026 ID switch, that window's sheet still references
-  // the worker's OLD ID, so logging in with the new ID finds nothing for it.
+  // Prompt the user to enter their former Worker ID (for their June 16–21
+  // earnings) on every login UNTIL they've viewed it once. Viewing is tracked
+  // via a per-user cookie set in the modal's close/skip/submit handlers, so
+  // once seen it never shows again.
   useEffect(() => {
     // Only after the user is fully logged in (identity confirmed + PIN verified).
     if (!userId || !identityConfirmed || !pinVerifiedThisSession || isInitializing) return;
-    if (formerWorkerId || formerIdPromptDismissed) return;
+    // Already entered a former ID, or already viewed the prompt before.
+    if (formerWorkerId || hasViewedFormerIdPrompt(userId)) return;
 
-    // Wait until all data has finished loading before deciding there's no
-    // breakdown — otherwise the modal would flash during the initial fetch.
-    if (sheetsLoading || identityLoading || isFetchingData || adjustmentsLoading) return;
-
-    const windowStart = Date.UTC(2026, 5, 16); // June 16, 2026
-    const cutoff = Date.UTC(2026, 5, 22); // June 22, 2026 (ID switch)
-
-    // Only relevant while the selected cycle overlaps the June 16–21 window.
-    const cycleStartTs = selectedCycle.startDate.getTime();
-    const cycleEndTs = selectedCycle.endDate.getTime();
-    if (cycleStartTs >= cutoff || cycleEndTs < windowStart) return;
-
-    // Does the user have ANY earnings recorded within June 16–21? This covers
-    // the case where adjustedResults is empty (no breakdown found at all) — we
-    // then treat it as "missing" and prompt for the former ID.
-    const hasJune1621Earnings = adjustedResults.some((r) =>
-      (r.dailyBreakdown || []).some(
-        (d) =>
-          d.fullDate !== undefined &&
-          d.fullDate >= windowStart &&
-          d.fullDate < cutoff &&
-          (d.value ?? 0) > 0,
-      ),
-    );
-
-    if (!hasJune1621Earnings) {
-      // No June 16–21 breakdown — likely hidden behind their old ID. Prompt.
-      const t = setTimeout(() => setShowFormerIdModal(true), 1200);
-      return () => clearTimeout(t);
-    }
-  }, [
-    adjustedResults,
-    userId,
-    identityConfirmed,
-    pinVerifiedThisSession,
-    isInitializing,
-    sheetsLoading,
-    identityLoading,
-    isFetchingData,
-    adjustmentsLoading,
-    formerWorkerId,
-    formerIdPromptDismissed,
-    selectedCycle,
-  ]);
+    const t = setTimeout(() => setShowFormerIdModal(true), 1200);
+    return () => clearTimeout(t);
+  }, [userId, identityConfirmed, pinVerifiedThisSession, isInitializing, formerWorkerId]);
 
   // Trigger Cycle Summary Modal when conditions are met
   useEffect(() => {
@@ -1603,12 +1583,18 @@ const Index = () => {
       <FormerIdLookupModal
         open={showFormerIdModal}
         currentUserId={userId || ''}
-        onClose={() => setShowFormerIdModal(false)}
+        onClose={() => {
+          if (userId) markFormerIdPromptViewed(userId);
+          dismissFormerIdPrompt();
+          setShowFormerIdModal(false);
+        }}
         onSkip={() => {
+          if (userId) markFormerIdPromptViewed(userId);
           dismissFormerIdPrompt();
           setShowFormerIdModal(false);
         }}
         onSubmit={(id) => {
+          if (userId) markFormerIdPromptViewed(userId);
           setFormerWorkerId(id);
           dismissFormerIdPrompt();
           setShowFormerIdModal(false);
