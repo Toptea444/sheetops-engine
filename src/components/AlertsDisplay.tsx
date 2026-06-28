@@ -20,6 +20,7 @@ export function AlertsDisplay() {
       return saved ? new Set(JSON.parse(saved)) : new Set();
     } catch { return new Set(); }
   });
+  const [visibleAlertIds, setVisibleAlertIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchAlerts = async () => {
@@ -30,7 +31,27 @@ export function AlertsDisplay() {
         .order('priority', { ascending: false });
 
       if (data) {
-        setAlerts(data as unknown as AdminAlert[]);
+        const alertsData = data as unknown as AdminAlert[];
+        setAlerts(alertsData);
+
+        // Apply 6-second delay for alerts mentioning June 16-21 and management/staff changes
+        const newVisibleIds = new Set(visibleAlertIds);
+        alertsData.forEach(alert => {
+          const isJuneAlert = (alert.title + ' ' + alert.message).toUpperCase().includes('16-21');
+          const isManagementAlert = (alert.title + ' ' + alert.message).toUpperCase().includes('MANAGEMENT') ||
+                                   (alert.title + ' ' + alert.message).toUpperCase().includes('STAFF') ||
+                                   (alert.title + ' ' + alert.message).toUpperCase().includes('WORKER ID');
+
+          if (isJuneAlert && isManagementAlert && !newVisibleIds.has(alert.id)) {
+            // Delay showing this alert by 6 seconds
+            setTimeout(() => {
+              setVisibleAlertIds(prev => new Set([...prev, alert.id]));
+            }, 6000);
+          } else if (!isJuneAlert || !isManagementAlert) {
+            newVisibleIds.add(alert.id);
+          }
+        });
+        setVisibleAlertIds(newVisibleIds);
       }
     };
 
@@ -47,7 +68,7 @@ export function AlertsDisplay() {
     });
   };
 
-  const visibleAlerts = alerts.filter(a => !dismissedIds.has(a.id));
+  const visibleAlerts = alerts.filter(a => !dismissedIds.has(a.id) && visibleAlertIds.has(a.id));
 
   if (visibleAlerts.length === 0) return null;
 
