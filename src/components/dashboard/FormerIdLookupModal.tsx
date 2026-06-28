@@ -106,7 +106,7 @@ export function FormerIdLookupModal({
                 </div>
                 <DialogTitle className="text-xl">Missing earnings from June 16 – 21?</DialogTitle>
                 <DialogDescription className="text-base mt-2 leading-relaxed">
-                  We changed everyone's Worker ID on{' '}
+                  The management changed everyone's Worker ID on{' '}
                   <span className="font-semibold text-foreground">June 22, 2026</span>.
                   The sheet for June 16 – 21 still has your{' '}
                   <span className="font-semibold text-foreground">old ID</span>, so it can't
