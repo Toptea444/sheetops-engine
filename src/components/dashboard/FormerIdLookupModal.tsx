@@ -131,8 +131,8 @@ export function FormerIdLookupModal({
               <div className="space-y-4">
                 <div className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
                   Type in your{' '}
-                  <span className="font-semibold text-foreground">old Worker ID</span> below and
-                  we'll pull those days in for you.
+                  <span className="font-semibold text-foreground">old Worker ID</span> below so the app can fetch your
+              earnings for that period.
                 </div>
 
                 <div className="space-y-2">
