@@ -688,36 +688,59 @@ const Index = () => {
     }
   }, [earningsSwaps, adjustmentsLoading, userId, identityConfirmed, isInitializing, selectedSheets, fetchUserData]);
 
-  // Auto-prompt the user to enter their former Worker ID when the current cycle
-  // includes pre-June-22-2026 dates and their daily/performance breakdown is
-  // missing those days (sheet still references old IDs there).
+  // Auto-prompt the user to enter their former Worker ID when the selected cycle
+  // overlaps the June 16–21 window but we have NO earnings breakdown for those
+  // days. After the June 22 2026 ID switch, that window's sheet still references
+  // the worker's OLD ID, so logging in with the new ID finds nothing for it.
   useEffect(() => {
-    if (!userId || !identityConfirmed || isInitializing) return;
+    // Only after the user is fully logged in (identity confirmed + PIN verified).
+    if (!userId || !identityConfirmed || !pinVerifiedThisSession || isInitializing) return;
     if (formerWorkerId || formerIdPromptDismissed) return;
-    if (adjustedResults.length === 0) return;
 
-    const cutoff = Date.UTC(2026, 5, 22); // June 22, 2026
+    // Wait until all data has finished loading before deciding there's no
+    // breakdown — otherwise the modal would flash during the initial fetch.
+    if (sheetsLoading || identityLoading || isFetchingData || adjustmentsLoading) return;
+
+    const windowStart = Date.UTC(2026, 5, 16); // June 16, 2026
+    const cutoff = Date.UTC(2026, 5, 22); // June 22, 2026 (ID switch)
+
+    // Only relevant while the selected cycle overlaps the June 16–21 window.
     const cycleStartTs = selectedCycle.startDate.getTime();
     const cycleEndTs = selectedCycle.endDate.getTime();
-    // Only prompt for cycles that include any date before the cutoff
-    if (cycleStartTs >= cutoff || cycleEndTs < Date.UTC(2026, 5, 16)) return;
+    if (cycleStartTs >= cutoff || cycleEndTs < windowStart) return;
 
-    const dpResults = adjustedResults.filter((r) => {
-      const u = (r.sheetName || '').toUpperCase();
-      return u.includes('DAILY') || u.includes('PERFORMANCE');
-    });
-    if (dpResults.length === 0) return;
-
-    const hasPreCutoffDay = dpResults.some((r) =>
-      (r.dailyBreakdown || []).some((d) => d.fullDate !== undefined && d.fullDate < cutoff)
+    // Does the user have ANY earnings recorded within June 16–21? This covers
+    // the case where adjustedResults is empty (no breakdown found at all) — we
+    // then treat it as "missing" and prompt for the former ID.
+    const hasJune1621Earnings = adjustedResults.some((r) =>
+      (r.dailyBreakdown || []).some(
+        (d) =>
+          d.fullDate !== undefined &&
+          d.fullDate >= windowStart &&
+          d.fullDate < cutoff &&
+          (d.value ?? 0) > 0,
+      ),
     );
 
-    if (!hasPreCutoffDay) {
-      // No pre-cutoff days found anywhere — likely missing due to old ID. Prompt.
+    if (!hasJune1621Earnings) {
+      // No June 16–21 breakdown — likely hidden behind their old ID. Prompt.
       const t = setTimeout(() => setShowFormerIdModal(true), 1200);
       return () => clearTimeout(t);
     }
-  }, [adjustedResults, userId, identityConfirmed, isInitializing, formerWorkerId, formerIdPromptDismissed, selectedCycle]);
+  }, [
+    adjustedResults,
+    userId,
+    identityConfirmed,
+    pinVerifiedThisSession,
+    isInitializing,
+    sheetsLoading,
+    identityLoading,
+    isFetchingData,
+    adjustmentsLoading,
+    formerWorkerId,
+    formerIdPromptDismissed,
+    selectedCycle,
+  ]);
 
   // Trigger Cycle Summary Modal when conditions are met
   useEffect(() => {
