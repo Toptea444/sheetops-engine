@@ -381,24 +381,13 @@ const Index = () => {
     return b.every((item) => setA.has(item));
   }, []);
 
-  // Helper to check if a sheet should be unchecked by default
+  // Helper to check if a sheet should be unchecked by default.
+  // ONLY weekly-bonus sheets should auto-uncheck. Ranking bonus sheets must
+  // always start checked (user request).
   const isDefaultUncheckedSheet = (name: string): boolean => {
     const n = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    // "WEEKLY BONUS GH" (the original generic one) — always uncheck
-    const isGenericWeeklyBonusGh = (n.includes('WEEKLYBONUSGH') || 
-           (n.includes('WEEKLY') && n.includes('BONUS') && n.includes('GH')));
-    // "RANKING BONUS GH" (generic, no date suffix) — always uncheck
-    const isGenericRankingBonusGh = (n.includes('RANKINGBONUSGH') || 
-           (n.includes('RANKING') && n.includes('BONUS') && n.includes('GH')));
-    // "WEEKLY BONUS FROM ..." sheets — uncheck
-    const isWeeklyBonusFrom = n.includes('WEEKLY') && n.includes('BONUS') && n.includes('FROM');
-    
-    // "RANKING BONUS GH <date>" sheets (with date suffix) should be CHECKED, so exclude them
-    // A date suffix is detected by having digits after the ranking bonus pattern
-    const hasDateSuffix = /RANKINGBONUS.*GH.*\d/.test(n) || /RANKING.*BONUS.*GH.*\d/.test(n);
-    if (hasDateSuffix) return false; // Keep checked — it's a specific dated ranking bonus
-    
-    return isGenericWeeklyBonusGh || isGenericRankingBonusGh || isWeeklyBonusFrom;
+    const isWeekly = n.includes('WEEKLY') && n.includes('BONUS');
+    return isWeekly;
   };
 
   // Keep these for totals exclusion (always exclude bonus sheets from cumulative totals)
