@@ -6,6 +6,7 @@ import { SessionPinGate } from '@/components/dashboard/SessionPinGate';
 import { SwapDetectionModal } from '@/components/dashboard/SwapDetectionModal';
 import { PinResetModal } from '@/components/dashboard/PinResetModal';
 import { IdMigrationModal } from '@/components/dashboard/IdMigrationModal';
+import { FormerIdLookupModal } from '@/components/dashboard/FormerIdLookupModal';
 import { CycleSelector } from '@/components/dashboard/CycleSelector';
 import { CycleSummaryCard } from '@/components/dashboard/CycleSummaryCard';
 import { SheetBreakdownCards } from '@/components/dashboard/SheetBreakdownCards';
@@ -92,6 +93,10 @@ const Index = () => {
     confirmIdentity,
     clearIdentity,
     hasIdentity,
+    formerWorkerId,
+    formerIdPromptDismissed,
+    setFormerWorkerId,
+    dismissFormerIdPrompt,
   } = useUserIdentity();
 
   const [showWelcome, setShowWelcome] = useState(false);
@@ -210,6 +215,7 @@ const Index = () => {
     reload: reloadAdjustments,
   } = useEarningsAdjustments(userId, selectedCycle);
   const [showUserAdjustModal, setShowUserAdjustModal] = useState(false);
+  const [showFormerIdModal, setShowFormerIdModal] = useState(false);
 
   // Apply adjustments to results
   const { adjustedResults, netAdjustment } = useMemo(() => {
@@ -381,24 +387,13 @@ const Index = () => {
     return b.every((item) => setA.has(item));
   }, []);
 
-  // Helper to check if a sheet should be unchecked by default
+  // Helper to check if a sheet should be unchecked by default.
+  // ONLY weekly-bonus sheets should auto-uncheck. Ranking bonus sheets must
+  // always start checked (user request).
   const isDefaultUncheckedSheet = (name: string): boolean => {
     const n = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    // "WEEKLY BONUS GH" (the original generic one) — always uncheck
-    const isGenericWeeklyBonusGh = (n.includes('WEEKLYBONUSGH') || 
-           (n.includes('WEEKLY') && n.includes('BONUS') && n.includes('GH')));
-    // "RANKING BONUS GH" (generic, no date suffix) — always uncheck
-    const isGenericRankingBonusGh = (n.includes('RANKINGBONUSGH') || 
-           (n.includes('RANKING') && n.includes('BONUS') && n.includes('GH')));
-    // "WEEKLY BONUS FROM ..." sheets — uncheck
-    const isWeeklyBonusFrom = n.includes('WEEKLY') && n.includes('BONUS') && n.includes('FROM');
-    
-    // "RANKING BONUS GH <date>" sheets (with date suffix) should be CHECKED, so exclude them
-    // A date suffix is detected by having digits after the ranking bonus pattern
-    const hasDateSuffix = /RANKINGBONUS.*GH.*\d/.test(n) || /RANKING.*BONUS.*GH.*\d/.test(n);
-    if (hasDateSuffix) return false; // Keep checked — it's a specific dated ranking bonus
-    
-    return isGenericWeeklyBonusGh || isGenericRankingBonusGh || isWeeklyBonusFrom;
+    const isWeekly = n.includes('WEEKLY') && n.includes('BONUS');
+    return isWeekly;
   };
 
   // Keep these for totals exclusion (always exclude bonus sheets from cumulative totals)
@@ -515,11 +510,13 @@ const Index = () => {
     // Get all worker IDs to fetch (includes swap-related IDs)
     const workerIdsToFetch = getWorkerIdsToFetch();
     // If no swaps, just use the current userId
-    const idsToSearch = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
-
-    // For past cycles, prefer cached results first (sheets may be disabled or
-    // have moved on to next month's data which would zero out the breakdown).
-    const idsForCache = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
+    const baseIds = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
+    // Also include the user's former Worker ID (pre June-22-2026 ID format change)
+    // so historical sheets that still reference the old ID can resolve their earnings.
+    const idsToSearch = formerWorkerId && !baseIds.some((i) => i.toUpperCase() === formerWorkerId.toUpperCase())
+      ? [...baseIds, formerWorkerId]
+      : baseIds;
+    const idsForCache = idsToSearch;
     const cachedResults: BonusResult[] = [];
     let cachedSheetNamesFromSnapshots: string[] = [];
     if (isPastCycle) {
@@ -668,7 +665,7 @@ const Index = () => {
     if (!foundInAnySheet && cachedResults.length === 0 && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle, areSameSheetSelection]);
+  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle, areSameSheetSelection, formerWorkerId]);
 
   useEffect(() => {
     if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
@@ -690,6 +687,37 @@ const Index = () => {
       fetchUserData(true);
     }
   }, [earningsSwaps, adjustmentsLoading, userId, identityConfirmed, isInitializing, selectedSheets, fetchUserData]);
+
+  // Auto-prompt the user to enter their former Worker ID when the current cycle
+  // includes pre-June-22-2026 dates and their daily/performance breakdown is
+  // missing those days (sheet still references old IDs there).
+  useEffect(() => {
+    if (!userId || !identityConfirmed || isInitializing) return;
+    if (formerWorkerId || formerIdPromptDismissed) return;
+    if (adjustedResults.length === 0) return;
+
+    const cutoff = Date.UTC(2026, 5, 22); // June 22, 2026
+    const cycleStartTs = selectedCycle.startDate.getTime();
+    const cycleEndTs = selectedCycle.endDate.getTime();
+    // Only prompt for cycles that include any date before the cutoff
+    if (cycleStartTs >= cutoff || cycleEndTs < Date.UTC(2026, 5, 16)) return;
+
+    const dpResults = adjustedResults.filter((r) => {
+      const u = (r.sheetName || '').toUpperCase();
+      return u.includes('DAILY') || u.includes('PERFORMANCE');
+    });
+    if (dpResults.length === 0) return;
+
+    const hasPreCutoffDay = dpResults.some((r) =>
+      (r.dailyBreakdown || []).some((d) => d.fullDate !== undefined && d.fullDate < cutoff)
+    );
+
+    if (!hasPreCutoffDay) {
+      // No pre-cutoff days found anywhere — likely missing due to old ID. Prompt.
+      const t = setTimeout(() => setShowFormerIdModal(true), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [adjustedResults, userId, identityConfirmed, isInitializing, formerWorkerId, formerIdPromptDismissed, selectedCycle]);
 
   // Trigger Cycle Summary Modal when conditions are met
   useEffect(() => {
@@ -1547,6 +1575,23 @@ const Index = () => {
         open={showIdMigration}
         currentUserId={userId || ''}
         onLogout={handleIdMigrationLogout}
+      />
+
+      <FormerIdLookupModal
+        open={showFormerIdModal}
+        currentUserId={userId || ''}
+        onClose={() => setShowFormerIdModal(false)}
+        onSkip={() => {
+          dismissFormerIdPrompt();
+          setShowFormerIdModal(false);
+        }}
+        onSubmit={(id) => {
+          setFormerWorkerId(id);
+          dismissFormerIdPrompt();
+          setShowFormerIdModal(false);
+          // Trigger a refresh so the old ID is searched immediately
+          setTimeout(() => fetchUserData(true), 100);
+        }}
       />
 
 
