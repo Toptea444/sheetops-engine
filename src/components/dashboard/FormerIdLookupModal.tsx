@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { History, Search, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,20 @@ export function FormerIdLookupModal({
   const [value, setValue] = useState('');
   const [touched, setTouched] = useState(false);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+  const [shouldShow, setShouldShow] = useState(false);
+
+  // 6-second delay before showing the modal
+  useEffect(() => {
+    if (open) {
+      setShouldShow(false);
+      const timer = setTimeout(() => {
+        setShouldShow(true);
+      }, 6000);
+      return () => clearTimeout(timer);
+    } else {
+      setShouldShow(false);
+    }
+  }, [open]);
 
   const trimmed = value.trim().toUpperCase();
   const looksValid = /^[A-Za-z]{3,5}[-]?\d+$/.test(trimmed);
@@ -67,7 +81,7 @@ export function FormerIdLookupModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {/* intentionally blocked */}}>
+    <Dialog open={open && shouldShow} onOpenChange={() => {/* intentionally blocked */}}>
       <DialogPortal>
         <DialogOverlay />
         {/* Use DialogPrimitive.Content directly so we control close behaviour */}
