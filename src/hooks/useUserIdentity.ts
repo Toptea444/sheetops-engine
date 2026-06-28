@@ -152,6 +152,8 @@ export function useUserIdentity() {
     cycleTargets: identity.cycleTargets,
     identityConfirmed: identity.identityConfirmed,
     confirmedWorkerId: identity.confirmedWorkerId,
+    formerWorkerId: identity.formerWorkerId,
+    formerIdPromptDismissed: identity.formerIdPromptDismissed,
     isLoading,
     setUserId,
     setUserName,
@@ -160,6 +162,8 @@ export function useUserIdentity() {
     getCycleTarget,
     confirmIdentity,
     clearIdentity,
+    setFormerWorkerId,
+    dismissFormerIdPrompt,
     isValidUserId,
     hasIdentity: !!identity.userId,
   };
