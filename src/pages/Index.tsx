@@ -696,8 +696,8 @@ const Index = () => {
     if (adjustedResults.length === 0) return;
 
     const cutoff = Date.UTC(2026, 5, 22); // June 22, 2026
-    const cycleStartTs = selectedCycle.start.getTime();
-    const cycleEndTs = selectedCycle.end.getTime();
+    const cycleStartTs = selectedCycle.startDate.getTime();
+    const cycleEndTs = selectedCycle.endDate.getTime();
     // Only prompt for cycles that include any date before the cutoff
     if (cycleStartTs >= cutoff || cycleEndTs < Date.UTC(2026, 5, 16)) return;
 
