@@ -1577,6 +1577,23 @@ const Index = () => {
         onLogout={handleIdMigrationLogout}
       />
 
+      <FormerIdLookupModal
+        open={showFormerIdModal}
+        currentUserId={userId || ''}
+        onClose={() => setShowFormerIdModal(false)}
+        onSkip={() => {
+          dismissFormerIdPrompt();
+          setShowFormerIdModal(false);
+        }}
+        onSubmit={(id) => {
+          setFormerWorkerId(id);
+          dismissFormerIdPrompt();
+          setShowFormerIdModal(false);
+          // Trigger a refresh so the old ID is searched immediately
+          setTimeout(() => fetchUserData(true), 100);
+        }}
+      />
+
 
 
       <AdelajaIntro onComplete={() => setIntroDone(true)} />
