@@ -1589,8 +1589,9 @@ const Index = () => {
           setFormerWorkerId(id);
           dismissFormerIdPrompt();
           setShowFormerIdModal(false);
-          // Trigger a refresh so the old ID is searched immediately
-          setTimeout(() => fetchUserData(true), 100);
+          // Delay long enough for React state to flush so formerWorkerId
+          // is available in the fetchUserData closure before it runs.
+          setTimeout(() => fetchUserData(true), 600);
         }}
       />
 
