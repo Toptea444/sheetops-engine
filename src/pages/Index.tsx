@@ -6,6 +6,7 @@ import { SessionPinGate } from '@/components/dashboard/SessionPinGate';
 import { SwapDetectionModal } from '@/components/dashboard/SwapDetectionModal';
 import { PinResetModal } from '@/components/dashboard/PinResetModal';
 import { IdMigrationModal } from '@/components/dashboard/IdMigrationModal';
+import { FormerIdLookupModal } from '@/components/dashboard/FormerIdLookupModal';
 import { CycleSelector } from '@/components/dashboard/CycleSelector';
 import { CycleSummaryCard } from '@/components/dashboard/CycleSummaryCard';
 import { SheetBreakdownCards } from '@/components/dashboard/SheetBreakdownCards';
