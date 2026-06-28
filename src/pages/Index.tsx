@@ -92,6 +92,10 @@ const Index = () => {
     confirmIdentity,
     clearIdentity,
     hasIdentity,
+    formerWorkerId,
+    formerIdPromptDismissed,
+    setFormerWorkerId,
+    dismissFormerIdPrompt,
   } = useUserIdentity();
 
   const [showWelcome, setShowWelcome] = useState(false);
