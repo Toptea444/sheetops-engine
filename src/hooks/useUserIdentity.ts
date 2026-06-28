@@ -110,6 +110,7 @@ export function useUserIdentity() {
     localStorage.removeItem(CYCLE_TARGETS_KEY);
     localStorage.removeItem(IDENTITY_CONFIRMED_KEY);
     localStorage.removeItem(CONFIRMED_WORKER_ID_KEY);
+    // Intentionally keep FORMER_WORKER_ID_KEY — the user may log back in and still need it.
     setIdentity({
       userId: null,
       userName: null,
@@ -117,7 +118,25 @@ export function useUserIdentity() {
       cycleTargets: {},
       identityConfirmed: false,
       confirmedWorkerId: null,
+      formerWorkerId: localStorage.getItem(FORMER_WORKER_ID_KEY),
+      formerIdPromptDismissed: localStorage.getItem(FORMER_ID_PROMPT_DISMISSED_KEY) === 'true',
     });
+  }, []);
+
+  const setFormerWorkerId = useCallback((id: string | null) => {
+    if (id && id.trim()) {
+      const v = id.trim().toUpperCase();
+      localStorage.setItem(FORMER_WORKER_ID_KEY, v);
+      setIdentity(prev => ({ ...prev, formerWorkerId: v }));
+    } else {
+      localStorage.removeItem(FORMER_WORKER_ID_KEY);
+      setIdentity(prev => ({ ...prev, formerWorkerId: null }));
+    }
+  }, []);
+
+  const dismissFormerIdPrompt = useCallback(() => {
+    localStorage.setItem(FORMER_ID_PROMPT_DISMISSED_KEY, 'true');
+    setIdentity(prev => ({ ...prev, formerIdPromptDismissed: true }));
   }, []);
 
   const isValidUserId = useCallback((id: string): boolean => {
