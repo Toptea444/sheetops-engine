@@ -493,25 +493,35 @@ function parseDailyPerformanceSheet(
         const stageCell = String(dataRow[stagesCol] ?? '').trim();
         const userCell = String(dataRow[usernamesCol] ?? '').trim();
 
-        // Stop at repeated table headers inside the same columns.
-        // Some sheets append summary tables (e.g. "Stages | usernames | total")
-        // after the final date block. Without this guard, those rows are treated
-        // as if they belong to the last dated block.
+        // Detect repeated table-header rows inside the same columns.
+        // A single date column can sit ABOVE several stacked header rows, e.g.:
+        //   - the "GH_COLLECTOR BONUS STANDARDS" header ("STAGE | PRODUCT")
+        //     near the top of the sheet, and
+        //   - the real daily header further down ("STAGES | USERNAMES" or
+        //     "IDS | NAMES"), with the actual worker rows below THAT.
+        // The previous logic BROKE out of the scan on the first header it saw,
+        // which meant blocks whose date column lined up with the standards
+        // header (e.g. June 22 & 23, where STAGE/PRODUCT sit at the block start)
+        // never reached their real worker rows lower down. We must instead SKIP
+        // header rows and keep scanning so those days are still picked up.
         const stageLabel = normalizeLabel(stageCell);
         const userLabel = normalizeLabel(userCell);
         const totalLabel = normalizeLabel(String(dataRow[totalCol] ?? '').trim());
         const userHeaderLabels = ['username', 'usernames', 'user name', 'user_name', 'product', 'id', 'name', 'names'];
-        const hasStageHeader = stageLabel === 'stage' || stageLabel === 'stages';
+        const stageHeaderLabels = ['stage', 'stages', 'ids', 'id'];
+        const hasStageHeader = stageHeaderLabels.includes(stageLabel);
         const hasUserHeader = userHeaderLabels.includes(userLabel);
         const hasTotalHeader = totalLabel === 'total';
 
-        // Some summary tables do not repeat TOTAL on the same row (or use merged cells).
-        // Treat any stage+username header shape as an embedded table header and stop the block scan.
-        const looksLikeEmbeddedHeader =
+        // Any stage+username (or stage+total) shape is a (re)header row.
+        const looksLikeHeaderRow =
           hasStageHeader && (hasUserHeader || hasTotalHeader);
 
-        if (looksLikeEmbeddedHeader) {
-          break;
+        if (looksLikeHeaderRow) {
+          // Reset the running stage and skip the header — the real worker rows
+          // for this date may be further down (e.g. below the standards block).
+          currentStage = '';
+          continue;
         }
 
         // Stage divider rows (blue rows in the sheet) usually have stage but no username
