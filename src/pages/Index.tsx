@@ -687,6 +687,37 @@ const Index = () => {
     }
   }, [earningsSwaps, adjustmentsLoading, userId, identityConfirmed, isInitializing, selectedSheets, fetchUserData]);
 
+  // Auto-prompt the user to enter their former Worker ID when the current cycle
+  // includes pre-June-22-2026 dates and their daily/performance breakdown is
+  // missing those days (sheet still references old IDs there).
+  useEffect(() => {
+    if (!userId || !identityConfirmed || isInitializing) return;
+    if (formerWorkerId || formerIdPromptDismissed) return;
+    if (adjustedResults.length === 0) return;
+
+    const cutoff = Date.UTC(2026, 5, 22); // June 22, 2026
+    const cycleStartTs = selectedCycle.start.getTime();
+    const cycleEndTs = selectedCycle.end.getTime();
+    // Only prompt for cycles that include any date before the cutoff
+    if (cycleStartTs >= cutoff || cycleEndTs < Date.UTC(2026, 5, 16)) return;
+
+    const dpResults = adjustedResults.filter((r) => {
+      const u = (r.sheetName || '').toUpperCase();
+      return u.includes('DAILY') || u.includes('PERFORMANCE');
+    });
+    if (dpResults.length === 0) return;
+
+    const hasPreCutoffDay = dpResults.some((r) =>
+      (r.dailyBreakdown || []).some((d) => d.fullDate !== undefined && d.fullDate < cutoff)
+    );
+
+    if (!hasPreCutoffDay) {
+      // No pre-cutoff days found anywhere — likely missing due to old ID. Prompt.
+      const t = setTimeout(() => setShowFormerIdModal(true), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [adjustedResults, userId, identityConfirmed, isInitializing, formerWorkerId, formerIdPromptDismissed, selectedCycle]);
+
   // Trigger Cycle Summary Modal when conditions are met
   useEffect(() => {
     // Compute loading inline since isLoading is defined later in the component
