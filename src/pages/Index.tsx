@@ -62,6 +62,26 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
 import { Settings, CalendarDays } from 'lucide-react';
 
+// Cookie-based tracking for the "former Worker ID" prompt. Once a user has
+// viewed (and closed/skipped/submitted) the prompt, we set a cookie so it
+// never shows again for them. If the cookie is absent, the prompt keeps
+// showing on every login.
+const FORMER_ID_PROMPT_COOKIE = 'sheetops_formerIdPromptViewed';
+
+const hasViewedFormerIdPrompt = (userId: string): boolean => {
+  if (typeof document === 'undefined') return false;
+  const key = `${FORMER_ID_PROMPT_COOKIE}_${userId}`;
+  return document.cookie.split('; ').some((c) => c.startsWith(`${key}=`));
+};
+
+const markFormerIdPromptViewed = (userId: string): void => {
+  if (typeof document === 'undefined') return;
+  const key = `${FORMER_ID_PROMPT_COOKIE}_${userId}`;
+  // Persist for ~1 year.
+  const maxAge = 60 * 60 * 24 * 365;
+  document.cookie = `${key}=1; path=/; max-age=${maxAge}; SameSite=Lax`;
+};
+
 const Index = () => {
   const toLocalDateStr = (ts: number) => {
     const d = new Date(ts);
@@ -688,36 +708,19 @@ const Index = () => {
     }
   }, [earningsSwaps, adjustmentsLoading, userId, identityConfirmed, isInitializing, selectedSheets, fetchUserData]);
 
-  // Auto-prompt the user to enter their former Worker ID when the current cycle
-  // includes pre-June-22-2026 dates and their daily/performance breakdown is
-  // missing those days (sheet still references old IDs there).
+  // Prompt the user to enter their former Worker ID (for their June 16–21
+  // earnings) on every login UNTIL they've viewed it once. Viewing is tracked
+  // via a per-user cookie set in the modal's close/skip/submit handlers, so
+  // once seen it never shows again.
   useEffect(() => {
-    if (!userId || !identityConfirmed || isInitializing) return;
-    if (formerWorkerId || formerIdPromptDismissed) return;
-    if (adjustedResults.length === 0) return;
+    // Only after the user is fully logged in (identity confirmed + PIN verified).
+    if (!userId || !identityConfirmed || !pinVerifiedThisSession || isInitializing) return;
+    // Already entered a former ID, or already viewed the prompt before.
+    if (formerWorkerId || hasViewedFormerIdPrompt(userId)) return;
 
-    const cutoff = Date.UTC(2026, 5, 22); // June 22, 2026
-    const cycleStartTs = selectedCycle.startDate.getTime();
-    const cycleEndTs = selectedCycle.endDate.getTime();
-    // Only prompt for cycles that include any date before the cutoff
-    if (cycleStartTs >= cutoff || cycleEndTs < Date.UTC(2026, 5, 16)) return;
-
-    const dpResults = adjustedResults.filter((r) => {
-      const u = (r.sheetName || '').toUpperCase();
-      return u.includes('DAILY') || u.includes('PERFORMANCE');
-    });
-    if (dpResults.length === 0) return;
-
-    const hasPreCutoffDay = dpResults.some((r) =>
-      (r.dailyBreakdown || []).some((d) => d.fullDate !== undefined && d.fullDate < cutoff)
-    );
-
-    if (!hasPreCutoffDay) {
-      // No pre-cutoff days found anywhere — likely missing due to old ID. Prompt.
-      const t = setTimeout(() => setShowFormerIdModal(true), 1200);
-      return () => clearTimeout(t);
-    }
-  }, [adjustedResults, userId, identityConfirmed, isInitializing, formerWorkerId, formerIdPromptDismissed, selectedCycle]);
+    const t = setTimeout(() => setShowFormerIdModal(true), 1200);
+    return () => clearTimeout(t);
+  }, [userId, identityConfirmed, pinVerifiedThisSession, isInitializing, formerWorkerId]);
 
   // Trigger Cycle Summary Modal when conditions are met
   useEffect(() => {
@@ -1580,12 +1583,18 @@ const Index = () => {
       <FormerIdLookupModal
         open={showFormerIdModal}
         currentUserId={userId || ''}
-        onClose={() => setShowFormerIdModal(false)}
+        onClose={() => {
+          if (userId) markFormerIdPromptViewed(userId);
+          dismissFormerIdPrompt();
+          setShowFormerIdModal(false);
+        }}
         onSkip={() => {
+          if (userId) markFormerIdPromptViewed(userId);
           dismissFormerIdPrompt();
           setShowFormerIdModal(false);
         }}
         onSubmit={(id) => {
+          if (userId) markFormerIdPromptViewed(userId);
           setFormerWorkerId(id);
           dismissFormerIdPrompt();
           setShowFormerIdModal(false);
