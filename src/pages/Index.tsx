@@ -214,6 +214,7 @@ const Index = () => {
     reload: reloadAdjustments,
   } = useEarningsAdjustments(userId, selectedCycle);
   const [showUserAdjustModal, setShowUserAdjustModal] = useState(false);
+  const [showFormerIdModal, setShowFormerIdModal] = useState(false);
 
   // Apply adjustments to results
   const { adjustedResults, netAdjustment } = useMemo(() => {
