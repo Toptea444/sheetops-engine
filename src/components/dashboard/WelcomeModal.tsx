@@ -189,7 +189,7 @@ export function WelcomeModal({
                   <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="userId"
-                    placeholder="e.g., NGDS0001 or GHAS-001"
+                    placeholder="e.g., NGDS2-N-A-03..."
                     value={userId}
                     onChange={(e) => {
                       setUserId(e.target.value.toUpperCase());
