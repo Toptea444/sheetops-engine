@@ -16,6 +16,8 @@ interface UserIdentity {
   cycleTargets: Record<string, number>;
   identityConfirmed: boolean;
   confirmedWorkerId: string | null;
+  formerWorkerId: string | null;
+  formerIdPromptDismissed: boolean;
 }
 
 export function useUserIdentity() {
@@ -26,6 +28,8 @@ export function useUserIdentity() {
     cycleTargets: {},
     identityConfirmed: false,
     confirmedWorkerId: null,
+    formerWorkerId: null,
+    formerIdPromptDismissed: false,
   });
   const [isLoading, setIsLoading] = useState(true);
 
