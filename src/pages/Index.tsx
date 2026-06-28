@@ -140,7 +140,10 @@ const Index = () => {
   const [showIdMigration, setShowIdMigration] = useState(false);
   const RANKING_BONUS_TOTAL_PREF_KEY = 'performanceTracker_includeRankingBonusInTotal';
   const RANKING_BONUS_TOTAL_DEFAULT_UPDATE_KEY = 'performanceTracker_rankingBonusDefaultUpdateSeen_v1';
-  const [includeRankingBonusInTotal, setIncludeRankingBonusInTotal] = useState(true);
+  const [includeRankingBonusInTotal, setIncludeRankingBonusInTotal] = useState(() => {
+    const saved = localStorage.getItem(RANKING_BONUS_TOTAL_PREF_KEY);
+    return saved !== null ? saved === 'true' : false; // Default to false if not set
+  });
   const [showRankingPreferenceModal, setShowRankingPreferenceModal] = useState(false);
   const [rankingPreferenceFromSettings, setRankingPreferenceFromSettings] = useState(false);
   const [showSheetSettingsModal, setShowSheetSettingsModal] = useState(false);
@@ -1593,15 +1596,16 @@ const Index = () => {
           dismissFormerIdPrompt();
           setShowFormerIdModal(false);
         }}
-        onSubmit={(id) => {
-          if (userId) markFormerIdPromptViewed(userId);
-          setFormerWorkerId(id);
-          dismissFormerIdPrompt();
-          setShowFormerIdModal(false);
-          // Delay long enough for React state to flush so formerWorkerId
-          // is available in the fetchUserData closure before it runs.
-          setTimeout(() => fetchUserData(true), 600);
-        }}
+  onSubmit={(id) => {
+  if (userId) markFormerIdPromptViewed(userId);
+  setFormerWorkerId(id);
+  dismissFormerIdPrompt();
+  setShowFormerIdModal(false);
+  // Hard refresh after 3 seconds to ensure new data loads properly
+  setTimeout(() => {
+    window.location.reload();
+  }, 3000);
+  }}
       />
 
 
