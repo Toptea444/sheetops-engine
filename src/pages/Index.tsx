@@ -446,9 +446,6 @@ const Index = () => {
       setIncludeRankingBonusInTotal(savedPreference === 'true');
       return;
     }
-
-    localStorage.setItem(RANKING_BONUS_TOTAL_PREF_KEY, 'true');
-    setIncludeRankingBonusInTotal(true);
   }, []);
 
   const saveRankingBonusPreference = useCallback((shouldInclude: boolean) => {
