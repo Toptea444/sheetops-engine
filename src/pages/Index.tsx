@@ -1593,15 +1593,19 @@ const Index = () => {
           dismissFormerIdPrompt();
           setShowFormerIdModal(false);
         }}
-        onSubmit={(id) => {
-          if (userId) markFormerIdPromptViewed(userId);
-          setFormerWorkerId(id);
-          dismissFormerIdPrompt();
-          setShowFormerIdModal(false);
-          // Delay long enough for React state to flush so formerWorkerId
-          // is available in the fetchUserData closure before it runs.
-          setTimeout(() => fetchUserData(true), 600);
-        }}
+  onSubmit={(id) => {
+  if (userId) markFormerIdPromptViewed(userId);
+  setFormerWorkerId(id);
+  dismissFormerIdPrompt();
+  setShowFormerIdModal(false);
+  // Delay long enough for React state to flush so formerWorkerId
+  // is available in the fetchUserData closure before it runs.
+  // Also clear the sheet data cache to ensure fresh data is fetched.
+  setTimeout(() => {
+    setSheetDataCache({});
+    fetchUserData(true);
+  }, 600);
+  }}
       />
 
 
