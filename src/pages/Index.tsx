@@ -508,11 +508,13 @@ const Index = () => {
     // Get all worker IDs to fetch (includes swap-related IDs)
     const workerIdsToFetch = getWorkerIdsToFetch();
     // If no swaps, just use the current userId
-    const idsToSearch = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
-
-    // For past cycles, prefer cached results first (sheets may be disabled or
-    // have moved on to next month's data which would zero out the breakdown).
-    const idsForCache = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
+    const baseIds = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
+    // Also include the user's former Worker ID (pre June-22-2026 ID format change)
+    // so historical sheets that still reference the old ID can resolve their earnings.
+    const idsToSearch = formerWorkerId && !baseIds.some((i) => i.toUpperCase() === formerWorkerId.toUpperCase())
+      ? [...baseIds, formerWorkerId]
+      : baseIds;
+    const idsForCache = idsToSearch;
     const cachedResults: BonusResult[] = [];
     let cachedSheetNamesFromSnapshots: string[] = [];
     if (isPastCycle) {
