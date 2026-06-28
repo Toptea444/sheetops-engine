@@ -41,6 +41,8 @@ export function useUserIdentity() {
     const storedCycleTargets = localStorage.getItem(CYCLE_TARGETS_KEY);
     const storedIdentityConfirmed = localStorage.getItem(IDENTITY_CONFIRMED_KEY);
     const storedConfirmedWorkerId = localStorage.getItem(CONFIRMED_WORKER_ID_KEY);
+    const storedFormerWorkerId = localStorage.getItem(FORMER_WORKER_ID_KEY);
+    const storedFormerPromptDismissed = localStorage.getItem(FORMER_ID_PROMPT_DISMISSED_KEY);
 
     setIdentity({
       userId: storedUserId,
@@ -49,6 +51,8 @@ export function useUserIdentity() {
       cycleTargets: storedCycleTargets ? JSON.parse(storedCycleTargets) : {},
       identityConfirmed: storedIdentityConfirmed === 'true',
       confirmedWorkerId: storedConfirmedWorkerId,
+      formerWorkerId: storedFormerWorkerId,
+      formerIdPromptDismissed: storedFormerPromptDismissed === 'true',
     });
     setIsLoading(false);
   }, []);
