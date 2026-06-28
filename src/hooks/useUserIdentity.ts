@@ -6,6 +6,8 @@ const DAILY_TARGET_KEY = 'performanceTracker_dailyTarget';
 const CYCLE_TARGETS_KEY = 'performanceTracker_cycleTargets';
 const IDENTITY_CONFIRMED_KEY = 'performanceTracker_identityConfirmed';
 const CONFIRMED_WORKER_ID_KEY = 'performanceTracker_confirmedWorkerId';
+const FORMER_WORKER_ID_KEY = 'performanceTracker_formerWorkerId';
+const FORMER_ID_PROMPT_DISMISSED_KEY = 'performanceTracker_formerIdPromptDismissed';
 
 interface UserIdentity {
   userId: string | null;
