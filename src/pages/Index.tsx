@@ -712,18 +712,20 @@ const Index = () => {
   }, [earningsSwaps, adjustmentsLoading, userId, identityConfirmed, isInitializing, selectedSheets, fetchUserData]);
 
   // Prompt the user to enter their former Worker ID (for their June 16–21
-  // earnings) on every login UNTIL they've viewed it once. Viewing is tracked
-  // via a per-user cookie set in the modal's close/skip/submit handlers, so
-  // once seen it never shows again.
+  // earnings) ONLY when they're logged in with their NEW ID.
+  // They must have already logged out of their old ID first.
+  // Viewing is tracked via a per-user cookie set in the modal's close/skip/submit handlers.
   useEffect(() => {
     // Only after the user is fully logged in (identity confirmed + PIN verified).
     if (!userId || !identityConfirmed || !pinVerifiedThisSession || isInitializing) return;
     // Already entered a former ID, or already viewed the prompt before.
     if (formerWorkerId || hasViewedFormerIdPrompt(userId)) return;
+    // Only show if IdMigrationModal has been closed (user has completed migration)
+    if (showIdMigration) return;
 
     const t = setTimeout(() => setShowFormerIdModal(true), 1200);
     return () => clearTimeout(t);
-  }, [userId, identityConfirmed, pinVerifiedThisSession, isInitializing, formerWorkerId]);
+  }, [userId, identityConfirmed, pinVerifiedThisSession, isInitializing, formerWorkerId, showIdMigration]);
 
   // Trigger Cycle Summary Modal when conditions are met
   useEffect(() => {
@@ -1772,6 +1774,7 @@ const Index = () => {
                 displayMode={earningsDisplay}
                 subsidyData={null}
                 subsidyOptedIn={false}
+                formerWorkerId={formerWorkerId}
               />
             </div>
 

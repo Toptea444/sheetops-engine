@@ -16,6 +16,7 @@ interface SheetBreakdownCardsProps {
   displayMode?: EarningsDisplayMode;
   subsidyData?: TransportSubsidyData | null;
   subsidyOptedIn?: boolean;
+  formerWorkerId?: string | null;
 }
 
 export function SheetBreakdownCards({
@@ -26,6 +27,7 @@ export function SheetBreakdownCards({
   displayMode = 'amount',
   subsidyData,
   subsidyOptedIn,
+  formerWorkerId,
 }: SheetBreakdownCardsProps) {
   const sheetBreakdown = useMemo(() => {
     return sheetNames.map((name) => {
@@ -62,6 +64,12 @@ export function SheetBreakdownCards({
 
   if (sheetBreakdown.length === 0 && !subsidyOptedIn) return null;
 
+  // Check if a sheet is the June 16-21 sheet
+  const isJune1621Sheet = (sheetName: string): boolean => {
+    const upper = sheetName.toUpperCase();
+    return upper.includes('JUNE') && (upper.includes('16') || upper.includes('21'));
+  };
+
   return (
     <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
       {sheetBreakdown.map((sheet) => (
@@ -77,6 +85,11 @@ export function SheetBreakdownCards({
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">%</Badge>
             )}
           </div>
+          {isJune1621Sheet(sheet.name) && formerWorkerId && (
+            <p className="text-xs text-muted-foreground mb-1">
+              {formerWorkerId}
+            </p>
+          )}
           {displayMode === 'dots' ? (
             <div className="h-5 w-16 rounded-md bg-muted animate-pulse mt-0.5" />
           ) : (
