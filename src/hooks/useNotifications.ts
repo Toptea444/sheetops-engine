@@ -25,62 +25,109 @@ function simpleHash(str: string): string {
   return hash.toString(36);
 }
 
+/**
+ * Show a notification using the best available method.
+ *
+ * Priority:
+ * 1. ServiceWorkerRegistration.showNotification() — works on iOS PWA, Android
+ *    PWA, and all modern browsers. Required for iOS 16.4+ PWA support.
+ * 2. new Notification() — fallback for desktop browsers / non-SW contexts.
+ *
+ * iOS Safari blocks new Notification() entirely in PWA mode. Calling it throws
+ * or returns silently. The SW path is the only reliable cross-platform method.
+ */
+async function showNotification(title: string, options: NotificationOptions): Promise<void> {
+  // Try service worker first (works on iOS PWA, Android PWA, desktop)
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if (registration && typeof registration.showNotification === 'function') {
+        await registration.showNotification(title, {
+          icon: '/pwa-icon-192.png',
+          badge: '/pwa-icon-192.png',
+          ...options,
+        });
+        return;
+      }
+    } catch (swErr) {
+      console.warn('[Notifications] SW showNotification failed, trying fallback:', swErr);
+    }
+  }
+
+  // Fallback: direct Notification constructor (desktop / non-SW environments)
+  try {
+    new Notification(title, {
+      icon: '/favicon.ico',
+      ...options,
+    });
+  } catch (err) {
+    console.warn('[Notifications] Notification constructor also failed:', err);
+  }
+}
+
 export function useNotifications(): UseNotificationsResult {
   const [isSupported, setIsSupported] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
 
   useEffect(() => {
-    // Check if notifications are supported
-    const supported = 'Notification' in window;
+    // Notifications require either the Notification API or a Service Worker.
+    // iOS PWA (16.4+) supports SW notifications but NOT new Notification().
+    const supported =
+      'Notification' in window || ('serviceWorker' in navigator);
     setIsSupported(supported);
 
-    if (supported) {
+    if ('Notification' in window) {
       setPermission(Notification.permission);
-      
-      // Check if user has enabled notifications
-      const enabled = localStorage.getItem(NOTIFICATION_KEY) === 'true';
-      setIsEnabled(enabled && Notification.permission === 'granted');
     }
+
+    const enabled = localStorage.getItem(NOTIFICATION_KEY) === 'true';
+    const currentPermission = 'Notification' in window ? Notification.permission : 'default';
+    setIsEnabled(enabled && currentPermission === 'granted');
   }, []);
 
   const enableNotifications = useCallback(async (): Promise<boolean> => {
-    if (!isSupported) {
-      toast.error('Notifications are not supported in this browser');
+    if (!('Notification' in window) && !('serviceWorker' in navigator)) {
+      toast.error('Notifications are not supported on this device');
       return false;
     }
 
     try {
-      const result = await Notification.requestPermission();
+      let result: NotificationPermission = 'denied';
+
+      if ('Notification' in window) {
+        result = await Notification.requestPermission();
+      } else {
+        // Some environments only expose it via the SW registration
+        const reg = await navigator.serviceWorker.ready;
+        // @ts-ignore — non-standard in some environments
+        result = await reg.pushManager?.permissionState?.({ userVisibleOnly: true }) ?? 'denied';
+      }
+
       setPermission(result);
 
       if (result !== 'granted') {
-        toast.error('Notification permission denied');
+        toast.error('Notification permission denied. Please allow notifications in your device settings.');
         return false;
       }
 
       localStorage.setItem(NOTIFICATION_KEY, 'true');
       setIsEnabled(true);
 
-      // Some browsers/environments allow permission but still block the constructor.
-      // This should NOT fail the whole enable flow.
-      try {
-        new Notification('Notifications Enabled', {
-          body: 'You will be notified when your sheet data is updated.',
-          icon: '/favicon.ico',
-        });
-      } catch (err) {
-        console.warn('Test notification was blocked:', err);
-      }
+      // Send a test notification to confirm it works
+      await showNotification('Notifications Enabled ✅', {
+        body: 'You\'ll be notified when your sheet data updates.',
+        tag: 'notifications-enabled',
+      });
 
       toast.success('Notifications enabled!');
       return true;
     } catch (error) {
-      console.error('Failed to enable notifications:', error);
+      console.error('[Notifications] Failed to enable:', error);
       toast.error('Failed to enable notifications');
       return false;
     }
-  }, [isSupported]);
+  }, []);
 
   const disableNotifications = useCallback(() => {
     localStorage.setItem(NOTIFICATION_KEY, 'false');
@@ -89,26 +136,23 @@ export function useNotifications(): UseNotificationsResult {
   }, []);
 
   const checkForUpdates = useCallback((currentDataHash: string) => {
-    if (!isEnabled || permission !== 'granted') return;
+    const currentPermission = 'Notification' in window ? Notification.permission : 'default';
+    if (!isEnabled || currentPermission !== 'granted') return;
 
     const lastHash = localStorage.getItem(LAST_DATA_HASH_KEY);
-    
+
     if (lastHash && lastHash !== currentDataHash) {
-      // Data has changed! Send notification
-      try {
-        new Notification('Sheet Data Updated', {
-          body: 'Your performance data has been updated. Check your latest earnings!',
-          icon: '/favicon.ico',
-          tag: 'data-update', // Prevents duplicate notifications
-        });
-      } catch (err) {
-        console.warn('Update notification was blocked:', err);
-      }
+      // Data changed — fire a notification
+      showNotification('📊 Sheet Data Updated', {
+        body: 'Your performance data has been updated. Tap to check your latest earnings!',
+        tag: 'data-update', // Prevents duplicate stacked notifications
+        renotify: true,     // Re-fire even if same tag already shown
+      });
     }
 
-    // Store current hash
+    // Always store latest hash
     localStorage.setItem(LAST_DATA_HASH_KEY, currentDataHash);
-  }, [isEnabled, permission]);
+  }, [isEnabled]);
 
   return {
     isSupported,
