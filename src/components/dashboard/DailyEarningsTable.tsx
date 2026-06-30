@@ -52,30 +52,53 @@ function formatRecoveryRate(value?: number, raw?: string): string {
 }
 
 // Stage-aware target thresholds for Third Party recovery bonus standards.
-// Higher Target Met % = better tier/color for the worker's stage.
+// Each stage has NEW (post Jun-22-2026) and OLD (pre Jun-22-2026) variants.
+// Tiers: top = green (best), mid = amber, base = orange, below base = red.
 const STAGE_TARGET_THRESHOLDS: Record<string, { top: number; mid: number; base: number }> = {
-  'T-1': { top: 52, mid: 46, base: 40 },
-  T0: { top: 24, mid: 20, base: 16 },
-  S1: { top: 6.5, mid: 4.5, base: 2.5 },
-  S2: { top: 1.3, mid: 0.9, base: 0.5 },
-  S3: { top: 0.4, mid: 0.3, base: 0.2 },
-  S4: { top: 0.08, mid: 0.05, base: 0.02 },
+  // NEW stages (post June 22, 2026)
+  'NEWT-1': { top: 42, mid: 37, base: 32 },
+  'NEWT0':  { top: 25, mid: 21, base: 17 },
+  'NEWS1':  { top: 5.6, mid: 4.5, base: 2.5 },
+  'NEWS2':  { top: 1.3, mid: 0.9, base: 0.5 },
+  // OLD stages (pre June 22, 2026)
+  'OLDT-1': { top: 55, mid: 49, base: 43 },
+  'OLDT0':  { top: 27, mid: 23, base: 19 },
+  'OLDS1':  { top: 8,  mid: 5.7, base: 3 },
+  'OLDS2':  { top: 1.9, mid: 1.3, base: 0.9 },
+  // Plain fallbacks (no NEW/OLD prefix in sheet data)
+  'T-1': { top: 42, mid: 37, base: 32 },
+  'T0':  { top: 25, mid: 21, base: 17 },
+  'S1':  { top: 5.6, mid: 4.5, base: 2.5 },
+  'S2':  { top: 1.3, mid: 0.9, base: 0.5 },
 };
 
+/**
+ * Normalise a raw stage string into the lookup key.
+ * 'New T-1' -> 'NEWT-1', 'OLD T0' -> 'OLDT0', 'T-1' -> 'T-1'
+ */
 function normalizeStage(stage?: string): string {
   if (!stage) return '';
-  return stage.trim().toUpperCase().replace(/\s+/g, '');
+  const s = stage.trim().toUpperCase().replace(/\s+/g, '');
+  // Normalise separator between prefix and stage: NEW-T-1 / NEW_T-1 -> NEWT-1
+  return s.replace(/^(NEW|OLD)[-_]?/, (_, p) => p);
 }
 
 function recoveryTone(value?: number, stage?: string): string {
   if (value === undefined || value === null || !Number.isFinite(value)) return 'text-muted-foreground';
 
-  const thresholds = STAGE_TARGET_THRESHOLDS[normalizeStage(stage)];
+  const key = normalizeStage(stage);
+  // Exact match first, then strip prefix for plain fallback
+  const thresholds =
+    STAGE_TARGET_THRESHOLDS[key] ??
+    STAGE_TARGET_THRESHOLDS[key.replace(/^(NEW|OLD)/, '')];
+
   if (!thresholds) return 'text-muted-foreground';
 
-  if (value >= thresholds.top) return 'text-emerald-600 dark:text-emerald-400';
-  if (value >= thresholds.mid) return 'text-amber-600 dark:text-amber-400';
-  return 'text-red-600 dark:text-red-400';
+  if (value >= thresholds.top)  return 'text-emerald-600 dark:text-emerald-400';
+  if (value >= thresholds.mid)  return 'text-amber-600 dark:text-amber-400';
+  if (value >= thresholds.base) return 'text-orange-500 dark:text-orange-400';
+  if (value > 0)                return 'text-red-600 dark:text-red-400';
+  return 'text-muted-foreground';
 }
 
 export function DailyEarningsTable({
