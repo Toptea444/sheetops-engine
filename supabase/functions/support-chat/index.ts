@@ -82,10 +82,18 @@ Deno.serve(async (req) => {
   const workerId = String(body.worker_id || '').trim().toUpperCase();
   if (!workerId) return bad('worker_id is required');
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  );
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('[support-chat] Missing Supabase env vars:', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseKey,
+    });
+    return bad('Server configuration error - missing Supabase credentials');
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   // Verify worker has a PIN (i.e. is a real user)
   const { data: pinRow } = await supabase
@@ -97,7 +105,8 @@ Deno.serve(async (req) => {
 
   const params: any = body.params || {};
 
-  switch (body.action) {
+  try {
+    switch (body.action) {
     case 'send_message': {
       const messageBody = String(params.body || '').trim();
       if (!messageBody) return bad('Message cannot be empty');
@@ -186,5 +195,9 @@ Deno.serve(async (req) => {
 
     default:
       return bad('Unknown action');
+    }
+  } catch (err) {
+    console.error('[support-chat] Unhandled error:', err instanceof Error ? err.message : String(err));
+    return bad('An unexpected error occurred. Please try again.');
   }
 });
