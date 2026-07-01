@@ -6,7 +6,7 @@ import {
   Trash2, Search, UserCheck, Wifi, WifiOff, Clock, TrendingUp,
   Eye, Settings, Bell, AlertCircle, CheckIcon, Copy, X, ChevronDown,
   History, User, Calendar, MessageSquare, ThumbsUp, ThumbsDown,
-  ArrowLeftRight, FileText, StickyNote, ClipboardList, Sparkles,
+  ArrowLeftRight, FileText, StickyNote, ClipboardList, Sparkles, MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ import { CycleReportTab } from '@/components/admin/CycleReportTab';
 import { WorkerNotesTab } from '@/components/admin/WorkerNotesTab';
 import { StageTotalsTab } from '@/components/admin/StageTotalsTab';
 import { IntroAnimationTab } from '@/components/admin/IntroAnimationTab';
+import { SupportTab } from '@/components/admin/SupportTab';
 import { ThemeSwitcher } from '@/components/dashboard/ThemeSwitcher';
 import { useTheme, type Theme, type AccentColor } from '@/hooks/useTheme';
 import { toast } from 'sonner';
@@ -1693,6 +1694,10 @@ export default function AdminPinReset() {
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
               )}
             </TabsTrigger>
+            <TabsTrigger value="support" className="text-xs gap-0.5 px-2 shrink-0">
+              <MessageCircle className="h-3 w-3" />
+              <span className="hidden sm:inline">Support</span>
+            </TabsTrigger>
             <TabsTrigger value="alerts" className="text-xs gap-0.5 px-2 shrink-0">
               <Bell className="h-3 w-3" />
               <span className="hidden sm:inline">Alerts</span>
@@ -1741,6 +1746,9 @@ export default function AdminPinReset() {
           </TabsContent>
           <TabsContent value="feedback">
             <FeedbackTab adminSecret={adminSecret} />
+          </TabsContent>
+          <TabsContent value="support">
+            <SupportTab adminSecret={adminSecret} />
           </TabsContent>
           <TabsContent value="alerts">
             <AlertsTab adminSecret={adminSecret} />

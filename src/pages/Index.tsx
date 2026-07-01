@@ -38,6 +38,8 @@ import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AdjustmentsPanel } from '@/components/dashboard/AdjustmentsPanel';
 import { EarningsReveal } from '@/components/dashboard/EarningsReveal';
 import { AdelajaIntro } from '@/components/AdelajaIntro';
+import { SupportFAB } from '@/components/SupportFAB';
+import { SupportUpdateModal } from '@/components/SupportUpdateModal';
 import { InsightBanner } from '@/components/dashboard/InsightBanner';
 import { useEarningsInsight } from '@/hooks/useEarningsInsight';
 import { CycleSummaryModal } from '@/components/dashboard/CycleSummaryModal';
@@ -1613,6 +1615,14 @@ const Index = () => {
 
 
       <AdelajaIntro onComplete={() => setIntroDone(true)} />
+
+      {/* Live Support chat (FAB bottom-right) + one-time announcement modal */}
+      {identityConfirmed && pinVerifiedThisSession && (
+        <>
+          <SupportFAB workerId={userId || null} />
+          <SupportUpdateModal identityConfirmed={introDone} />
+        </>
+      )}
 
       <EarningsReveal
         totalEarnings={cycleStats.totalEarnings}

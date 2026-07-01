@@ -296,6 +296,66 @@ export type Database = {
         }
         Relationships: []
       }
+      support_conversations: {
+        Row: {
+          created_at: string
+          last_admin_notified_at: string | null
+          last_message_at: string
+          last_message_preview: string | null
+          last_sender: string
+          unread_admin: number
+          unread_user: number
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          last_admin_notified_at?: string | null
+          last_message_at?: string
+          last_message_preview?: string | null
+          last_sender?: string
+          unread_admin?: number
+          unread_user?: number
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          last_admin_notified_at?: string | null
+          last_message_at?: string
+          last_message_preview?: string | null
+          last_sender?: string
+          unread_admin?: number
+          unread_user?: number
+          worker_id?: string
+        }
+        Relationships: []
+      }
+      support_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender: string
+          worker_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender: string
+          worker_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender?: string
+          worker_id?: string
+        }
+        Relationships: []
+      }
       worker_notes: {
         Row: {
           created_at: string

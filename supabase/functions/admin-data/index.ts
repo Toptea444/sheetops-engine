@@ -1124,6 +1124,88 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // ─── Live Support ─────────────────────────────────────────
+      case 'support_list_conversations': {
+        const { data: convs, error } = await supabase
+          .from('support_conversations')
+          .select('*')
+          .order('last_message_at', { ascending: false });
+        if (error) { result = { success: false, error: error.message }; break; }
+        result = { conversations: convs || [] };
+        break;
+      }
+
+      case 'support_get_messages': {
+        const wid = String(params?.worker_id || '').trim().toUpperCase();
+        if (!wid) { result = { success: false, error: 'worker_id required' }; break; }
+        const { data, error } = await supabase
+          .from('support_messages')
+          .select('*')
+          .eq('worker_id', wid)
+          .order('created_at', { ascending: true })
+          .limit(1000);
+        if (error) { result = { success: false, error: error.message }; break; }
+        result = { messages: data || [] };
+        break;
+      }
+
+      case 'support_send_reply': {
+        const wid = String(params?.worker_id || '').trim().toUpperCase();
+        const bodyText = String(params?.body || '').trim();
+        if (!wid || !bodyText) { result = { success: false, error: 'worker_id and body required' }; break; }
+        if (bodyText.length > 2000) { result = { success: false, error: 'Message too long' }; break; }
+
+        const { data: msg, error: msgErr } = await supabase
+          .from('support_messages')
+          .insert({ worker_id: wid, sender: 'admin', body: bodyText })
+          .select()
+          .single();
+        if (msgErr) { result = { success: false, error: msgErr.message }; break; }
+
+        const preview = bodyText.length > 140 ? bodyText.slice(0, 140) + '…' : bodyText;
+        const { data: existing } = await supabase
+          .from('support_conversations')
+          .select('unread_user')
+          .eq('worker_id', wid)
+          .maybeSingle();
+
+        await supabase
+          .from('support_conversations')
+          .upsert({
+            worker_id: wid,
+            last_message_at: new Date().toISOString(),
+            last_sender: 'admin',
+            last_message_preview: preview,
+            unread_user: (existing?.unread_user ?? 0) + 1,
+            unread_admin: 0, // admin is reading + replying, so their unread clears
+          }, { onConflict: 'worker_id' });
+
+        await logAudit(supabase, 'support_send_reply', { worker_id: wid }, 'support_conversation', wid);
+        result = { success: true, message: msg };
+        break;
+      }
+
+      case 'support_mark_conversation_read': {
+        const wid = String(params?.worker_id || '').trim().toUpperCase();
+        if (!wid) { result = { success: false, error: 'worker_id required' }; break; }
+        await supabase
+          .from('support_conversations')
+          .update({ unread_admin: 0 })
+          .eq('worker_id', wid);
+        result = { success: true };
+        break;
+      }
+
+      case 'support_delete_conversation': {
+        const wid = String(params?.worker_id || '').trim().toUpperCase();
+        if (!wid) { result = { success: false, error: 'worker_id required' }; break; }
+        await supabase.from('support_messages').delete().eq('worker_id', wid);
+        await supabase.from('support_conversations').delete().eq('worker_id', wid);
+        await logAudit(supabase, 'support_delete_conversation', { worker_id: wid }, 'support_conversation', wid);
+        result = { success: true };
+        break;
+      }
+
       default:
         result = { error: 'Unknown action' };
     }
