@@ -33,6 +33,7 @@ interface Msg {
 interface Props { adminSecret: string }
 
 export function SupportTab({ adminSecret }: Props) {
+  const { adminRequest } = useAdminData();
   const [conversations, setConversations] = useState<Conv[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -46,19 +47,17 @@ export function SupportTab({ adminSecret }: Props) {
   const loadConversations = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminInvoke('support_list_conversations', {}, adminSecret);
-      if (res?.success) setConversations(res.data?.conversations || []);
-      else toast.error(res?.error || 'Failed to load conversations');
+      const data = await adminRequest(adminSecret, 'support_list_conversations');
+      if (data) setConversations(data.conversations || []);
     } finally { setLoading(false); }
-  }, [adminSecret]);
+  }, [adminRequest, adminSecret]);
 
   const loadMessages = useCallback(async (wid: string) => {
-    const res = await adminInvoke('support_get_messages', { worker_id: wid }, adminSecret);
-    if (res?.success) setMessages(res.data?.messages || []);
-    // Mark this conversation read
-    await adminInvoke('support_mark_conversation_read', { worker_id: wid }, adminSecret);
+    const data = await adminRequest(adminSecret, 'support_get_messages', { worker_id: wid });
+    if (data) setMessages(data.messages || []);
+    await adminRequest(adminSecret, 'support_mark_conversation_read', { worker_id: wid });
     setConversations((prev) => prev.map((c) => c.worker_id === wid ? { ...c, unread_admin: 0 } : c));
-  }, [adminSecret]);
+  }, [adminRequest, adminSecret]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
@@ -107,27 +106,27 @@ export function SupportTab({ adminSecret }: Props) {
     if (!selectedId || !reply.trim()) return;
     setSending(true);
     try {
-      const res = await adminInvoke('support_send_reply', { worker_id: selectedId, body: reply.trim() }, adminSecret);
-      if (res?.success) {
+      const data = await adminRequest(adminSecret, 'support_send_reply', { worker_id: selectedId, body: reply.trim() });
+      if (data) {
         setReply('');
-        if (res.data?.message) {
-          setMessages((prev) => prev.some((x) => x.id === res.data.message.id) ? prev : [...prev, res.data.message]);
+        if (data.message) {
+          setMessages((prev) => prev.some((x) => x.id === data.message.id) ? prev : [...prev, data.message as Msg]);
         }
         loadConversations();
       } else {
-        toast.error(res?.error || 'Failed to send reply');
+        toast.error('Failed to send reply');
       }
     } finally { setSending(false); }
   };
 
   const handleDelete = async (wid: string) => {
-    const res = await adminInvoke('support_delete_conversation', { worker_id: wid }, adminSecret);
-    if (res?.success) {
+    const data = await adminRequest(adminSecret, 'support_delete_conversation', { worker_id: wid });
+    if (data) {
       toast.success(`Deleted conversation with ${wid}`);
       if (selectedId === wid) { setSelectedId(null); setMessages([]); }
       loadConversations();
     } else {
-      toast.error(res?.error || 'Failed to delete');
+      toast.error('Failed to delete');
     }
     setConfirmDelete(null);
   };
