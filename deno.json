@@ -1,0 +1,7 @@
+{
+  "env": {
+    "RESEND_API_KEY": "dummy",
+    "SUPABASE_URL": "dummy",
+    "SUPABASE_SERVICE_ROLE_KEY": "dummy"
+  }
+}
