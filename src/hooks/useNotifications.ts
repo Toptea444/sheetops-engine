@@ -146,7 +146,8 @@ export function useNotifications(): UseNotificationsResult {
       showNotification('📊 Sheet Data Updated', {
         body: 'Your performance data has been updated. Tap to check your latest earnings!',
         tag: 'data-update', // Prevents duplicate stacked notifications
-        renotify: true,     // Re-fire even if same tag already shown
+        // Re-fire even if same tag already shown (non-standard; cast to bypass TS)
+        ...( { renotify: true } as NotificationOptions ),
       });
     }
 
