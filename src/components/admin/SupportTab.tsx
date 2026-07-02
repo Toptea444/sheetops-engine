@@ -41,7 +41,9 @@ export function SupportTab({ adminSecret }: Props) {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const loadConversations = useCallback(async () => {
@@ -87,12 +89,15 @@ export function SupportTab({ adminSecret }: Props) {
 
   const filtered = useMemo(() => {
     const q = query.trim().toUpperCase();
-    if (!q) return conversations;
-    return conversations.filter((c) =>
+    let list = conversations;
+    if (unreadOnly) list = list.filter((c) => (c.unread_admin || 0) > 0);
+    if (q) list = list.filter((c) =>
       c.worker_id.includes(q) ||
       (c.last_message_preview || '').toUpperCase().includes(q),
     );
-  }, [conversations, query]);
+    return list;
+  }, [conversations, query, unreadOnly]);
+
 
   const totalUnread = conversations.reduce((sum, c) => sum + (c.unread_admin || 0), 0);
 
@@ -160,42 +165,67 @@ export function SupportTab({ adminSecret }: Props) {
                   className="pl-7 h-8 text-xs"
                 />
               </div>
+              <button
+                onClick={() => setUnreadOnly((v) => !v)}
+                className={cn(
+                  'mt-2 w-full text-[11px] font-medium h-7 rounded-md border transition-colors',
+                  unreadOnly
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-muted-foreground border-border hover:bg-muted',
+                )}
+              >
+                {unreadOnly ? 'Showing unread only' : 'Show unread only'}
+              </button>
+
             </div>
             <div className="overflow-y-auto flex-1 max-h-[520px]">
               {filtered.length === 0 ? (
                 <div className="p-8 text-center text-xs text-muted-foreground">
                   {loading ? 'Loading…' : 'No conversations yet'}
                 </div>
-              ) : filtered.map((c) => (
+              ) : filtered.map((c) => {
+                const isUnread = (c.unread_admin || 0) > 0;
+                return (
                 <button
                   key={c.worker_id}
                   onClick={() => openConv(c.worker_id)}
                   className={cn(
-                    'w-full text-left px-3 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors flex items-start gap-2',
+                    'w-full text-left px-3 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors flex items-start gap-2 relative',
                     selectedId === c.worker_id && 'bg-muted',
+                    isUnread && 'bg-primary/5',
                   )}
                 >
-                  <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                  {isUnread && (
+                    <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary" aria-hidden />
+                  )}
+                  <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5 relative">
                     <User className="h-3.5 w-3.5 text-primary" />
+                    {isUnread && (
+                      <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-foreground truncate">{c.worker_id}</span>
-                      <span className="text-[10px] text-muted-foreground shrink-0">
+                      <span className={cn('text-xs truncate', isUnread ? 'font-bold text-foreground' : 'font-semibold text-foreground')}>
+                        {c.worker_id}
+                      </span>
+                      <span className={cn('text-[10px] shrink-0', isUnread ? 'text-primary font-semibold' : 'text-muted-foreground')}>
                         {new Date(c.last_message_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                    <p className={cn('text-[11px] truncate mt-0.5', isUnread ? 'text-foreground font-medium' : 'text-muted-foreground')}>
                       {c.last_sender === 'admin' ? 'You: ' : ''}{c.last_message_preview || '—'}
                     </p>
                   </div>
-                  {c.unread_admin > 0 && (
+                  {isUnread && (
                     <span className="h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center mt-1">
                       {c.unread_admin}
                     </span>
                   )}
                 </button>
-              ))}
+                );
+              })}
+
             </div>
           </div>
 

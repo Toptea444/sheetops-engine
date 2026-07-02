@@ -16,6 +16,14 @@ const NOTIFY_EMAIL = 'cortexturptee@gmail.com';
 const QUIET_PERIOD_MINUTES = 30;
 const MAX_MESSAGE_LENGTH = 2000;
 
+// Rate limits / spam controls
+const MIN_INTERVAL_MS = 2_000;           // 2s between messages
+const MAX_PER_MINUTE  = 5;               // burst cap
+const MAX_PER_HOUR    = 40;              // sustained cap
+const MAX_PER_DAY     = 150;             // daily cap
+const DUPLICATE_WINDOW_MS = 60_000;      // same body within 60s = blocked
+
+
 interface ChatBody {
   action: 'send_message' | 'list_messages' | 'mark_read';
   worker_id?: string;
@@ -103,12 +111,58 @@ Deno.serve(async (req) => {
       if (!messageBody) return bad('Message cannot be empty');
       if (messageBody.length > MAX_MESSAGE_LENGTH) return bad(`Message is too long (max ${MAX_MESSAGE_LENGTH} chars)`);
 
+      // ---------- Rate limiting / spam controls ----------
+      const nowMs = Date.now();
+      const dayAgo = new Date(nowMs - 24 * 60 * 60 * 1000).toISOString();
+      const { data: recent } = await supabase
+        .from('support_messages')
+        .select('body, created_at')
+        .eq('worker_id', workerId)
+        .eq('sender', 'user')
+        .gte('created_at', dayAgo)
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      const recentList = recent || [];
+      if (recentList.length >= MAX_PER_DAY) {
+        return bad('You have sent a lot of messages today. Please try again tomorrow.');
+      }
+      const lastMs = recentList[0] ? new Date(recentList[0].created_at).getTime() : 0;
+      if (lastMs && nowMs - lastMs < MIN_INTERVAL_MS) {
+        const wait = Math.ceil((MIN_INTERVAL_MS - (nowMs - lastMs)) / 1000);
+        return bad(`Slow down a bit — wait ${wait}s before sending again.`);
+      }
+      const inLastMin = recentList.filter((r) => nowMs - new Date(r.created_at).getTime() < 60_000).length;
+      if (inLastMin >= MAX_PER_MINUTE) {
+        return bad('Too many messages in a short time. Please wait a minute.');
+      }
+      const inLastHour = recentList.filter((r) => nowMs - new Date(r.created_at).getTime() < 60 * 60_000).length;
+      if (inLastHour >= MAX_PER_HOUR) {
+        return bad('You have sent too many messages this hour. Please try again later.');
+      }
+      // Duplicate content check
+      const bodyLower = messageBody.toLowerCase();
+      const isDup = recentList.some((r) =>
+        (r.body || '').trim().toLowerCase() === bodyLower &&
+        nowMs - new Date(r.created_at).getTime() < DUPLICATE_WINDOW_MS,
+      );
+      if (isDup) return bad('You just sent that message. Please wait for a reply.');
+      // Simple spam heuristic: link flood + very long repeat char runs
+      if ((messageBody.match(/https?:\/\//gi) || []).length > 3) {
+        return bad('Too many links in one message.');
+      }
+      if (/(.)\1{20,}/.test(messageBody)) {
+        return bad('Message looks like spam.');
+      }
+      // ---------- end rate limits ----------
+
       const { data: msg, error: msgErr } = await supabase
         .from('support_messages')
         .insert({ worker_id: workerId, sender: 'user', body: messageBody })
         .select()
         .single();
       if (msgErr) return bad(msgErr.message);
+
 
       // Upsert conversation state
       const preview = messageBody.length > 140 ? messageBody.slice(0, 140) + '…' : messageBody;
