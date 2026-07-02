@@ -89,12 +89,15 @@ export function SupportTab({ adminSecret }: Props) {
 
   const filtered = useMemo(() => {
     const q = query.trim().toUpperCase();
-    if (!q) return conversations;
-    return conversations.filter((c) =>
+    let list = conversations;
+    if (unreadOnly) list = list.filter((c) => (c.unread_admin || 0) > 0);
+    if (q) list = list.filter((c) =>
       c.worker_id.includes(q) ||
       (c.last_message_preview || '').toUpperCase().includes(q),
     );
-  }, [conversations, query]);
+    return list;
+  }, [conversations, query, unreadOnly]);
+
 
   const totalUnread = conversations.reduce((sum, c) => sum + (c.unread_admin || 0), 0);
 
