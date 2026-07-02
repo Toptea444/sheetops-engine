@@ -41,7 +41,9 @@ export function SupportTab({ adminSecret }: Props) {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const loadConversations = useCallback(async () => {
