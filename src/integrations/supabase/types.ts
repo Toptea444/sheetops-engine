@@ -298,6 +298,9 @@ export type Database = {
       }
       support_conversations: {
         Row: {
+          blocked: boolean
+          blocked_at: string | null
+          blocked_reason: string | null
           created_at: string
           last_admin_notified_at: string | null
           last_message_at: string
@@ -308,6 +311,9 @@ export type Database = {
           worker_id: string
         }
         Insert: {
+          blocked?: boolean
+          blocked_at?: string | null
+          blocked_reason?: string | null
           created_at?: string
           last_admin_notified_at?: string | null
           last_message_at?: string
@@ -318,6 +324,9 @@ export type Database = {
           worker_id: string
         }
         Update: {
+          blocked?: boolean
+          blocked_at?: string | null
+          blocked_reason?: string | null
           created_at?: string
           last_admin_notified_at?: string | null
           last_message_at?: string
@@ -333,28 +342,48 @@ export type Database = {
         Row: {
           body: string
           created_at: string
+          deleted_at: string | null
+          deleted_for: string | null
           id: string
+          image_url: string | null
           read_at: string | null
+          reply_to_id: string | null
           sender: string
           worker_id: string
         }
         Insert: {
           body: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_for?: string | null
           id?: string
+          image_url?: string | null
           read_at?: string | null
+          reply_to_id?: string | null
           sender: string
           worker_id: string
         }
         Update: {
           body?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_for?: string | null
           id?: string
+          image_url?: string | null
           read_at?: string | null
+          reply_to_id?: string | null
           sender?: string
           worker_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "support_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       worker_notes: {
         Row: {

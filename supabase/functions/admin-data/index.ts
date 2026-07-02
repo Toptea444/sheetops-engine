@@ -1152,33 +1152,26 @@ Deno.serve(async (req) => {
       case 'support_send_reply': {
         const wid = String(params?.worker_id || '').trim().toUpperCase();
         const bodyText = String(params?.body || '').trim();
-        if (!wid || !bodyText) { result = { success: false, error: 'worker_id and body required' }; break; }
+        const imageUrl = params?.image_url ? String(params.image_url) : null;
+        const replyToId = params?.reply_to_id ? String(params.reply_to_id) : null;
+        if (!wid || (!bodyText && !imageUrl)) { result = { success: false, error: 'worker_id and body or image required' }; break; }
         if (bodyText.length > 2000) { result = { success: false, error: 'Message too long' }; break; }
 
         const { data: msg, error: msgErr } = await supabase
           .from('support_messages')
-          .insert({ worker_id: wid, sender: 'admin', body: bodyText })
-          .select()
-          .single();
+          .insert({ worker_id: wid, sender: 'admin', body: bodyText, image_url: imageUrl, reply_to_id: replyToId })
+          .select().single();
         if (msgErr) { result = { success: false, error: msgErr.message }; break; }
 
-        const preview = bodyText.length > 140 ? bodyText.slice(0, 140) + '…' : bodyText;
+        const preview = imageUrl && !bodyText ? '📷 Photo' : (bodyText.length > 140 ? bodyText.slice(0, 140) + '…' : bodyText);
         const { data: existing } = await supabase
-          .from('support_conversations')
-          .select('unread_user')
-          .eq('worker_id', wid)
-          .maybeSingle();
+          .from('support_conversations').select('unread_user').eq('worker_id', wid).maybeSingle();
 
-        await supabase
-          .from('support_conversations')
-          .upsert({
-            worker_id: wid,
-            last_message_at: new Date().toISOString(),
-            last_sender: 'admin',
-            last_message_preview: preview,
-            unread_user: (existing?.unread_user ?? 0) + 1,
-            unread_admin: 0, // admin is reading + replying, so their unread clears
-          }, { onConflict: 'worker_id' });
+        await supabase.from('support_conversations').upsert({
+          worker_id: wid, last_message_at: new Date().toISOString(),
+          last_sender: 'admin', last_message_preview: preview,
+          unread_user: (existing?.unread_user ?? 0) + 1, unread_admin: 0,
+        }, { onConflict: 'worker_id' });
 
         await logAudit(supabase, 'support_send_reply', { worker_id: wid }, 'support_conversation', wid);
         result = { success: true, message: msg };
@@ -1188,10 +1181,7 @@ Deno.serve(async (req) => {
       case 'support_mark_conversation_read': {
         const wid = String(params?.worker_id || '').trim().toUpperCase();
         if (!wid) { result = { success: false, error: 'worker_id required' }; break; }
-        await supabase
-          .from('support_conversations')
-          .update({ unread_admin: 0 })
-          .eq('worker_id', wid);
+        await supabase.from('support_conversations').update({ unread_admin: 0 }).eq('worker_id', wid);
         result = { success: true };
         break;
       }
@@ -1203,6 +1193,62 @@ Deno.serve(async (req) => {
         await supabase.from('support_conversations').delete().eq('worker_id', wid);
         await logAudit(supabase, 'support_delete_conversation', { worker_id: wid }, 'support_conversation', wid);
         result = { success: true };
+        break;
+      }
+
+      case 'support_delete_messages': {
+        const ids = Array.isArray(params?.message_ids) ? params.message_ids.map(String) : [];
+        const mode = params?.mode === 'admin' ? 'admin' : 'everyone';
+        if (!ids.length) { result = { success: false, error: 'message_ids required' }; break; }
+        const { error } = await supabase.from('support_messages')
+          .update({ deleted_for: mode, deleted_at: new Date().toISOString() })
+          .in('id', ids);
+        if (error) { result = { success: false, error: error.message }; break; }
+        await logAudit(supabase, 'support_delete_messages', { count: ids.length, mode }, 'support_messages', null);
+        result = { success: true, count: ids.length };
+        break;
+      }
+
+      case 'support_toggle_block': {
+        const wid = String(params?.worker_id || '').trim().toUpperCase();
+        const blocked = !!params?.blocked;
+        const reason = params?.reason ? String(params.reason) : null;
+        if (!wid) { result = { success: false, error: 'worker_id required' }; break; }
+        await supabase.from('support_conversations').upsert({
+          worker_id: wid, blocked,
+          blocked_at: blocked ? new Date().toISOString() : null,
+          blocked_reason: blocked ? reason : null,
+          last_message_at: new Date().toISOString(),
+        }, { onConflict: 'worker_id' });
+        await logAudit(supabase, blocked ? 'support_block_user' : 'support_unblock_user', { worker_id: wid, reason }, 'support_conversation', wid);
+        result = { success: true, blocked };
+        break;
+      }
+
+      case 'support_broadcast': {
+        const bodyText = String(params?.body || '').trim();
+        if (!bodyText) { result = { success: false, error: 'body required' }; break; }
+        if (bodyText.length > 2000) { result = { success: false, error: 'Message too long' }; break; }
+        const { data: pins } = await supabase.from('worker_pins').select('worker_id');
+        const workerIds = (pins || []).map((p: any) => String(p.worker_id).toUpperCase());
+        if (!workerIds.length) { result = { success: false, error: 'No users to broadcast to' }; break; }
+        const nowIso = new Date().toISOString();
+        const preview = bodyText.length > 140 ? bodyText.slice(0, 140) + '…' : bodyText;
+
+        const rows = workerIds.map((w) => ({ worker_id: w, sender: 'admin' as const, body: bodyText }));
+        const { error: insErr } = await supabase.from('support_messages').insert(rows);
+        if (insErr) { result = { success: false, error: insErr.message }; break; }
+
+        for (const w of workerIds) {
+          const { data: ex } = await supabase.from('support_conversations')
+            .select('unread_user').eq('worker_id', w).maybeSingle();
+          await supabase.from('support_conversations').upsert({
+            worker_id: w, last_message_at: nowIso, last_sender: 'admin',
+            last_message_preview: preview, unread_user: (ex?.unread_user ?? 0) + 1,
+          }, { onConflict: 'worker_id' });
+        }
+        await logAudit(supabase, 'support_broadcast', { recipients: workerIds.length }, 'support_broadcast', null);
+        result = { success: true, count: workerIds.length };
         break;
       }
 
