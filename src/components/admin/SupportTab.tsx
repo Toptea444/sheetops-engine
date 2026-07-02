@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   MessageCircle, Search, Send, Trash2, RefreshCw, User, Ban, Megaphone,
-  Image as ImageIcon, Reply, X, CheckSquare, ShieldOff,
+  Image as ImageIcon, Reply, X, CheckSquare, ShieldOff, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -65,6 +65,7 @@ export function SupportTab({ adminSecret }: Props) {
   // Multi-select delete
   const [selectedMsgIds, setSelectedMsgIds] = useState<Set<string>>(new Set());
   const [confirmDeleteMsgs, setConfirmDeleteMsgs] = useState<null | 'everyone' | 'admin'>(null);
+  const [deletingMsgs, setDeletingMsgs] = useState(false);
 
   // Block
   const [blockDialog, setBlockDialog] = useState<null | Conv>(null);
@@ -214,14 +215,19 @@ export function SupportTab({ adminSecret }: Props) {
 
   const handleDeleteMessages = async (mode: 'everyone' | 'admin') => {
     const ids = Array.from(selectedMsgIds);
-    if (!ids.length) return;
-    const data = await adminRequest(adminSecret, 'support_delete_messages', { message_ids: ids, mode });
-    if (data?.success) {
-      toast.success(`Deleted ${ids.length} message${ids.length > 1 ? 's' : ''}`);
-      setMessages((prev) => prev.map((m) => ids.includes(m.id) ? { ...m, deleted_for: mode, deleted_at: new Date().toISOString() } : m));
-      setSelectedMsgIds(new Set());
-    } else toast.error('Failed to delete');
-    setConfirmDeleteMsgs(null);
+    if (!ids.length || deletingMsgs) return;
+    setDeletingMsgs(true);
+    try {
+      const data = await adminRequest(adminSecret, 'support_delete_messages', { message_ids: ids, mode });
+      if (data?.success) {
+        toast.success(`Deleted ${ids.length} message${ids.length > 1 ? 's' : ''}`);
+        setMessages((prev) => prev.map((m) => ids.includes(m.id) ? { ...m, deleted_for: mode, deleted_at: new Date().toISOString() } : m));
+        setSelectedMsgIds(new Set());
+      } else toast.error('Failed to delete');
+    } finally {
+      setDeletingMsgs(false);
+      setConfirmDeleteMsgs(null);
+    }
   };
 
   const handleToggleBlock = async () => {
@@ -377,7 +383,7 @@ export function SupportTab({ adminSecret }: Props) {
 
                 <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-1 max-h-[420px] bg-background/50">
                   {floatingDate && (
-                    <div className="sticky top-2 z-10 flex justify-center pointer-events-none h-0">
+                    <div className="sticky top-2 z-10 flex items-start justify-center pointer-events-none h-0">
                       <span
                         className={cn(
                           'text-[10px] font-medium px-3 py-1 rounded-full bg-foreground/70 text-background shadow-md transition-all duration-300 ease-out',
@@ -470,7 +476,7 @@ export function SupportTab({ adminSecret }: Props) {
       </AlertDialog>
 
       {/* Delete messages confirm */}
-      <AlertDialog open={!!confirmDeleteMsgs} onOpenChange={(o) => !o && setConfirmDeleteMsgs(null)}>
+      <AlertDialog open={!!confirmDeleteMsgs} onOpenChange={(o) => { if (!o && !deletingMsgs) setConfirmDeleteMsgs(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MessageCircle, X, Send, HeadphonesIcon, Reply, Image as ImageIcon, Ban, Trash2, Check } from 'lucide-react';
+import { MessageCircle, X, Send, HeadphonesIcon, Reply, Image as ImageIcon, Ban, Trash2, Check, Loader2 } from 'lucide-react';
 import { useSupportChat, type SupportMessage } from '@/hooks/useSupportChat';
 import { useSwipeReply } from '@/hooks/useSwipeReply';
 import { dayLabel, isNewDay, startOfDay } from '@/lib/chatDates';
@@ -17,6 +17,8 @@ export function SupportFAB({ workerId }: Props) {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [dialogClosing, setDialogClosing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -89,9 +91,13 @@ export function SupportFAB({ workerId }: Props) {
   };
   const exitSelect = () => { setSelectMode(false); setSelectedIds(new Set()); setConfirmDelete(false); };
   const deleteSelected = async () => {
+    if (deleting) return;
+    setDeleting(true);
     const ids = Array.from(selectedIds);
     for (const id of ids) await deleteForMe(id);
-    exitSelect();
+    setDeleting(false);
+    setDialogClosing(true);
+    setTimeout(() => { setDialogClosing(false); exitSelect(); }, 200);
   };
 
   if (!workerId) return null;
@@ -154,7 +160,7 @@ export function SupportFAB({ workerId }: Props) {
 
           <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-1 max-h-[360px] bg-background/50">
             {floatingDate && (
-              <div className="sticky top-2 z-10 flex justify-center pointer-events-none h-0">
+              <div className="sticky top-2 z-10 flex items-start justify-center pointer-events-none h-0">
                 <span
                   className={cn(
                     'text-[10px] font-medium px-3 py-1 rounded-full bg-foreground/70 text-background shadow-md transition-all duration-300 ease-out',
@@ -268,8 +274,14 @@ export function SupportFAB({ workerId }: Props) {
           )}
 
           {confirmDelete && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/60 backdrop-blur-sm animate-in fade-in duration-150">
-              <div className="mx-6 w-full max-w-[260px] rounded-2xl border border-border bg-card p-4 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className={cn(
+              'absolute inset-0 z-30 flex items-center justify-center bg-background/60 backdrop-blur-sm duration-200',
+              dialogClosing ? 'animate-out fade-out' : 'animate-in fade-in',
+            )}>
+              <div className={cn(
+                'mx-6 w-full max-w-[260px] rounded-2xl border border-border bg-card p-4 shadow-2xl duration-200',
+                dialogClosing ? 'animate-out zoom-out-95 fade-out' : 'animate-in zoom-in-95',
+              )}>
                 <p className="text-sm font-semibold text-foreground">
                   Delete {selectedIds.size} message{selectedIds.size > 1 ? 's' : ''}?
                 </p>
@@ -279,15 +291,18 @@ export function SupportFAB({ workerId }: Props) {
                 <div className="flex justify-end gap-2 mt-4">
                   <button
                     onClick={() => setConfirmDelete(false)}
-                    className="h-9 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted active:scale-95 transition-all"
+                    disabled={deleting}
+                    className="h-9 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted active:scale-95 transition-all disabled:opacity-40"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={deleteSelected}
-                    className="h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:opacity-90 active:scale-95 transition-all"
+                    disabled={deleting}
+                    className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:opacity-90 active:scale-95 transition-all disabled:opacity-90 disabled:cursor-wait"
                   >
-                    Delete
+                    {deleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {deleting ? 'Deleting' : 'Delete'}
                   </button>
                 </div>
               </div>
