@@ -16,6 +16,14 @@ const NOTIFY_EMAIL = 'cortexturptee@gmail.com';
 const QUIET_PERIOD_MINUTES = 30;
 const MAX_MESSAGE_LENGTH = 2000;
 
+// Rate limits / spam controls
+const MIN_INTERVAL_MS = 2_000;           // 2s between messages
+const MAX_PER_MINUTE  = 5;               // burst cap
+const MAX_PER_HOUR    = 40;              // sustained cap
+const MAX_PER_DAY     = 150;             // daily cap
+const DUPLICATE_WINDOW_MS = 60_000;      // same body within 60s = blocked
+
+
 interface ChatBody {
   action: 'send_message' | 'list_messages' | 'mark_read';
   worker_id?: string;
