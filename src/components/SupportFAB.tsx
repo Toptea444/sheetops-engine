@@ -52,16 +52,16 @@ export function SupportFAB({ workerId }: Props) {
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? 'Close support chat' : 'Open support chat'}
         className={cn(
-          'fixed z-[95] bottom-5 right-5 h-14 w-14 rounded-full shadow-lg flex items-center justify-center',
+          'fixed z-[95] bottom-5 right-5 h-16 w-16 rounded-full shadow-lg flex items-center justify-center',
           'transition-all duration-300 active:scale-95',
           open
             ? 'bg-muted text-foreground rotate-90'
             : 'bg-primary text-primary-foreground hover:scale-105',
         )}
       >
-        {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        {open ? <X className="h-7 w-7" /> : <MessageCircle className="h-7 w-7" />}
         {!open && unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center px-1.5 border-2 border-background animate-in zoom-in-50">
+          <span className="absolute -top-1 -right-1 min-w-[24px] h-6 rounded-full bg-red-500 text-white text-[12px] font-bold flex items-center justify-center px-2 border-2 border-background animate-in zoom-in-50">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -96,7 +96,7 @@ export function SupportFAB({ workerId }: Props) {
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3 min-h-[280px] bg-background/50">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3 max-h-[320px] bg-background/50">
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center px-6 py-10">
                 <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
