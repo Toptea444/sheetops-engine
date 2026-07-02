@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   MessageCircle, Search, Send, Trash2, RefreshCw, User, Ban, Megaphone,
-  Image as ImageIcon, Reply, X, CornerUpLeft, CheckSquare, ShieldOff,
+  Image as ImageIcon, Reply, X, CheckSquare, ShieldOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -77,6 +77,7 @@ export function SupportTab({ adminSecret }: Props) {
   const [broadcasting, setBroadcasting] = useState(false);
 
   const [floatingDate, setFloatingDate] = useState<string | null>(null);
+  const [dateVisible, setDateVisible] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -157,8 +158,9 @@ export function SupportTab({ adminSecret }: Props) {
       const t = first.getAttribute('data-msg-time');
       if (t) {
         setFloatingDate(dayLabel(new Date(t)));
+        setDateVisible(true);
         if (hideTimer.current) clearTimeout(hideTimer.current);
-        hideTimer.current = setTimeout(() => setFloatingDate(null), 1200);
+        hideTimer.current = setTimeout(() => setDateVisible(false), 1400);
       }
     }
   };
@@ -373,10 +375,17 @@ export function SupportTab({ adminSecret }: Props) {
                   </div>
                 </div>
 
-                <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto px-3 py-4 space-y-1 max-h-[420px] bg-background/50">
+                <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-1 max-h-[420px] bg-background/50">
                   {floatingDate && (
-                    <div className="sticky top-0 z-10 flex justify-center pointer-events-none">
-                      <span className="text-[10px] font-medium px-3 py-1 rounded-full bg-foreground/70 text-background shadow-md animate-in fade-in duration-150">{floatingDate}</span>
+                    <div className="sticky top-2 z-10 flex justify-center pointer-events-none h-0">
+                      <span
+                        className={cn(
+                          'text-[10px] font-medium px-3 py-1 rounded-full bg-foreground/70 text-background shadow-md transition-all duration-300 ease-out',
+                          dateVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1',
+                        )}
+                      >
+                        {floatingDate}
+                      </span>
                     </div>
                   )}
                   {visibleMsgs.map((m, i) => {
@@ -547,7 +556,7 @@ function AdminChatRow({
   const deleted = msg.deleted_for === 'everyone';
 
   return (
-    <div className={cn('relative py-1 group flex items-start gap-2', selected && 'bg-primary/5 -mx-3 px-3 rounded')} {...handlers}>
+    <div className={cn('relative py-1 group flex items-start gap-2', selected && 'bg-primary/5 -mx-3 px-3 rounded')} style={{ touchAction: 'pan-y' }} {...handlers}>
       {selectMode && (
         <div className="pt-2">
           <Checkbox checked={selected} onCheckedChange={onToggleSelect} />
@@ -581,10 +590,7 @@ function AdminChatRow({
             </>
           )}
           {!deleted && (
-            <div className={cn('hidden group-hover:flex absolute -top-2 gap-1', isMine ? '-left-16' : '-right-16')}>
-              <button onClick={onReply} title="Reply" className="h-6 w-6 rounded-full bg-background border border-border shadow flex items-center justify-center hover:bg-muted">
-                <CornerUpLeft className="h-3 w-3" />
-              </button>
+            <div className={cn('hidden group-hover:flex absolute -top-2 gap-1', isMine ? '-left-8' : '-right-8')}>
               <button onClick={onToggleSelect} title="Select" className="h-6 w-6 rounded-full bg-background border border-border shadow flex items-center justify-center hover:bg-muted">
                 <CheckSquare className="h-3 w-3" />
               </button>
