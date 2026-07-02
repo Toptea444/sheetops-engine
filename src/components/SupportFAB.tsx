@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MessageCircle, X, Send, HeadphonesIcon, Reply, Image as ImageIcon, Ban, Trash2, CornerUpLeft } from 'lucide-react';
+import { MessageCircle, X, Send, HeadphonesIcon, Reply, Image as ImageIcon, Ban, Trash2, Check } from 'lucide-react';
 import { useSupportChat, type SupportMessage } from '@/hooks/useSupportChat';
 import { useSwipeReply } from '@/hooks/useSwipeReply';
 import { dayLabel, isNewDay, startOfDay } from '@/lib/chatDates';
@@ -13,6 +13,10 @@ export function SupportFAB({ workerId }: Props) {
   const [replyTo, setReplyTo] = useState<SupportMessage | null>(null);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [floatingDate, setFloatingDate] = useState<string | null>(null);
+  const [dateVisible, setDateVisible] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -52,8 +56,9 @@ export function SupportFAB({ workerId }: Props) {
       const t = firstVisible.getAttribute('data-msg-time');
       if (t) {
         setFloatingDate(dayLabel(new Date(t)));
+        setDateVisible(true);
         if (hideTimer.current) clearTimeout(hideTimer.current);
-        hideTimer.current = setTimeout(() => setFloatingDate(null), 1200);
+        hideTimer.current = setTimeout(() => setDateVisible(false), 1400);
       }
     }
   };
@@ -68,6 +73,25 @@ export function SupportFAB({ workerId }: Props) {
     if (!draft.trim() && !pendingImage) return;
     const ok = await send(draft, { reply_to_id: replyTo?.id ?? null, image_url: pendingImage });
     if (ok) { setDraft(''); setReplyTo(null); setPendingImage(null); }
+  };
+
+  const enterSelect = (id: string) => {
+    setReplyTo(null);
+    setSelectMode(true);
+    setSelectedIds(new Set([id]));
+  };
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+  const exitSelect = () => { setSelectMode(false); setSelectedIds(new Set()); setConfirmDelete(false); };
+  const deleteSelected = async () => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) await deleteForMe(id);
+    exitSelect();
   };
 
   if (!workerId) return null;
@@ -110,10 +134,33 @@ export function SupportFAB({ workerId }: Props) {
             </button>
           </div>
 
-          <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto px-3 py-4 space-y-1 max-h-[360px] bg-background/50">
+          {selectMode && (
+            <div className="px-3 py-2 border-b border-border bg-muted/50 flex items-center gap-2 animate-in slide-in-from-top-2 fade-in duration-200">
+              <button onClick={exitSelect} className="h-8 w-8 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground" aria-label="Cancel selection">
+                <X className="h-4 w-4" />
+              </button>
+              <span className="flex-1 text-xs font-medium text-foreground">
+                {selectedIds.size} selected
+              </span>
+              <button
+                onClick={() => selectedIds.size > 0 && setConfirmDelete(true)}
+                disabled={selectedIds.size === 0}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </button>
+            </div>
+          )}
+
+          <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-1 max-h-[360px] bg-background/50">
             {floatingDate && (
-              <div className="sticky top-0 z-10 flex justify-center pointer-events-none">
-                <span className="text-[10px] font-medium px-3 py-1 rounded-full bg-foreground/70 text-background shadow-md animate-in fade-in duration-150">
+              <div className="sticky top-2 z-10 flex justify-center pointer-events-none h-0">
+                <span
+                  className={cn(
+                    'text-[10px] font-medium px-3 py-1 rounded-full bg-foreground/70 text-background shadow-md transition-all duration-300 ease-out',
+                    dateVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1',
+                  )}
+                >
                   {floatingDate}
                 </span>
               </div>
@@ -145,7 +192,10 @@ export function SupportFAB({ workerId }: Props) {
                     replyTarget={m.reply_to_id ? msgById.get(m.reply_to_id) || null : null}
                     isMine={m.sender === 'user'}
                     onReply={() => { if (!isBlocked) setReplyTo(m); inputRef.current?.focus(); }}
-                    onDelete={m.sender === 'user' && m.deleted_for !== 'everyone' ? () => deleteForMe(m.id) : undefined}
+                    onDelete={m.sender === 'user' && m.deleted_for !== 'everyone' ? () => enterSelect(m.id) : undefined}
+                    selectMode={selectMode}
+                    selected={selectedIds.has(m.id)}
+                    onToggleSelect={() => toggleSelect(m.id)}
                   />
                 </div>
               );
@@ -216,6 +266,33 @@ export function SupportFAB({ workerId }: Props) {
               </div>
             </>
           )}
+
+          {confirmDelete && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/60 backdrop-blur-sm animate-in fade-in duration-150">
+              <div className="mx-6 w-full max-w-[260px] rounded-2xl border border-border bg-card p-4 shadow-2xl animate-in zoom-in-95 duration-150">
+                <p className="text-sm font-semibold text-foreground">
+                  Delete {selectedIds.size} message{selectedIds.size > 1 ? 's' : ''}?
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  This removes {selectedIds.size > 1 ? 'them' : 'it'} from your chat only.
+                </p>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="h-9 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted active:scale-95 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={deleteSelected}
+                    className="h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:opacity-90 active:scale-95 transition-all"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
@@ -223,21 +300,33 @@ export function SupportFAB({ workerId }: Props) {
 }
 
 function ChatRow({
-  msg, replyTarget, isMine, onReply, onDelete,
+  msg, replyTarget, isMine, onReply, onDelete, selectMode, selected, onToggleSelect,
 }: {
   msg: SupportMessage;
   replyTarget: SupportMessage | null;
   isMine: boolean;
   onReply: () => void;
   onDelete?: () => void;
+  selectMode: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
-  const { dx, swipeProgress, handlers } = useSwipeReply(onReply, 'right');
+  const { dx, swipeProgress, handlers } = useSwipeReply(selectMode ? () => {} : onReply, 'right');
   const deleted = msg.deleted_for === 'everyone';
 
   return (
-    <div className="relative py-1 group" {...handlers}>
+    <div
+      className={cn(
+        'relative py-1 rounded-lg transition-colors duration-200',
+        selectMode && 'cursor-pointer -mx-1 px-1',
+        selected && 'bg-primary/10',
+      )}
+      style={{ touchAction: 'pan-y' }}
+      onClick={selectMode ? onToggleSelect : undefined}
+      {...(selectMode ? {} : handlers)}
+    >
       {/* Swipe reply hint icon */}
-      {dx > 8 && (
+      {!selectMode && dx > 8 && (
         <div className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center"
           style={{ opacity: swipeProgress }}>
           <Reply className="h-4 w-4 text-primary" />
@@ -247,51 +336,54 @@ function ChatRow({
         className={cn('flex flex-col max-w-[80%]', isMine ? 'ml-auto items-end' : 'mr-auto items-start')}
         style={{ transform: `translateX(${dx}px)`, transition: dx === 0 ? 'transform 0.2s ease' : 'none' }}
       >
-        <div className={cn(
-          'relative px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words',
-          isMine ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted text-foreground rounded-bl-md',
-          deleted && 'italic opacity-70',
-        )}>
-          {replyTarget && !deleted && (
-            <div className={cn(
-              'mb-1.5 px-2 py-1 rounded-md border-l-2 text-[11px]',
-              isMine ? 'bg-primary-foreground/10 border-primary-foreground/60' : 'bg-background/60 border-primary',
-            )}>
-              <p className="font-semibold opacity-80 truncate">{replyTarget.sender === 'user' ? 'You' : 'Adelaja'}</p>
-              <p className="opacity-70 truncate">{replyTarget.body || (replyTarget.image_url ? '📷 Photo' : '')}</p>
-            </div>
-          )}
-          {deleted ? (
-            <span className="text-xs">🚫 This message was deleted</span>
-          ) : (
-            <>
-              {msg.image_url && (
-                <img src={msg.image_url} alt="attachment" className="rounded-md mb-1 max-h-56 object-cover" />
-              )}
-              {msg.body}
-            </>
-          )}
-          {/* Desktop hover reply button */}
-          {!deleted && (
-            <button
-              onClick={onReply}
-              aria-label="Reply"
+        <div className="flex items-end gap-2">
+          {selectMode && (
+            <span
               className={cn(
-                'hidden group-hover:flex absolute -top-2 h-6 w-6 rounded-full bg-background border border-border shadow items-center justify-center hover:bg-muted',
-                isMine ? '-left-8' : '-right-8',
+                'shrink-0 mb-1 h-5 w-5 rounded-full border flex items-center justify-center transition-colors',
+                selected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40 text-transparent',
+                isMine ? 'order-2' : 'order-1',
               )}
             >
-              <CornerUpLeft className="h-3 w-3" />
-            </button>
+              <Check className="h-3 w-3" />
+            </span>
           )}
+          <div className={cn(
+            'relative px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words',
+            isMine ? 'bg-primary text-primary-foreground rounded-br-md order-1' : 'bg-muted text-foreground rounded-bl-md order-2',
+            deleted && 'italic opacity-70',
+          )}>
+            {replyTarget && !deleted && (
+              <div className={cn(
+                'mb-1.5 px-2 py-1 rounded-md border-l-2 text-[11px]',
+                isMine ? 'bg-primary-foreground/10 border-primary-foreground/60' : 'bg-background/60 border-primary',
+              )}>
+                <p className="font-semibold opacity-80 truncate">{replyTarget.sender === 'user' ? 'You' : 'Adelaja'}</p>
+                <p className="opacity-70 truncate">{replyTarget.body || (replyTarget.image_url ? '📷 Photo' : '')}</p>
+              </div>
+            )}
+            {deleted ? (
+              <span className="text-xs">🚫 This message was deleted</span>
+            ) : (
+              <>
+                {msg.image_url && (
+                  <img src={msg.image_url} alt="attachment" className="rounded-md mb-1 max-h-56 object-cover" />
+                )}
+                {msg.body}
+              </>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2 mt-1 px-1">
           <span data-msg-time={msg.created_at} className="text-[10px] text-muted-foreground">
             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             {!isMine && ' · Adelaja'}
           </span>
-          {onDelete && !deleted && (
-            <button onClick={onDelete} className="hidden group-hover:inline-flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-destructive">
+          {onDelete && !deleted && !selectMode && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+            >
               <Trash2 className="h-2.5 w-2.5" /> Delete
             </button>
           )}
