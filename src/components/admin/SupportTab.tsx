@@ -147,8 +147,8 @@ export function SupportTab({ adminSecret }: Props) {
                 <h3 className="text-sm font-semibold flex items-center gap-2">
                   <MessageCircle className="h-4 w-4" /> Support Inbox
                   {totalUnread > 0 && (
-                    <span className="h-5 min-w-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                      {totalUnread}
+                    <span className="h-6 min-w-6 px-2 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center animate-pulse border border-red-600">
+                      {totalUnread > 99 ? '99+' : totalUnread}
                     </span>
                   )}
                 </h3>
