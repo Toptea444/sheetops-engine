@@ -1512,6 +1512,7 @@ function useTabNotifications(adminSecret: string | null) {
     'pin-requests': false,
     'activity': false,
     'feedback': false,
+    'support': false,
   });
   const { adminRequest } = useAdminData();
 
@@ -1520,7 +1521,7 @@ function useTabNotifications(adminSecret: string | null) {
     if (!adminSecret) return;
 
     const checkNew = async () => {
-      const newDots: Record<string, boolean> = { 'pin-requests': false, activity: false, feedback: false };
+      const newDots: Record<string, boolean> = { 'pin-requests': false, activity: false, feedback: false, support: false };
 
       // Check PIN reset requests
       const pinRes = await adminRequest(adminSecret, 'get_pin_reset_requests');
@@ -1553,6 +1554,12 @@ function useTabNotifications(adminSecret: string | null) {
           new Date(r.created_at || r.submitted_at || 0).getTime() > parseInt(lastViewed)
         );
         newDots['feedback'] = hasNew;
+      }
+
+      // Check support inbox
+      const supRes = await adminRequest(adminSecret, 'support_list_conversations');
+      if (supRes?.conversations?.length) {
+        newDots['support'] = supRes.conversations.some((c: any) => (c.unread_admin || 0) > 0);
       }
 
       setDots(newDots);
@@ -1694,9 +1701,12 @@ export default function AdminPinReset() {
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
               )}
             </TabsTrigger>
-            <TabsTrigger value="support" className="text-xs gap-0.5 px-2 shrink-0">
+            <TabsTrigger value="support" className="text-xs gap-0.5 px-2 shrink-0 relative">
               <MessageCircle className="h-3 w-3" />
               <span className="hidden sm:inline">Support</span>
+              {dots['support'] && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
+              )}
             </TabsTrigger>
             <TabsTrigger value="alerts" className="text-xs gap-0.5 px-2 shrink-0">
               <Bell className="h-3 w-3" />
