@@ -165,6 +165,18 @@ export function SupportTab({ adminSecret }: Props) {
                   className="pl-7 h-8 text-xs"
                 />
               </div>
+              <button
+                onClick={() => setUnreadOnly((v) => !v)}
+                className={cn(
+                  'mt-2 w-full text-[11px] font-medium h-7 rounded-md border transition-colors',
+                  unreadOnly
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-muted-foreground border-border hover:bg-muted',
+                )}
+              >
+                {unreadOnly ? 'Showing unread only' : 'Show unread only'}
+              </button>
+
             </div>
             <div className="overflow-y-auto flex-1 max-h-[520px]">
               {filtered.length === 0 ? (
