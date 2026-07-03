@@ -121,6 +121,14 @@ export function SupportFAB({ workerId }: Props) {
       </button>
 
       {open && (
+        <div
+          className="fixed inset-0 z-[94] bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-200"
+          onClick={() => setOpen(false)}
+          aria-hidden
+        />
+      )}
+
+      {open && (
         <div className={cn(
           'fixed z-[95] bottom-24 right-4 left-4 sm:left-auto sm:right-5 sm:w-[380px] max-h-[calc(100vh-8rem)] flex flex-col',
           'bg-card border border-border rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300',
