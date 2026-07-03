@@ -182,9 +182,9 @@ export function SupportFAB({ workerId }: Props) {
             {visible.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center px-6 py-10">
                 <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                  <MessageCircle className="h-6 w-6 text-primary" />
+                  <Hand className="h-6 w-6 text-primary" />
                 </div>
-                <p className="text-sm font-medium text-foreground">Say hi 👋</p>
+                <p className="text-sm font-medium text-foreground">Say hi</p>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                   Send me a message and I'll reply as soon as I can.
                 </p>
