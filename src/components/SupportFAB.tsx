@@ -402,6 +402,13 @@ function ChatRow({
             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             {!isMine && ' · Adelaja'}
           </span>
+          {isMine && !deleted && (
+            msg.read_at ? (
+              <CheckCheck className="h-3 w-3 text-primary" aria-label="Read" />
+            ) : (
+              <Check className="h-3 w-3 text-muted-foreground/60" aria-label="Sent" />
+            )
+          )}
           {onDelete && !deleted && !selectMode && (
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
