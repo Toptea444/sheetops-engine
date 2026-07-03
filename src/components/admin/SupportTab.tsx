@@ -547,6 +547,23 @@ export function SupportTab({ adminSecret }: Props) {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={confirmDeleteConvs} onOpenChange={(o) => { if (!o && !deletingConvs) setConfirmDeleteConvs(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedConvIds.size} conversation{selectedConvIds.size > 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes all messages with the selected users. Cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingConvs}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConversations} disabled={deletingConvs} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deletingConvs ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Delete messages confirm */}
       <AlertDialog open={!!confirmDeleteMsgs} onOpenChange={(o) => { if (!o && !deletingMsgs) setConfirmDeleteMsgs(null); }}>
         <AlertDialogContent>
