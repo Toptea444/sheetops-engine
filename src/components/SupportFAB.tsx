@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MessageCircle, X, Send, HeadphonesIcon, Reply, Image as ImageIcon, Ban, Trash2, Check, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, HeadphonesIcon, Reply, Image as ImageIcon, Ban, Trash2, Check, CheckCheck, Loader2, Hand } from 'lucide-react';
 import { useSupportChat, type SupportMessage } from '@/hooks/useSupportChat';
 import { useSwipeReply } from '@/hooks/useSwipeReply';
 import { dayLabel, isNewDay, startOfDay } from '@/lib/chatDates';
