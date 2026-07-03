@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   MessageCircle, Search, Send, Trash2, RefreshCw, User, Ban, Megaphone,
-  Image as ImageIcon, Reply, X, CheckSquare, ShieldOff, Loader2,
+  Image as ImageIcon, Reply, X, Check, CheckCheck, ShieldOff, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
