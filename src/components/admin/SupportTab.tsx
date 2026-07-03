@@ -610,11 +610,11 @@ function AdminChatRow({
               <div className={cn('mb-1.5 px-2 py-1 rounded-md border-l-2 text-[11px]',
                 isMine ? 'bg-primary-foreground/10 border-primary-foreground/60' : 'bg-background/60 border-primary')}>
                 <p className="font-semibold opacity-80 truncate">{replyTarget.sender === 'admin' ? 'You' : workerId}</p>
-                <p className="opacity-70 truncate">{replyTarget.body || (replyTarget.image_url ? '📷 Photo' : '')}</p>
+                <p className="opacity-70 truncate flex items-center gap-1">{replyTarget.body || (replyTarget.image_url ? (<><ImageIcon className="h-3 w-3" /> Photo</>) : '')}</p>
               </div>
             )}
             {deleted ? (
-              <span className="text-xs">🚫 This message was deleted</span>
+              <span className="text-xs italic inline-flex items-center gap-1.5"><Ban className="h-3 w-3" /> This message was deleted</span>
             ) : (
               <>
                 {msg.image_url && <img src={msg.image_url} alt="attachment" className="rounded-md mb-1 max-h-56 object-cover" />}
