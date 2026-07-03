@@ -627,6 +627,13 @@ function AdminChatRow({
           <span data-msg-time={msg.created_at} className="text-[10px] text-muted-foreground">
             {isMine ? 'You' : workerId} · {new Date(msg.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
           </span>
+          {isMine && !deleted && (
+            msg.read_at ? (
+              <CheckCheck className="h-3 w-3 text-primary" aria-label="Read" />
+            ) : (
+              <Check className="h-3 w-3 text-muted-foreground/60" aria-label="Sent" />
+            )
+          )}
           {!deleted && !selectMode && (
             <button
               onClick={(e) => { e.stopPropagation(); onEnterSelect(); }}
