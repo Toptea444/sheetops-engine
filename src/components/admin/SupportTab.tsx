@@ -598,7 +598,7 @@ function AdminChatRow({
                 isMine ? 'order-2' : 'order-1',
               )}
             >
-              <CheckSquare className="h-3 w-3" />
+              <Check className="h-3 w-3" />
             </span>
           )}
           <div className={cn(
