@@ -266,6 +266,13 @@ export function SupportTab({ adminSecret }: Props) {
     });
   };
 
+  const enterSelectWith = (id: string) => {
+    setSelectedMsgIds((prev) => {
+      if (prev.size > 0) return prev;
+      return new Set([id]);
+    });
+  };
+
   return (
     <Card>
       <CardContent className="p-0">
@@ -413,6 +420,7 @@ export function SupportTab({ adminSecret }: Props) {
                           selected={selectedMsgIds.has(m.id)}
                           selectMode={selectedMsgIds.size > 0}
                           onToggleSelect={() => toggleMsg(m.id)}
+                          onEnterSelect={() => enterSelectWith(m.id)}
                           onReply={() => setReplyTo(m)}
                           workerId={selectedId}
                         />
@@ -552,60 +560,82 @@ export function SupportTab({ adminSecret }: Props) {
 }
 
 function AdminChatRow({
-  msg, replyTarget, isMine, selected, selectMode, onToggleSelect, onReply, workerId,
+  msg, replyTarget, isMine, selected, selectMode, onToggleSelect, onEnterSelect, onReply, workerId,
 }: {
   msg: Msg; replyTarget: Msg | null; isMine: boolean;
   selected: boolean; selectMode: boolean;
-  onToggleSelect: () => void; onReply: () => void; workerId: string;
+  onToggleSelect: () => void; onEnterSelect: () => void; onReply: () => void; workerId: string;
 }) {
-  const { dx, swipeProgress, handlers } = useSwipeReply(onReply, 'right');
+  const { dx, swipeProgress, handlers } = useSwipeReply(selectMode ? () => {} : onReply, 'right');
   const deleted = msg.deleted_for === 'everyone';
 
   return (
-    <div className={cn('relative py-1 group flex items-start gap-2', selected && 'bg-primary/5 -mx-3 px-3 rounded')} style={{ touchAction: 'pan-y' }} {...handlers}>
-      {selectMode && (
-        <div className="pt-2">
-          <Checkbox checked={selected} onCheckedChange={onToggleSelect} />
-        </div>
+    <div
+      className={cn(
+        'relative py-1 rounded-lg transition-colors duration-200 flex items-start gap-2',
+        selectMode && 'cursor-pointer -mx-1 px-1',
+        selected && 'bg-primary/10',
       )}
-      {dx > 8 && (
+      style={{ touchAction: 'pan-y' }}
+      onClick={selectMode ? onToggleSelect : undefined}
+      {...(selectMode ? {} : handlers)}
+    >
+      {!selectMode && dx > 8 && (
         <div className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center" style={{ opacity: swipeProgress }}>
           <Reply className="h-4 w-4 text-primary" />
         </div>
       )}
-      <div className={cn('flex flex-col max-w-[78%] flex-1', isMine ? 'ml-auto items-end' : 'mr-auto items-start')}
-        style={{ transform: `translateX(${dx}px)`, transition: dx === 0 ? 'transform 0.2s ease' : 'none' }}>
-        <div className={cn(
-          'relative px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words',
-          isMine ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted text-foreground rounded-bl-md',
-          deleted && 'italic opacity-70',
-        )}>
-          {replyTarget && !deleted && (
-            <div className={cn('mb-1.5 px-2 py-1 rounded-md border-l-2 text-[11px]',
-              isMine ? 'bg-primary-foreground/10 border-primary-foreground/60' : 'bg-background/60 border-primary')}>
-              <p className="font-semibold opacity-80 truncate">{replyTarget.sender === 'admin' ? 'You' : workerId}</p>
-              <p className="opacity-70 truncate">{replyTarget.body || (replyTarget.image_url ? '📷 Photo' : '')}</p>
-            </div>
+      <div
+        className={cn('flex flex-col max-w-[80%] flex-1', isMine ? 'ml-auto items-end' : 'mr-auto items-start')}
+        style={{ transform: `translateX(${dx}px)`, transition: dx === 0 ? 'transform 0.2s ease' : 'none' }}
+      >
+        <div className="flex items-end gap-2">
+          {selectMode && (
+            <span
+              className={cn(
+                'shrink-0 mb-1 h-5 w-5 rounded-full border flex items-center justify-center transition-colors',
+                selected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40 text-transparent',
+                isMine ? 'order-2' : 'order-1',
+              )}
+            >
+              <CheckSquare className="h-3 w-3" />
+            </span>
           )}
-          {deleted ? (
-            <span className="text-xs">🚫 This message was deleted</span>
-          ) : (
-            <>
-              {msg.image_url && <img src={msg.image_url} alt="attachment" className="rounded-md mb-1 max-h-56 object-cover" />}
-              {msg.body}
-            </>
-          )}
-          {!deleted && (
-            <div className={cn('hidden group-hover:flex absolute -top-2 gap-1', isMine ? '-left-8' : '-right-8')}>
-              <button onClick={onToggleSelect} title="Select" className="h-6 w-6 rounded-full bg-background border border-border shadow flex items-center justify-center hover:bg-muted">
-                <CheckSquare className="h-3 w-3" />
-              </button>
-            </div>
+          <div className={cn(
+            'relative px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words',
+            isMine ? 'bg-primary text-primary-foreground rounded-br-md order-1' : 'bg-muted text-foreground rounded-bl-md order-2',
+            deleted && 'italic opacity-70',
+          )}>
+            {replyTarget && !deleted && (
+              <div className={cn('mb-1.5 px-2 py-1 rounded-md border-l-2 text-[11px]',
+                isMine ? 'bg-primary-foreground/10 border-primary-foreground/60' : 'bg-background/60 border-primary')}>
+                <p className="font-semibold opacity-80 truncate">{replyTarget.sender === 'admin' ? 'You' : workerId}</p>
+                <p className="opacity-70 truncate">{replyTarget.body || (replyTarget.image_url ? '📷 Photo' : '')}</p>
+              </div>
+            )}
+            {deleted ? (
+              <span className="text-xs">🚫 This message was deleted</span>
+            ) : (
+              <>
+                {msg.image_url && <img src={msg.image_url} alt="attachment" className="rounded-md mb-1 max-h-56 object-cover" />}
+                {msg.body}
+              </>
+            )}
+          </div>
+        </div>
+        <div className={cn('flex items-center gap-2 mt-1 px-1', isMine && 'flex-row-reverse')}>
+          <span data-msg-time={msg.created_at} className="text-[10px] text-muted-foreground">
+            {isMine ? 'You' : workerId} · {new Date(msg.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </span>
+          {!deleted && !selectMode && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEnterSelect(); }}
+              className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <Trash2 className="h-2.5 w-2.5" /> Delete
+            </button>
           )}
         </div>
-        <span data-msg-time={msg.created_at} className="text-[10px] text-muted-foreground mt-1 px-1">
-          {isMine ? 'You' : workerId} · {new Date(msg.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-        </span>
       </div>
     </div>
   );
