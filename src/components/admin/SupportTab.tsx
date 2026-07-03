@@ -339,20 +339,44 @@ export function SupportTab({ adminSecret }: Props) {
                 {unreadOnly ? 'Showing unread only' : 'Show unread only'}
               </button>
             </div>
+            {selectedConvIds.size > 0 && (
+              <div className="px-3 py-2 border-b border-border bg-muted/60 flex items-center gap-2 animate-in slide-in-from-top-2 fade-in duration-200">
+                <button onClick={() => setSelectedConvIds(new Set())} className="h-7 w-7 rounded-md hover:bg-muted flex items-center justify-center" aria-label="Cancel">
+                  <X className="h-4 w-4" />
+                </button>
+                <span className="flex-1 text-xs font-medium">{selectedConvIds.size} selected</span>
+                <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={() => setConfirmDeleteConvs(true)}>
+                  <Trash2 className="h-3 w-3 mr-1" /> Delete
+                </Button>
+              </div>
+            )}
             <div className="overflow-y-auto flex-1 max-h-[520px]">
               {filtered.length === 0 ? (
                 <div className="p-8 text-center text-xs text-muted-foreground">{loading ? 'Loading…' : 'No conversations yet'}</div>
               ) : filtered.map((c) => {
                 const isUnread = (c.unread_admin || 0) > 0;
+                const inSelect = selectedConvIds.size > 0;
+                const isSelected = selectedConvIds.has(c.worker_id);
                 return (
-                  <button key={c.worker_id} onClick={() => openConv(c.worker_id)}
-                    className={cn('w-full text-left px-3 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors flex items-start gap-2 relative',
-                      selectedId === c.worker_id && 'bg-muted', isUnread && 'bg-primary/5')}>
+                  <div
+                    key={c.worker_id}
+                    onClick={() => inSelect ? toggleConv(c.worker_id) : openConv(c.worker_id)}
+                    className={cn('w-full text-left px-3 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors flex items-start gap-2 relative cursor-pointer',
+                      selectedId === c.worker_id && !inSelect && 'bg-muted',
+                      isUnread && !isSelected && 'bg-primary/5',
+                      isSelected && 'bg-primary/15')}>
                     {isUnread && <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary" aria-hidden />}
-                    <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5 relative">
-                      <User className="h-3.5 w-3.5 text-primary" />
-                      {isUnread && <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />}
-                    </div>
+                    {inSelect ? (
+                      <span className={cn('shrink-0 mt-1 h-5 w-5 rounded-full border flex items-center justify-center',
+                        isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40 text-transparent')}>
+                        <Check className="h-3 w-3" />
+                      </span>
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5 relative">
+                        <User className="h-3.5 w-3.5 text-primary" />
+                        {isUnread && <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <span className={cn('text-xs truncate flex items-center gap-1', isUnread ? 'font-bold text-foreground' : 'font-semibold text-foreground')}>
@@ -367,10 +391,21 @@ export function SupportTab({ adminSecret }: Props) {
                         {c.last_sender === 'admin' ? 'You: ' : ''}{c.last_message_preview || '—'}
                       </p>
                     </div>
-                    {isUnread && (
-                      <span className="h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center mt-1">{c.unread_admin}</span>
+                    {!inSelect && (
+                      <div className="flex flex-col items-end gap-1">
+                        {isUnread && (
+                          <span className="h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">{c.unread_admin}</span>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedConvIds(new Set([c.worker_id])); }}
+                          className="text-[10px] text-muted-foreground hover:text-destructive opacity-60 hover:opacity-100"
+                          title="Select"
+                        >
+                          Select
+                        </button>
+                      </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
