@@ -61,6 +61,9 @@ export function SupportTab({ adminSecret }: Props) {
   const [query, setQuery] = useState('');
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [confirmDeleteConv, setConfirmDeleteConv] = useState<string | null>(null);
+  const [selectedConvIds, setSelectedConvIds] = useState<Set<string>>(new Set());
+  const [confirmDeleteConvs, setConfirmDeleteConvs] = useState(false);
+  const [deletingConvs, setDeletingConvs] = useState(false);
 
   // Multi-select delete
   const [selectedMsgIds, setSelectedMsgIds] = useState<Set<string>>(new Set());
