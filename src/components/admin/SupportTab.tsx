@@ -420,6 +420,7 @@ export function SupportTab({ adminSecret }: Props) {
                           selected={selectedMsgIds.has(m.id)}
                           selectMode={selectedMsgIds.size > 0}
                           onToggleSelect={() => toggleMsg(m.id)}
+                          onEnterSelect={() => enterSelectWith(m.id)}
                           onReply={() => setReplyTo(m)}
                           workerId={selectedId}
                         />
