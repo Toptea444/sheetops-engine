@@ -1182,6 +1182,9 @@ Deno.serve(async (req) => {
         const wid = String(params?.worker_id || '').trim().toUpperCase();
         if (!wid) { result = { success: false, error: 'worker_id required' }; break; }
         await supabase.from('support_conversations').update({ unread_admin: 0 }).eq('worker_id', wid);
+        await supabase.from('support_messages')
+          .update({ read_at: new Date().toISOString() })
+          .eq('worker_id', wid).eq('sender', 'user').is('read_at', null);
         result = { success: true };
         break;
       }
@@ -1193,6 +1196,18 @@ Deno.serve(async (req) => {
         await supabase.from('support_conversations').delete().eq('worker_id', wid);
         await logAudit(supabase, 'support_delete_conversation', { worker_id: wid }, 'support_conversation', wid);
         result = { success: true };
+        break;
+      }
+
+      case 'support_delete_conversations': {
+        const wids = Array.isArray(params?.worker_ids)
+          ? (params.worker_ids as unknown[]).map((w) => String(w).trim().toUpperCase()).filter(Boolean)
+          : [];
+        if (!wids.length) { result = { success: false, error: 'worker_ids required' }; break; }
+        await supabase.from('support_messages').delete().in('worker_id', wids);
+        await supabase.from('support_conversations').delete().in('worker_id', wids);
+        await logAudit(supabase, 'support_delete_conversations', { count: wids.length }, 'support_conversation', null);
+        result = { success: true, count: wids.length };
         break;
       }
 

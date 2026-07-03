@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MessageCircle, X, Send, HeadphonesIcon, Reply, Image as ImageIcon, Ban, Trash2, Check, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, HeadphonesIcon, Reply, Image as ImageIcon, Ban, Trash2, Check, CheckCheck, Loader2, Hand } from 'lucide-react';
 import { useSupportChat, type SupportMessage } from '@/hooks/useSupportChat';
 import { useSwipeReply } from '@/hooks/useSwipeReply';
 import { dayLabel, isNewDay, startOfDay } from '@/lib/chatDates';
@@ -121,6 +121,14 @@ export function SupportFAB({ workerId }: Props) {
       </button>
 
       {open && (
+        <div
+          className="fixed inset-0 z-[94] bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-200"
+          onClick={() => setOpen(false)}
+          aria-hidden
+        />
+      )}
+
+      {open && (
         <div className={cn(
           'fixed z-[95] bottom-24 right-4 left-4 sm:left-auto sm:right-5 sm:w-[380px] max-h-[calc(100vh-8rem)] flex flex-col',
           'bg-card border border-border rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300',
@@ -174,9 +182,9 @@ export function SupportFAB({ workerId }: Props) {
             {visible.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center px-6 py-10">
                 <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                  <MessageCircle className="h-6 w-6 text-primary" />
+                  <Hand className="h-6 w-6 text-primary" />
                 </div>
-                <p className="text-sm font-medium text-foreground">Say hi 👋</p>
+                <p className="text-sm font-medium text-foreground">Say hi</p>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                   Send me a message and I'll reply as soon as I can.
                 </p>
@@ -226,7 +234,7 @@ export function SupportFAB({ workerId }: Props) {
                   <div className="w-1 h-8 rounded bg-primary" />
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold text-primary">Replying to {replyTo.sender === 'user' ? 'yourself' : 'Adelaja'}</p>
-                    <p className="text-xs text-muted-foreground truncate">{replyTo.body || (replyTo.image_url ? '📷 Photo' : '')}</p>
+                    <p className="text-xs text-muted-foreground truncate flex items-center gap-1">{replyTo.body || (replyTo.image_url ? (<><ImageIcon className="h-3 w-3" /> Photo</>) : '')}</p>
                   </div>
                   <button onClick={() => setReplyTo(null)} className="h-6 w-6 rounded hover:bg-muted flex items-center justify-center"><X className="h-3.5 w-3.5" /></button>
                 </div>
@@ -374,11 +382,11 @@ function ChatRow({
                 isMine ? 'bg-primary-foreground/10 border-primary-foreground/60' : 'bg-background/60 border-primary',
               )}>
                 <p className="font-semibold opacity-80 truncate">{replyTarget.sender === 'user' ? 'You' : 'Adelaja'}</p>
-                <p className="opacity-70 truncate">{replyTarget.body || (replyTarget.image_url ? '📷 Photo' : '')}</p>
+                <p className="opacity-70 truncate flex items-center gap-1">{replyTarget.body || (replyTarget.image_url ? (<><ImageIcon className="h-3 w-3" /> Photo</>) : '')}</p>
               </div>
             )}
             {deleted ? (
-              <span className="text-xs">🚫 This message was deleted</span>
+              <span className="text-xs italic inline-flex items-center gap-1.5"><Ban className="h-3 w-3" /> This message was deleted</span>
             ) : (
               <>
                 {msg.image_url && (
@@ -394,6 +402,13 @@ function ChatRow({
             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             {!isMine && ' · Adelaja'}
           </span>
+          {isMine && !deleted && (
+            msg.read_at ? (
+              <CheckCheck className="h-3 w-3 text-primary" aria-label="Read" />
+            ) : (
+              <Check className="h-3 w-3 text-muted-foreground/60" aria-label="Sent" />
+            )
+          )}
           {onDelete && !deleted && !selectMode && (
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
