@@ -266,6 +266,13 @@ export function SupportTab({ adminSecret }: Props) {
     });
   };
 
+  const enterSelectWith = (id: string) => {
+    setSelectedMsgIds((prev) => {
+      if (prev.size > 0) return prev;
+      return new Set([id]);
+    });
+  };
+
   return (
     <Card>
       <CardContent className="p-0">
