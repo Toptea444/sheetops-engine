@@ -234,7 +234,7 @@ export function SupportFAB({ workerId }: Props) {
                   <div className="w-1 h-8 rounded bg-primary" />
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold text-primary">Replying to {replyTo.sender === 'user' ? 'yourself' : 'Adelaja'}</p>
-                    <p className="text-xs text-muted-foreground truncate">{replyTo.body || (replyTo.image_url ? '📷 Photo' : '')}</p>
+                    <p className="text-xs text-muted-foreground truncate flex items-center gap-1">{replyTo.body || (replyTo.image_url ? (<><ImageIcon className="h-3 w-3" /> Photo</>) : '')}</p>
                   </div>
                   <button onClick={() => setReplyTo(null)} className="h-6 w-6 rounded hover:bg-muted flex items-center justify-center"><X className="h-3.5 w-3.5" /></button>
                 </div>
