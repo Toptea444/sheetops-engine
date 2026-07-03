@@ -216,6 +216,32 @@ export function SupportTab({ adminSecret }: Props) {
     setConfirmDeleteConv(null);
   };
 
+  const handleDeleteConversations = async () => {
+    const ids = Array.from(selectedConvIds);
+    if (!ids.length || deletingConvs) return;
+    setDeletingConvs(true);
+    try {
+      const data = await adminRequest(adminSecret, 'support_delete_conversations', { worker_ids: ids });
+      if (data?.success) {
+        toast.success(`Deleted ${ids.length} conversation${ids.length > 1 ? 's' : ''}`);
+        if (selectedId && ids.includes(selectedId)) { setSelectedId(null); setMessages([]); }
+        setSelectedConvIds(new Set());
+        loadConversations();
+      } else toast.error('Failed to delete');
+    } finally {
+      setDeletingConvs(false);
+      setConfirmDeleteConvs(false);
+    }
+  };
+
+  const toggleConv = (wid: string) => {
+    setSelectedConvIds((prev) => {
+      const n = new Set(prev);
+      if (n.has(wid)) n.delete(wid); else n.add(wid);
+      return n;
+    });
+  };
+
   const handleDeleteMessages = async (mode: 'everyone' | 'admin') => {
     const ids = Array.from(selectedMsgIds);
     if (!ids.length || deletingMsgs) return;
