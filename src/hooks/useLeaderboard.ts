@@ -254,7 +254,9 @@ function parseAllWorkersFromSheet(data: SheetData, cycle: CyclePeriod): { worker
 
       // Find columns within this block
       const stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage', 'ids']);
-      const usernamesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['usernames', 'username', 'user name', 'user_name', 'names', 'name', 'product', 'id']);
+      // Exclude the stagesCol from the usernames search so "IDS" (stages) isn't also picked as usernames via 'id'
+      const searchStart = stagesCol >= 0 ? Math.max(blockStart, stagesCol + 1) : blockStart;
+      const usernamesCol = findLabelInRange(headerRow, searchStart, blockEnd, ['usernames', 'username', 'user name', 'user_name', 'names', 'name', 'product']);
       // Try TOTAL first, then RANKING BONUS for ranking-style sheets
       let valueCol = findLabelInRange(headerRow, blockStart, blockEnd, ['total']);
       if (valueCol < 0) {

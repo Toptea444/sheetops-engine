@@ -434,24 +434,23 @@ const Index = () => {
   };
 
   useEffect(() => {
-    const hasSeenDefaultUpdate = localStorage.getItem(RANKING_BONUS_TOTAL_DEFAULT_UPDATE_KEY) === 'true';
     const savedPreference = localStorage.getItem(RANKING_BONUS_TOTAL_PREF_KEY);
-
-    if (!hasSeenDefaultUpdate) {
-      localStorage.setItem(RANKING_BONUS_TOTAL_PREF_KEY, 'true');
-      setIncludeRankingBonusInTotal(true);
-      setShowRankingDefaultUpdateModal(true);
-      return;
-    }
 
     if (savedPreference === 'true' || savedPreference === 'false') {
       setIncludeRankingBonusInTotal(savedPreference === 'true');
       return;
     }
 
-    localStorage.setItem(RANKING_BONUS_TOTAL_PREF_KEY, 'true');
-    setIncludeRankingBonusInTotal(true);
+    // No saved preference: default to hidden (excluded from total) and persist it
+    localStorage.setItem(RANKING_BONUS_TOTAL_PREF_KEY, 'false');
+    setIncludeRankingBonusInTotal(false);
+
+    const hasSeenDefaultUpdate = localStorage.getItem(RANKING_BONUS_TOTAL_DEFAULT_UPDATE_KEY) === 'true';
+    if (!hasSeenDefaultUpdate) {
+      setShowRankingDefaultUpdateModal(true);
+    }
   }, []);
+
 
   const saveRankingBonusPreference = useCallback((shouldInclude: boolean) => {
     localStorage.setItem(RANKING_BONUS_TOTAL_PREF_KEY, shouldInclude ? 'true' : 'false');
