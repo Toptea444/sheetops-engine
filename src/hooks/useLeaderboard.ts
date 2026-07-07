@@ -253,8 +253,8 @@ function parseAllWorkersFromSheet(data: SheetData, cycle: CyclePeriod): { worker
       const timestamp = dateStarts[sIdx].timestamp;
 
       // Find columns within this block
-      const stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage']);
-      const usernamesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['usernames', 'username', 'product', 'id', 'name', 'names']);
+      const stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage', 'ids']);
+      const usernamesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['usernames', 'username', 'user name', 'user_name', 'names', 'name', 'product', 'id']);
       // Try TOTAL first, then RANKING BONUS for ranking-style sheets
       let valueCol = findLabelInRange(headerRow, blockStart, blockEnd, ['total']);
       if (valueCol < 0) {
@@ -276,6 +276,15 @@ function parseAllWorkersFromSheet(data: SheetData, cycle: CyclePeriod): { worker
         // Check if we've hit another date block
         if (parseDateFromCell(String(dataRow[blockStart] ?? ''), data.sheetName)) {
           break;
+        }
+
+        // Skip repeated header rows (e.g. "IDS | NAMES | ... | TOTAL")
+        const stageLbl = normalizeLabel(stageCell);
+        const userLbl = normalizeLabel(userCell);
+        const userHeaderLabels = ['username', 'usernames', 'user name', 'user_name', 'product', 'id', 'name', 'names'];
+        const stageHeaderLabels = ['stage', 'stages', 'ids', 'id'];
+        if (stageHeaderLabels.includes(stageLbl) && userHeaderLabels.includes(userLbl)) {
+          continue;
         }
 
         // Stage divider row
