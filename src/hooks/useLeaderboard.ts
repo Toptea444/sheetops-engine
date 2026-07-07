@@ -278,6 +278,15 @@ function parseAllWorkersFromSheet(data: SheetData, cycle: CyclePeriod): { worker
           break;
         }
 
+        // Skip repeated header rows (e.g. "IDS | NAMES | ... | TOTAL")
+        const stageLbl = normalizeLabel(stageCell);
+        const userLbl = normalizeLabel(userCell);
+        const userHeaderLabels = ['username', 'usernames', 'user name', 'user_name', 'product', 'id', 'name', 'names'];
+        const stageHeaderLabels = ['stage', 'stages', 'ids', 'id'];
+        if (stageHeaderLabels.includes(stageLbl) && userHeaderLabels.includes(userLbl)) {
+          continue;
+        }
+
         // Stage divider row
         if (stageCell && !userCell && looksLikeStage(stageCell)) {
           currentStage = stageCell;
