@@ -115,7 +115,7 @@ export function useNotifications(): UseNotificationsResult {
       setIsEnabled(true);
 
       // Send a test notification to confirm it works
-      await showNotification('Notifications Enabled ✅', {
+      await showNotification('Notifications Enabled', {
         body: 'You\'ll be notified when your sheet data updates.',
         tag: 'notifications-enabled',
       });
