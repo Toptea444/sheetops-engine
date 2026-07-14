@@ -485,29 +485,19 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
   const getWorkerIdsToFetch = useCallback((): string[] => {
     if (!userId) return [];
     const uid = userId.toUpperCase();
-    const ids = new Set<string>([uid]);
 
     const effectiveSwaps = swaps
       .filter(s => s.effective_date <= todayLocal)
       .sort((a, b) => a.effective_date.localeCompare(b.effective_date));
 
-    // Collect all IDs that uid has ever been involved in swapping with
-    const counterpartIds = new Set<string>();
-    effectiveSwaps.forEach(s => {
-      if (s.new_worker_id === uid) counterpartIds.add(s.old_worker_id);
-      if (s.old_worker_id === uid) counterpartIds.add(s.new_worker_id);
-    });
-
-    // For each counterpart ID, check if uid has any ownership windows for it
-    counterpartIds.forEach(otherId => {
-      const windows = buildOwnershipWindows(uid, otherId, effectiveSwaps);
-      if (windows.length > 0) {
-        ids.add(otherId);
-      }
-    });
+    // Every worker ID that appears in the ownership map is one this user has
+    // held at some point in time — we need earnings data for all of them.
+    const ownershipMap = buildOwnershipMap(uid, effectiveSwaps);
+    const ids = new Set<string>([uid, ...Object.keys(ownershipMap)]);
 
     return Array.from(ids);
-  }, [userId, swaps, todayLocal, buildOwnershipWindows]);
+  }, [userId, swaps, todayLocal, buildOwnershipMap]);
+
 
   return {
     swaps,
