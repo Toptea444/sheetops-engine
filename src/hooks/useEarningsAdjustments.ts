@@ -239,70 +239,66 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
   useEffect(() => { load(); }, [load]);
 
   /**
-   * Build a list of date windows during which `uid` owned `workerId`.
+   * Compute the full ownership map for the current user across ALL worker IDs
+   * they've ever held, based on the chronological swap history.
    *
-   * Swaps are processed in chronological order. Each swap toggles ownership:
-   * before the first swap the original owner has [start, swap1), the other
-   * side has [swap1, swap2), the first owner again [swap2, swap3), etc.
+   * Two-worker swap semantics: each swap record represents two workers exchanging
+   * IDs on `effective_date`. The current logged-in user's ID may therefore change
+   * over time. We walk swaps BACKWARDS from "now" (where the user's ID = uid):
+   * whenever the tracked ID appears in a swap, ownership of that ID ends at that
+   * swap's effective_date, and the tracked ID flips to the other side of the swap.
    *
-   * Returns an array of [from, to) string pairs (inclusive from, exclusive to).
-   * `null` means open-ended (i.e. "until today / forever").
+   * Returns: { [workerId]: [{ from, to }, ...] } — half-open intervals [from, to)
+   * where `null` means -∞ / +∞. The current user owned `workerId` during those
+   * date windows.
    *
-   * Example — A and B swap twice in a cycle:
-   *   Swap 1 effective Mar 20: A→B, B→A  (user B now uses A's old ID)
-   *   Swap 2 effective Apr 01: A→B, B→A  (swapped back)
-   *
-   * For a user currently logged in as B:
-   *   workerId A windows: [Mar 20, Apr 01)   ← B was "A" during that window
-   *   workerId B windows: [start, Mar 20) ∪ [Apr 01, ∞)
+   * Example — single swap A↔B on Mar 16, current user logged in as B:
+   *   Before Mar 16 they had A. After Mar 16 they have B.
+   *   Result: { A: [{null, Mar16}], B: [{Mar16, null}] }
    */
+  const buildOwnershipMap = useCallback((
+    uid: string,
+    sortedEffectiveSwaps: IdSwap[],
+  ): Record<string, Array<{ from: string | null; to: string | null }>> => {
+    const map: Record<string, Array<{ from: string | null; to: string | null }>> = {};
+    let trackedId = uid;
+    let endTime: string | null = null;
+
+    // Walk newest → oldest
+    for (let i = sortedEffectiveSwaps.length - 1; i >= 0; i--) {
+      const s = sortedEffectiveSwaps[i];
+      if (s.old_worker_id === trackedId || s.new_worker_id === trackedId) {
+        (map[trackedId] ||= []).push({ from: s.effective_date, to: endTime });
+        endTime = s.effective_date;
+        trackedId = s.old_worker_id === trackedId ? s.new_worker_id : s.old_worker_id;
+      }
+    }
+
+    // Open-ended earliest window for the original ID this worker held
+    (map[trackedId] ||= []).push({ from: null, to: endTime });
+
+    // Sort each ID's windows by `from` ascending (null = -∞ first)
+    Object.values(map).forEach(wins => {
+      wins.sort((a, b) => {
+        if (a.from === b.from) return 0;
+        if (a.from === null) return -1;
+        if (b.from === null) return 1;
+        return a.from.localeCompare(b.from);
+      });
+    });
+
+    return map;
+  }, []);
+
   const buildOwnershipWindows = useCallback((
     uid: string,
     workerId: string,
     sortedEffectiveSwaps: IdSwap[],
   ): Array<{ from: string | null; to: string | null }> => {
-    // Collect only swaps that involve BOTH uid and workerId
-    const relevantSwaps = sortedEffectiveSwaps.filter(s =>
-      (s.old_worker_id === uid || s.new_worker_id === uid) &&
-      (s.old_worker_id === workerId || s.new_worker_id === workerId)
-    );
+    const map = buildOwnershipMap(uid, sortedEffectiveSwaps);
+    return map[workerId] || [];
+  }, [buildOwnershipMap]);
 
-    if (relevantSwaps.length === 0) {
-      // No swaps between uid and workerId at all
-      // uid owns workerId only if they are the same
-      if (uid === workerId) return [{ from: null, to: null }];
-      return [];
-    }
-
-    // Walk the timeline: at each swap, ownership of workerId toggles between uid and the other party.
-    // Determine whether uid owned workerId just BEFORE the first swap.
-    const firstSwap = relevantSwaps[0];
-    // Before the first swap: uid owned workerId iff uid === workerId
-    let uidOwnsIt = uid === workerId;
-
-    const windows: Array<{ from: string | null; to: string | null }> = [];
-    let windowStart: string | null = uidOwnsIt ? null : undefined as any;
-
-    for (const swap of relevantSwaps) {
-      // Ownership flips at this swap's effective_date
-      if (uidOwnsIt) {
-        // uid was owning workerId up to (exclusive) this swap — close the window
-        windows.push({ from: windowStart, to: swap.effective_date });
-        uidOwnsIt = false;
-      } else {
-        // uid gains ownership of workerId from this swap's effective_date
-        windowStart = swap.effective_date;
-        uidOwnsIt = true;
-      }
-    }
-
-    // If uid still owns workerId after all swaps, the window is open-ended
-    if (uidOwnsIt) {
-      windows.push({ from: windowStart, to: null });
-    }
-
-    return windows;
-  }, []);
 
   /**
    * Apply corrections to results:
