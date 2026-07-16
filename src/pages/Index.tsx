@@ -592,12 +592,20 @@ const Index = () => {
     for (const sheetName of effectiveSelectedSheets) {
       let data = forceRefetch ? null : (sheetDataCache[sheetName] ?? newCache[sheetName]);
 
-      // PAST CYCLES: use cached snapshots only — never call the live API,
-      // because past-cycle sheets may have been disabled/removed (would 400).
-      if (!data && !isPastCycle) {
-        data = await fetchSheetData(sheetName);
-        if (data) {
-          newCache[sheetName] = data;
+      // PAST CYCLES: try live fetch too (in case the sheet was updated after
+      // the cycle rolled over — e.g. admin adds the 15th's row on the 16th).
+      // If the live call fails (sheet disabled/removed), fall back to the
+      // cached snapshot we already loaded above.
+      if (!data || (isPastCycle && forceRefetch)) {
+        const cachedFallback = data;
+        const live = await fetchSheetData(sheetName);
+        if (live) {
+          data = live;
+          newCache[sheetName] = live;
+          // Refresh past-cycle snapshot with the newer data
+          if (isPastCycle) saveSheetSnapshot(sheetName, selectedCycle, live);
+        } else if (cachedFallback) {
+          data = cachedFallback;
         }
       }
 
