@@ -314,7 +314,17 @@ function parseDailyPerformanceSheet(
   // Build a full matrix including the first header row from the API
   const matrix: string[][] = [data.headers, ...data.rows];
   const inferColumnsFromRows = (blockStart: number, blockEnd: number, dataStartRow: number) => {
-    const effectiveEnd = Math.min(blockEnd, Math.max(blockStart + 1, matrix[dataStartRow]?.length ?? blockEnd));
+    // Use the widest row within the sample window — the Google Sheets API trims
+    // trailing empties per row, so the first data row can be narrower than rows
+    // further down. Capping by only matrix[dataStartRow].length caused the LAST
+    // block on a sheet (e.g. July 15) to lose its TOTAL column and be skipped.
+    let widestSample = matrix[dataStartRow]?.length ?? blockEnd;
+    for (let r = dataStartRow; r < Math.min(matrix.length, dataStartRow + 80); r++) {
+      const len = matrix[r]?.length ?? 0;
+      if (len > widestSample) widestSample = len;
+    }
+    const effectiveEnd = Math.min(blockEnd, Math.max(blockStart + 1, widestSample));
+
 
     // Typical layout fallback:
     // STAGES | USERNAMES | RECOVERY RATE | BONUS | RANK | RATE | RANKING BONUS | TOTAL
