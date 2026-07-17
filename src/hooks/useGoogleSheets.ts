@@ -516,9 +516,17 @@ function parseDailyPerformanceSheet(
       // Scan the data rows under the header for this block
       let currentStage = '';
 
-      for (let r = rowIdx + 2; r < matrix.length; r++) {
+      // Cap the downward scan so this block doesn't accidentally consume rows
+      // from a later date block OR a "totals for all users" summary section
+      // sitting below the last date block on the sheet.
+      const nextDateHeaderRow =
+        dateHeaderRowIdxs.find((r) => r > rowIdx) ?? matrix.length;
+      const scanEndRow = Math.min(matrix.length, nextDateHeaderRow, rowIdx + 400);
+
+      for (let r = rowIdx + 2; r < scanEndRow; r++) {
         const dataRow = matrix[r] || [];
         const stageCell = String(dataRow[stagesCol] ?? '').trim();
+        const userCell = String(dataRow[usernamesCol] ?? '').trim();
         const userCell = String(dataRow[usernamesCol] ?? '').trim();
 
         // Detect repeated table-header rows inside the same columns.
