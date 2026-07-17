@@ -411,6 +411,24 @@ function parseDailyPerformanceSheet(
     return parseDateFromHeader(primaryCell, data.sheetName);
   };
 
+  // Pre-compute every row index that itself contains at least one date-like cell.
+  // Used to cap the downward data-row scan for a block so it doesn't spill into
+  // an unrelated summary/"totals for all users" section sitting below the last
+  // date block on the sheet.
+  const dateHeaderRowIdxs: number[] = [];
+  for (let r = 0; r < matrix.length; r++) {
+    const rr = matrix[r] || [];
+    for (let c = 0; c < rr.length; c++) {
+      const cell = String(rr[c] ?? '').trim();
+      if (!cell) continue;
+      if (cell.toUpperCase().includes('COLLECTOR BONUS')) continue;
+      if (parseDateFromHeader(cell, data.sheetName)) {
+        dateHeaderRowIdxs.push(r);
+        break;
+      }
+    }
+  }
+
   for (let rowIdx = 0; rowIdx < matrix.length - 2; rowIdx++) {
     const row = matrix[rowIdx] || [];
 
