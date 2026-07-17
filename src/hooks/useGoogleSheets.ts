@@ -527,7 +527,6 @@ function parseDailyPerformanceSheet(
         const dataRow = matrix[r] || [];
         const stageCell = String(dataRow[stagesCol] ?? '').trim();
         const userCell = String(dataRow[usernamesCol] ?? '').trim();
-        const userCell = String(dataRow[usernamesCol] ?? '').trim();
 
         // Detect repeated table-header rows inside the same columns.
         // A single date column can sit ABOVE several stacked header rows, e.g.:
