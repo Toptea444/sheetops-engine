@@ -6,7 +6,7 @@ import { SessionPinGate } from '@/components/dashboard/SessionPinGate';
 import { SwapDetectionModal } from '@/components/dashboard/SwapDetectionModal';
 import { PinResetModal } from '@/components/dashboard/PinResetModal';
 import { IdMigrationModal } from '@/components/dashboard/IdMigrationModal';
-import { FormerIdLookupModal } from '@/components/dashboard/FormerIdLookupModal';
+
 import { CycleSelector } from '@/components/dashboard/CycleSelector';
 import { CycleSummaryCard } from '@/components/dashboard/CycleSummaryCard';
 import { SheetBreakdownCards } from '@/components/dashboard/SheetBreakdownCards';
@@ -64,25 +64,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
 import { Settings, CalendarDays } from 'lucide-react';
 
-// Cookie-based tracking for the "former Worker ID" prompt. Once a user has
-// viewed (and closed/skipped/submitted) the prompt, we set a cookie so it
-// never shows again for them. If the cookie is absent, the prompt keeps
-// showing on every login.
-const FORMER_ID_PROMPT_COOKIE = 'sheetops_formerIdPromptViewed';
 
-const hasViewedFormerIdPrompt = (userId: string): boolean => {
-  if (typeof document === 'undefined') return false;
-  const key = `${FORMER_ID_PROMPT_COOKIE}_${userId}`;
-  return document.cookie.split('; ').some((c) => c.startsWith(`${key}=`));
-};
-
-const markFormerIdPromptViewed = (userId: string): void => {
-  if (typeof document === 'undefined') return;
-  const key = `${FORMER_ID_PROMPT_COOKIE}_${userId}`;
-  // Persist for ~1 year.
-  const maxAge = 60 * 60 * 24 * 365;
-  document.cookie = `${key}=1; path=/; max-age=${maxAge}; SameSite=Lax`;
-};
 
 const Index = () => {
   const toLocalDateStr = (ts: number) => {
@@ -240,7 +222,6 @@ const Index = () => {
     reload: reloadAdjustments,
   } = useEarningsAdjustments(userId, selectedCycle);
   const [showUserAdjustModal, setShowUserAdjustModal] = useState(false);
-  const [showFormerIdModal, setShowFormerIdModal] = useState(false);
 
   // Apply adjustments to results
   const { adjustedResults, netAdjustment } = useMemo(() => {
@@ -721,20 +702,7 @@ const Index = () => {
   }, [earningsSwaps, adjustmentsLoading, userId, identityConfirmed, isInitializing, selectedSheets, fetchUserData]);
 
   // Prompt the user to enter their former Worker ID (for their June 16–21
-  // earnings) ONLY when they're logged in with their NEW ID.
-  // They must have already logged out of their old ID first.
-  // Viewing is tracked via a per-user cookie set in the modal's close/skip/submit handlers.
-  useEffect(() => {
-    // Only after the user is fully logged in (identity confirmed + PIN verified).
-    if (!userId || !identityConfirmed || !pinVerifiedThisSession || isInitializing) return;
-    // Already entered a former ID, or already viewed the prompt before.
-    if (formerWorkerId || hasViewedFormerIdPrompt(userId)) return;
-    // Only show if IdMigrationModal has been closed (user has completed migration)
-    if (showIdMigration) return;
 
-    const t = setTimeout(() => setShowFormerIdModal(true), 1200);
-    return () => clearTimeout(t);
-  }, [userId, identityConfirmed, pinVerifiedThisSession, isInitializing, formerWorkerId, showIdMigration]);
 
   // Trigger Cycle Summary Modal when conditions are met
   useEffect(() => {
@@ -1594,30 +1562,7 @@ const Index = () => {
         onLogout={handleIdMigrationLogout}
       />
 
-      <FormerIdLookupModal
-        open={showFormerIdModal}
-        currentUserId={userId || ''}
-        onClose={() => {
-          if (userId) markFormerIdPromptViewed(userId);
-          dismissFormerIdPrompt();
-          setShowFormerIdModal(false);
-        }}
-        onSkip={() => {
-          if (userId) markFormerIdPromptViewed(userId);
-          dismissFormerIdPrompt();
-          setShowFormerIdModal(false);
-        }}
-  onSubmit={(id) => {
-  if (userId) markFormerIdPromptViewed(userId);
-  setFormerWorkerId(id);
-  dismissFormerIdPrompt();
-  setShowFormerIdModal(false);
-  // Hard refresh after 3 seconds to ensure new data loads properly
-  setTimeout(() => {
-    window.location.reload();
-  }, 3000);
-  }}
-      />
+
 
 
 
