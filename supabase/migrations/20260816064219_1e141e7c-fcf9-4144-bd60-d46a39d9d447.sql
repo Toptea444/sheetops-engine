@@ -1,0 +1,2 @@
+DELETE FROM public.cycle_sheet_cache WHERE cycle_key='2026-07' AND sheet_name='RANKING BONUS GH JUNE30';
+DELETE FROM public.cycle_worker_cache WHERE cycle_key='2026-07' AND sheet_name='RANKING BONUS GH JUNE30';
