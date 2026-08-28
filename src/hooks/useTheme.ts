@@ -23,8 +23,8 @@ interface UseThemeResult {
 
 const accentColors: Record<AccentColor, { primary: string; chart1: string }> = {
   blue: {
-    primary: '215 70% 35%',
-    chart1: '215 70% 45%',
+    primary: '222 64% 32%',
+    chart1: '222 64% 44%',
   },
   green: {
     primary: '145 60% 35%',
@@ -121,8 +121,8 @@ export function useTheme(): UseThemeResult {
     root.style.setProperty('--primary', colors.primary);
     root.style.setProperty('--chart-1', colors.chart1);
 
-    // Update ring color to match
-    root.style.setProperty('--ring', colors.primary.replace('35%', '45%'));
+    // Update ring color to match (use the lighter chart tone for a visible focus ring)
+    root.style.setProperty('--ring', colors.chart1);
   }, [accentColor]);
 
   const setTheme = useCallback((newTheme: Theme) => {

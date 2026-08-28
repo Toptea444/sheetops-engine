@@ -62,7 +62,7 @@ import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
-import { Settings, CalendarDays } from 'lucide-react';
+import { Settings, CalendarDays, LayoutGrid, CalendarRange, Table2, Trophy } from 'lucide-react';
 
 
 
@@ -1645,49 +1645,51 @@ const Index = () => {
             )}
 
             {/* Top Controls Section */}
-            <div className="flex flex-col gap-3 mb-8">
-              <div className="flex items-center justify-between gap-3 min-w-0">
-                <div ref={cycleSelectorRef}>
-                  <CycleSelector
-                    cycles={cycleOptions}
-                    selectedCycle={selectedCycle}
-                    onCycleChange={setSelectedCycle}
+            <div className="mb-8 rounded-2xl border border-border bg-card premium-shadow p-2 sm:p-2.5">
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-3 min-w-0">
+                  <div ref={cycleSelectorRef} className="min-w-0">
+                    <CycleSelector
+                      cycles={cycleOptions}
+                      selectedCycle={selectedCycle}
+                      onCycleChange={setSelectedCycle}
+                      isLoading={isLoading}
+                    />
+                  </div>
+                  {identityConfirmed && showDownloadBanner && (
+                    <DownloadAppBanner
+                      visible={true}
+                      onOpenModal={() => setDownloadModalRequestId((current) => current + 1)}
+                    />
+                  )}
+                </div>
+                <div className="min-w-0 flex items-center gap-2 border-t border-border/70 pt-2.5">
+                  <SheetSelector
+                    sheets={sheets.filter(s => !isTransportSubsidySheet(s.name))}
+                    selectedSheets={selectedSheets}
+                    onSelectionChange={handleSheetSelectionChange}
                     isLoading={isLoading}
                   />
-                </div>
-                {identityConfirmed && showDownloadBanner && (
-                  <DownloadAppBanner
-                    visible={true}
-                    onOpenModal={() => setDownloadModalRequestId((current) => current + 1)}
-                  />
-                )}
-              </div>
-              <div className="min-w-0 flex items-center gap-2">
-                <SheetSelector
-                  sheets={sheets.filter(s => !isTransportSubsidySheet(s.name))}
-                  selectedSheets={selectedSheets}
-                  onSelectionChange={handleSheetSelectionChange}
-                  isLoading={isLoading}
-                />
-                <button
-                  onClick={() => setShowSheetSettingsModal(true)}
-                  className="h-8 w-8 rounded-md border border-border bg-background/90 hover:bg-muted/60 transition-colors flex items-center justify-center"
-                  aria-label="Open sheet settings"
-                  title="Open sheet settings"
-                >
-                  <Settings className="h-4 w-4 text-muted-foreground" />
-                </button>
-                {cycleSummaryData && (
                   <button
-                    onClick={handleOpenCycleSummaryStatic}
-                    className="h-8 px-3 rounded-md border border-border bg-background/90 hover:bg-muted/60 transition-colors flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-                    aria-label="View last cycle summary"
-                    title="View last cycle summary"
+                    onClick={() => setShowSheetSettingsModal(true)}
+                    className="h-9 w-9 shrink-0 rounded-xl border border-border bg-secondary/60 hover:bg-secondary transition-colors flex items-center justify-center"
+                    aria-label="Open sheet settings"
+                    title="Open sheet settings"
                   >
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Last Cycle</span>
+                    <Settings className="h-4 w-4 text-muted-foreground" />
                   </button>
-                )}
+                  {cycleSummaryData && (
+                    <button
+                      onClick={handleOpenCycleSummaryStatic}
+                      className="h-9 px-3 shrink-0 rounded-xl border border-border bg-secondary/60 hover:bg-secondary transition-colors flex items-center gap-1.5 text-xs font-semibold text-foreground"
+                      aria-label="View last cycle summary"
+                      title="View last cycle summary"
+                    >
+                      <CalendarDays className="h-3.5 w-3.5 text-primary" />
+                      <span className="hidden sm:inline">Last Cycle</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1711,23 +1713,36 @@ const Index = () => {
 
             {/* Hero Summary Section - Main Focus */}
             <div className="mb-8">
-              <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6 sm:p-8">
-                <CycleSummaryCard
-                  cycle={selectedCycle}
-                  totalEarnings={cycleStats.totalEarnings}
-                  daysActive={cycleStats.daysActive}
-                  isLoading={isLoading}
-                  displayMode={earningsDisplay}
-                  onDisplayModeChange={setEarningsDisplay}
-                  tooltipDismissed={tooltipDismissed}
-                  onDismissTooltip={dismissTooltip}
-                  includesRankingBonus={rankingBonusContributesToTotal}
+              <div className="relative overflow-hidden rounded-2xl bg-brand text-brand-foreground premium-shadow-lg p-6 sm:p-8">
+                {/* subtle accent glow */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-accent/20 blur-3xl"
                 />
+                <div className="relative">
+                  <CycleSummaryCard
+                    cycle={selectedCycle}
+                    totalEarnings={cycleStats.totalEarnings}
+                    daysActive={cycleStats.daysActive}
+                    isLoading={isLoading}
+                    displayMode={earningsDisplay}
+                    onDisplayModeChange={setEarningsDisplay}
+                    tooltipDismissed={tooltipDismissed}
+                    onDismissTooltip={dismissTooltip}
+                    includesRankingBonus={rankingBonusContributesToTotal}
+                  />
+                </div>
               </div>
             </div>
 
             {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
             <div className="mb-8">
+              <div className="mb-3 flex items-center gap-2">
+                <LayoutGrid className="h-4 w-4 text-primary" />
+                <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  Breakdown by Sheet
+                </h2>
+              </div>
               <SheetBreakdownCards
                 results={displayResults}
                 sheetNames={displaySelectedSheets}
@@ -1746,7 +1761,13 @@ const Index = () => {
 
             {/* Weekly Breakdown */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+              <div className="premium-card rounded-2xl p-6 sm:p-8 overflow-hidden">
+                <div className="mb-5 flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <CalendarRange className="h-4.5 w-4.5" />
+                  </div>
+                  <h2 className="font-display text-lg font-semibold tracking-tight">Weekly Performance</h2>
+                </div>
                 <WeeklyBreakdown 
                   results={displayResults} 
                   cycle={selectedCycle}
@@ -1758,7 +1779,13 @@ const Index = () => {
 
             {/* Daily Earnings Table - Detailed breakdown */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6">
+              <div className="premium-card rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Table2 className="h-4.5 w-4.5" />
+                  </div>
+                  <h2 className="font-display text-lg font-semibold tracking-tight">Daily Earnings</h2>
+                </div>
                 <DailyEarningsTable
                   results={displayResults}
                   sheetNames={displaySelectedSheets}
@@ -1783,7 +1810,13 @@ const Index = () => {
 
             {/* Leaderboard */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+              <div className="premium-card rounded-2xl p-6 sm:p-8 overflow-hidden">
+                <div className="mb-5 flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-warning/15 text-warning">
+                    <Trophy className="h-4.5 w-4.5" />
+                  </div>
+                  <h2 className="font-display text-lg font-semibold tracking-tight">Leaderboard</h2>
+                </div>
                 <LeaderboardPanel
                   sheetData={leaderboardSheetData}
                   currentUserId={userId}
@@ -1797,7 +1830,7 @@ const Index = () => {
             {/* Secondary Panels Grid - Goals, Streaks, Projection at the end */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {/* Goals Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="premium-card rounded-2xl p-6 overflow-hidden transition-shadow duration-300 hover:premium-shadow-lg">
                 <GoalsPanel
                   results={adjustedResults}
                   cycle={selectedCycle}
@@ -1807,7 +1840,7 @@ const Index = () => {
               </div>
 
               {/* Streaks Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="premium-card rounded-2xl p-6 overflow-hidden transition-shadow duration-300 hover:premium-shadow-lg">
                 <StreaksPanel
                   streakData={streakData}
                   achievements={achievements}
@@ -1817,7 +1850,7 @@ const Index = () => {
               </div>
 
               {/* Earnings Projection */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="premium-card rounded-2xl p-6 overflow-hidden transition-shadow duration-300 hover:premium-shadow-lg">
                 <EarningsProjection
                   results={adjustedResults}
                   cycle={selectedCycle}
@@ -1827,7 +1860,7 @@ const Index = () => {
               </div>
 
               {/* Activity Feed */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="premium-card rounded-2xl p-6 overflow-hidden transition-shadow duration-300 hover:premium-shadow-lg">
                 <ActivityFeed
                   sheetData={leaderboardSheetData}
                   currentUserId={userId}
