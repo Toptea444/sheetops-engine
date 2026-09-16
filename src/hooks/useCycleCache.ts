@@ -99,7 +99,12 @@ export function useCycleCache() {
           return [];
         }
 
-        return keepNewestRankingEntry((data || []) as Array<{ result_data: BonusResult; sheet_name: string; updated_at: string }>).map((row) => ({
+        const rows = (data || []) as unknown as Array<{
+          result_data: BonusResult;
+          sheet_name: string;
+          updated_at: string;
+        }>;
+        return keepNewestRankingEntry(rows).map((row) => ({
           ...row.result_data,
           sheetName: row.sheet_name,
         }));
@@ -155,7 +160,12 @@ export function useCycleCache() {
         }
 
         const result: Record<string, SheetData> = {};
-        keepNewestRankingEntry((data || []) as Array<{ sheet_name: string; sheet_data: SheetData; updated_at: string }>).forEach((row) => {
+        const rows = (data || []) as unknown as Array<{
+          sheet_name: string;
+          sheet_data: SheetData;
+          updated_at: string;
+        }>;
+        keepNewestRankingEntry(rows).forEach((row) => {
           result[row.sheet_name] = row.sheet_data as SheetData;
         });
         return result;
