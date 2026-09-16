@@ -4,6 +4,29 @@ import { getCycleKey } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
 
+const isRankingBonusSheet = (sheetName: string): boolean => {
+  const normalized = sheetName.toUpperCase().replace(/[^A-Z]/g, '');
+  return normalized.includes('RANKINGBONUS');
+};
+
+const keepNewestRankingEntry = <T extends { sheet_name: string; updated_at: string }>(rows: T[]): T[] => {
+  let newestRanking: T | undefined;
+  const otherRows: T[] = [];
+
+  for (const row of rows) {
+    if (!isRankingBonusSheet(row.sheet_name)) {
+      otherRows.push(row);
+      continue;
+    }
+
+    if (!newestRanking || new Date(row.updated_at).getTime() > new Date(newestRanking.updated_at).getTime()) {
+      newestRanking = row;
+    }
+  }
+
+  return newestRanking ? [...otherRows, newestRanking] : otherRows;
+};
+
 /**
  * Hook for caching cycle data in the database.
  * - Saves worker results & full sheet snapshots on every successful fetch.
@@ -67,7 +90,7 @@ export function useCycleCache() {
       try {
         const { data, error } = await supabase
           .from('cycle_worker_cache' as any)
-          .select('result_data, sheet_name')
+          .select('result_data, sheet_name, updated_at')
           .eq('worker_id', workerId)
           .eq('cycle_key', cycleKey);
 
@@ -76,7 +99,12 @@ export function useCycleCache() {
           return [];
         }
 
-        return (data || []).map((row: any) => ({
+        const rows = (data || []) as unknown as Array<{
+          result_data: BonusResult;
+          sheet_name: string;
+          updated_at: string;
+        }>;
+        return keepNewestRankingEntry(rows).map((row) => ({
           ...row.result_data,
           sheetName: row.sheet_name,
         }));
@@ -123,7 +151,7 @@ export function useCycleCache() {
       try {
         const { data, error } = await supabase
           .from('cycle_sheet_cache' as any)
-          .select('sheet_name, sheet_data')
+          .select('sheet_name, sheet_data, updated_at')
           .eq('cycle_key', cycleKey);
 
         if (error) {
@@ -132,7 +160,12 @@ export function useCycleCache() {
         }
 
         const result: Record<string, SheetData> = {};
-        (data || []).forEach((row: any) => {
+        const rows = (data || []) as unknown as Array<{
+          sheet_name: string;
+          sheet_data: SheetData;
+          updated_at: string;
+        }>;
+        keepNewestRankingEntry(rows).forEach((row) => {
           result[row.sheet_name] = row.sheet_data as SheetData;
         });
         return result;
