@@ -64,7 +64,6 @@ export function UserEarningsAdjustModal({
   const [dSubmitting, setDSubmitting] = useState(false);
 
   // Add state
-  const [aPrefix, setAPrefix] = useState('NGDS');
   const [aId, setAId] = useState('');
   const [aDate, setADate] = useState('');
   const [aAmounts, setAAmounts] = useState<PerSheetMap>({});
@@ -181,7 +180,7 @@ export function UserEarningsAdjustModal({
   }, [workerId, dDate, dAmounts, cycleKey, loadMine, onChanged]);
 
   // ── Add: fetch earnings for OTHER id on a date ──
-  const fullSourceId = `${aPrefix}${aId.trim()}`.toUpperCase();
+  const fullSourceId = aId.trim().toUpperCase();
 
   const fetchAdditionEarnings = useCallback(async () => {
     if (!aId.trim() || !aDate) {
@@ -365,12 +364,8 @@ export function UserEarningsAdjustModal({
 
               <div className="space-y-1.5">
                 <Label className="text-xs">ID you worked on</Label>
-                <div className="flex">
-                  <Input value={aPrefix} onChange={(e) => { setAPrefix(e.target.value.toUpperCase()); setAFetched(false); }}
-                    className="text-xs font-mono w-20 rounded-r-none border-r-0 bg-muted/50 px-2 h-9" />
-                  <Input placeholder="1001" value={aId} onChange={(e) => { setAId(e.target.value); setAFetched(false); }}
-                    className="text-sm font-mono rounded-l-none h-9" />
-                </div>
+                <Input placeholder="NGDS" value={aId} onChange={(e) => { setAId(e.target.value); setAFetched(false); }}
+                  className="text-sm font-mono h-9" />
               </div>
 
               <div className="space-y-1.5">
