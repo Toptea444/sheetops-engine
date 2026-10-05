@@ -242,15 +242,31 @@ function parseAllWorkersFromSheet(data: SheetData, cycle: CyclePeriod): { worker
     if (dateStarts.length === 0) continue;
     dateStarts.sort((a, b) => a.col - b.col);
 
-    // The next row should be the header row
-    const headerRow = matrix[rowIdx + 1] || [];
-
     // Process each date block
     for (let sIdx = 0; sIdx < dateStarts.length; sIdx++) {
       const blockStart = dateStarts[sIdx].col;
-      const blockEnd = dateStarts[sIdx + 1]?.col ?? Math.max(row.length, headerRow.length);
+      const blockEndGuess = dateStarts[sIdx + 1]?.col ?? row.length + 50;
       const dayNumber = dateStarts[sIdx].day;
       const timestamp = dateStarts[sIdx].timestamp;
+
+      // Locate the real header row. Newer sheets put a "bonus standards" table
+      // between the date row and the worker table, so the USERNAMES header can
+      // sit many rows below the date. Fall back to the row right after the date.
+      let headerRowIdx = rowIdx + 1;
+      const strictUserLabels = ['usernames', 'username', 'user name', 'user_name'];
+      for (let h = rowIdx + 1; h < Math.min(matrix.length, rowIdx + 120); h++) {
+        const candidate = matrix[h] || [];
+        if (h > rowIdx + 1 && parseDateFromCell(String(candidate[blockStart] ?? ''), data.sheetName)) break;
+        if (
+          findLabelInRange(candidate, blockStart, blockEndGuess, strictUserLabels) >= 0 &&
+          findLabelInRange(candidate, blockStart, blockEndGuess, ['total', 'ranking bonus']) >= 0
+        ) {
+          headerRowIdx = h;
+          break;
+        }
+      }
+      const headerRow = matrix[headerRowIdx] || [];
+      const blockEnd = dateStarts[sIdx + 1]?.col ?? Math.max(row.length, headerRow.length);
 
       // Find columns within this block
       const stagesCol = findLabelInRange(headerRow, blockStart, blockEnd, ['stages', 'stage', 'ids']);
@@ -270,7 +286,7 @@ function parseAllWorkersFromSheet(data: SheetData, cycle: CyclePeriod): { worker
       let currentStage = '';
 
       // Scan data rows
-      for (let r = rowIdx + 2; r < matrix.length; r++) {
+      for (let r = headerRowIdx + 1; r < matrix.length; r++) {
         const dataRow = matrix[r] || [];
         const stageCell = String(dataRow[stagesCol] ?? '').trim();
         const userCell = String(dataRow[usernamesCol] ?? '').trim();
