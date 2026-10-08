@@ -58,7 +58,7 @@ import { useEarningsAdjustments } from '@/hooks/useEarningsAdjustments';
 import { useTransportSubsidy } from '@/hooks/useTransportSubsidy';
 import { useNotifications, generateDataHash, NOTIFICATION_POLL_INTERVAL_MS } from '@/hooks/useNotifications';
 import { useCycleCache } from '@/hooks/useCycleCache';
-import { getCycleOptions, isDateInCycle, getCycleKey, getPreviousCycle } from '@/lib/cycleUtils';
+import { getCycleOptions, isDateInCycle, getCycleKey, getPreviousCycle, getCycleForDate } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
@@ -1806,6 +1806,14 @@ const Index = () => {
                 )}
               </div>
             </div>
+
+            <LastWeekRankAlert
+              enabled={identityConfirmed && !!userId}
+              weekKey={lastWeekStart !== null ? String(lastWeekStart) : null}
+              weekLabel={lastWeekInfo ? `Week of ${lastWeekInfo.week.label}` : ''}
+              hasData={lastWeekHasData}
+              onOpen={openLastWeekLeaderboard}
+            />
 
             {/* Leaderboard */}
             <div className="mb-8 scroll-mt-20" ref={leaderboardRef}>
