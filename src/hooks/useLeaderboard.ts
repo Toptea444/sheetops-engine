@@ -543,3 +543,26 @@ export function useLeaderboard({
     weekHasData,
   };
 }
+
+/** True if the sheet contains any leaderboard data dated within the given week. */
+export function sheetHasDataForWeek(sheetData: SheetData | null, cycle: CyclePeriod, week: WeekPeriod): boolean {
+  if (!sheetData) return false;
+  const { dataInfo } = parseAllWorkersFromSheet(sheetData, cycle);
+  const start = new Date(week.startDate).setHours(0, 0, 0, 0);
+  const end = new Date(week.endDate).setHours(23, 59, 59, 999);
+  for (const ts of dataInfo.foundTimestamps) if (ts >= start && ts <= end) return true;
+  return false;
+}
+
+/** The leaderboard week just before the one containing `today` (may fall in the previous cycle). */
+export function getLastCompletedWeek(today: Date, currentCycle: CyclePeriod, previousCycle: CyclePeriod): { week: WeekPeriod; cycle: CyclePeriod } | null {
+  const weeks = getWeeksInCycle(currentCycle);
+  const t = new Date(today); t.setHours(0, 0, 0, 0);
+  const idx = weeks.findIndex(w => t.getTime() >= new Date(w.startDate).setHours(0, 0, 0, 0) && t.getTime() <= new Date(w.endDate).setHours(23, 59, 59, 999));
+  if (idx > 0) return { week: weeks[idx - 1], cycle: currentCycle };
+  if (idx === 0) {
+    const prev = getWeeksInCycle(previousCycle);
+    return prev.length ? { week: prev[prev.length - 1], cycle: previousCycle } : null;
+  }
+  return null;
+}

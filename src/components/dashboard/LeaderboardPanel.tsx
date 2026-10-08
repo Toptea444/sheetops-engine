@@ -17,6 +17,7 @@ interface LeaderboardPanelProps {
   currentUserName?: string | null;
   userStage: string | null;
   cycle: CyclePeriod;
+  focusWeekRequest?: { weekStart: number; id: number } | null;
 }
 
 function getRankIcon(rank: number) {
@@ -57,6 +58,7 @@ export function LeaderboardPanel({
   currentUserName,
   userStage,
   cycle,
+  focusWeekRequest,
 }: LeaderboardPanelProps) {
   const [mode, setMode] = useState<'week' | 'cycle'>('week');
   
@@ -76,6 +78,16 @@ export function LeaderboardPanel({
       setSelectedWeekIndex(idx >= 0 ? idx : 0);
     }
   }, [cycle, weeks]);
+
+  // External request (e.g. "last week" alert) to jump to a specific week
+  useEffect(() => {
+    if (!focusWeekRequest) return;
+    const idx = weeks.findIndex(w => new Date(w.startDate).setHours(0, 0, 0, 0) === focusWeekRequest.weekStart);
+    if (idx >= 0) {
+      setMode('week');
+      setSelectedWeekIndex(idx);
+    }
+  }, [focusWeekRequest, weeks]);
 
   const selectedWeek = weeks[selectedWeekIndex] || null;
 

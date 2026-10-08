@@ -25,7 +25,9 @@ import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { ClaimedDayAlerts } from '@/components/dashboard/ClaimedDayAlerts';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
-import { DownloadAppBanner } from '@/components/DownloadAppBanner';
+import { LogoutButton } from '@/components/dashboard/LogoutButton';
+import { LastWeekRankAlert } from '@/components/dashboard/LastWeekRankAlert';
+import { getLastCompletedWeek, sheetHasDataForWeek } from '@/hooks/useLeaderboard';
 import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
 import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCard';
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
@@ -56,7 +58,7 @@ import { useEarningsAdjustments } from '@/hooks/useEarningsAdjustments';
 import { useTransportSubsidy } from '@/hooks/useTransportSubsidy';
 import { useNotifications, generateDataHash, NOTIFICATION_POLL_INTERVAL_MS } from '@/hooks/useNotifications';
 import { useCycleCache } from '@/hooks/useCycleCache';
-import { getCycleOptions, isDateInCycle, getCycleKey, getPreviousCycle } from '@/lib/cycleUtils';
+import { getCycleOptions, isDateInCycle, getCycleKey, getPreviousCycle, getCycleForDate } from '@/lib/cycleUtils';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
@@ -1410,6 +1412,33 @@ const Index = () => {
   }, [selectedSheets, sheetDataCache]);
 
 
+  // "See where you ranked last week" alert
+  const leaderboardRef = useRef<HTMLDivElement>(null);
+  const [leaderboardFocus, setLeaderboardFocus] = useState<{ weekStart: number; id: number } | null>(null);
+  const lastWeekInfo = useMemo(() => {
+    const current = getCycleForDate(new Date());
+    return getLastCompletedWeek(new Date(), current, getPreviousCycle(current));
+  }, []);
+  const lastWeekStart = lastWeekInfo ? new Date(lastWeekInfo.week.startDate).setHours(0, 0, 0, 0) : null;
+  const lastWeekHasData = useMemo(() => {
+    if (!lastWeekInfo) return null;
+    if (getCycleKey(lastWeekInfo.cycle) !== getCycleKey(selectedCycle)) return null;
+    return sheetHasDataForWeek(leaderboardSheetData, selectedCycle, lastWeekInfo.week);
+  }, [lastWeekInfo, selectedCycle, leaderboardSheetData]);
+  const openLastWeekLeaderboard = useCallback(() => {
+    if (!lastWeekInfo || lastWeekStart === null) return;
+    const key = getCycleKey(lastWeekInfo.cycle);
+    if (key !== getCycleKey(selectedCycle)) {
+      const opt = cycleOptions.find(c => getCycleKey(c) === key);
+      if (opt) setSelectedCycle(opt);
+    }
+    // Delay so the leaderboard re-computes its weeks for the new cycle first
+    setTimeout(() => {
+      setLeaderboardFocus({ weekStart: lastWeekStart, id: Date.now() });
+      leaderboardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 400);
+  }, [lastWeekInfo, lastWeekStart, selectedCycle, cycleOptions]);
+
   const summaryLeaderboardCycle = useMemo(() => getPreviousCycle(selectedCycle), [selectedCycle]);
 
   const { currentUserRank: summaryCycleRank, totalParticipants: summaryCycleParticipants } = useLeaderboard({
@@ -1655,11 +1684,8 @@ const Index = () => {
                     isLoading={isLoading}
                   />
                 </div>
-                {identityConfirmed && showDownloadBanner && (
-                  <DownloadAppBanner
-                    visible={true}
-                    onOpenModal={() => setDownloadModalRequestId((current) => current + 1)}
-                  />
+                {identityConfirmed && (
+                  <LogoutButton onLogout={handlePinGateSwitchUser} />
                 )}
               </div>
               <div className="min-w-0 flex items-center gap-2">
@@ -1781,8 +1807,16 @@ const Index = () => {
               </div>
             </div>
 
+            <LastWeekRankAlert
+              enabled={identityConfirmed && !!userId}
+              weekKey={lastWeekStart !== null ? String(lastWeekStart) : null}
+              weekLabel={lastWeekInfo ? `Week of ${lastWeekInfo.week.label}` : ''}
+              hasData={lastWeekHasData}
+              onOpen={openLastWeekLeaderboard}
+            />
+
             {/* Leaderboard */}
-            <div className="mb-8">
+            <div className="mb-8 scroll-mt-20" ref={leaderboardRef}>
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
                 <LeaderboardPanel
                   sheetData={leaderboardSheetData}
@@ -1790,6 +1824,7 @@ const Index = () => {
                   currentUserName={userName}
                   userStage={userStage}
                   cycle={selectedCycle}
+                  focusWeekRequest={leaderboardFocus}
                 />
               </div>
             </div>
