@@ -1810,7 +1810,7 @@ const Index = () => {
             <LastWeekRankAlert
               enabled={identityConfirmed && !!userId}
               weekKey={lastWeekStart !== null ? String(lastWeekStart) : null}
-              weekLabel={lastWeekInfo ? `Week of ${lastWeekInfo.week.label}` : ''}
+              weekLabel={lastWeekInfo ? lastWeekInfo.week.label : ''}
               hasData={lastWeekHasData}
               onOpen={openLastWeekLeaderboard}
             />

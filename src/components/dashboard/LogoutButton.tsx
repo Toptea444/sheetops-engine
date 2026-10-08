@@ -11,7 +11,7 @@ export function LogoutButton({ onLogout }: { onLogout: () => void | Promise<void
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-xs font-medium text-destructive hover:text-destructive/80 active:scale-[0.97] transition-all shrink-0 py-1 px-2 rounded-lg hover:bg-destructive/10"
+        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground active:scale-[0.97] transition-all shrink-0 py-1 px-2 rounded-lg hover:bg-muted"
       >
         <LogOut className="h-3.5 w-3.5" />
         <span>Log out</span>
