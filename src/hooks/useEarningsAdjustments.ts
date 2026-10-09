@@ -385,7 +385,8 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     });
 
     return { adjustedResults, netAdjustment };
-  }, [userId, swaps, transfers, todayLocal]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, swaps, transfers, todayLocal, (alwaysOwnedIds || []).join('|')]);
 
   /**
    * Get transfer info for a specific worker, date, and sheet for showing +/- indicators

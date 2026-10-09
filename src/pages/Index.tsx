@@ -222,7 +222,7 @@ const Index = () => {
     getTransferInfoForDate,
     isLoading: adjustmentsLoading,
     reload: reloadAdjustments,
-  } = useEarningsAdjustments(userId, selectedCycle);
+  } = useEarningsAdjustments(userId, selectedCycle, formerWorkerId ? [formerWorkerId] : undefined);
   const [showUserAdjustModal, setShowUserAdjustModal] = useState(false);
 
   // Apply adjustments to results
@@ -637,10 +637,12 @@ const Index = () => {
     setSheetDataCache(newCache);
 
     // Merge cached results in (cache wins for sheets we couldn't reproduce live).
-    const liveSheetNames = new Set(newResults.map((r) => r.sheetName));
+    // Keyed by sheet + worker ID so an old (pre-swap) ID's cached rows are not
+    // dropped just because the new ID was found live on the same sheet.
+    const liveKeys = new Set(newResults.map((r) => `${r.sheetName}::${r.workerId.toUpperCase()}`));
     const mergedResults = [
       ...newResults,
-      ...cachedResults.filter((r) => !liveSheetNames.has(r.sheetName)),
+      ...cachedResults.filter((r) => !liveKeys.has(`${r.sheetName}::${r.workerId.toUpperCase()}`)),
     ];
 
     // Legacy fallback: if nothing live AND we somehow have no cached rows yet,
