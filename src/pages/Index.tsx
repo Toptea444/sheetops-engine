@@ -222,7 +222,7 @@ const Index = () => {
     getTransferInfoForDate,
     isLoading: adjustmentsLoading,
     reload: reloadAdjustments,
-  } = useEarningsAdjustments(userId, selectedCycle);
+  } = useEarningsAdjustments(userId, selectedCycle, formerWorkerId ? [formerWorkerId] : undefined);
   const [showUserAdjustModal, setShowUserAdjustModal] = useState(false);
 
   // Apply adjustments to results
@@ -637,10 +637,12 @@ const Index = () => {
     setSheetDataCache(newCache);
 
     // Merge cached results in (cache wins for sheets we couldn't reproduce live).
-    const liveSheetNames = new Set(newResults.map((r) => r.sheetName));
+    // Keyed by sheet + worker ID so an old (pre-swap) ID's cached rows are not
+    // dropped just because the new ID was found live on the same sheet.
+    const liveKeys = new Set(newResults.map((r) => `${r.sheetName}::${r.workerId.toUpperCase()}`));
     const mergedResults = [
       ...newResults,
-      ...cachedResults.filter((r) => !liveSheetNames.has(r.sheetName)),
+      ...cachedResults.filter((r) => !liveKeys.has(`${r.sheetName}::${r.workerId.toUpperCase()}`)),
     ];
 
     // Legacy fallback: if nothing live AND we somehow have no cached rows yet,
@@ -754,29 +756,11 @@ const Index = () => {
 
     const checkSwap = async () => {
       const uid = userId.toUpperCase();
-      const todayLocal = toLocalDateStr(Date.now());
-      
-      // Find any swap involving this user's ID (either side of a bidirectional swap)
-      const { data: swapRes } = await supabase.from('id_swaps')
-        .select('id, old_worker_id, new_worker_id, effective_date')
-        .or(`old_worker_id.eq.${uid},new_worker_id.eq.${uid}`)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (swapRes && swapRes.length > 0) {
-        const swap = swapRes[0];
-        if (swap.effective_date > todayLocal) return;
-        // Per-user ack key: each worker independently acknowledges the swap on their device
+      const swap = await findSwapAwayFrom(uid);
+      if (swap) {
         const ackKey = `performanceTracker_swapAck_${swap.id}_${uid}`;
-        
         if (!localStorage.getItem(ackKey)) {
-          // Determine the user's new ID based on which side of the swap they are
-          const isOldSide = swap.old_worker_id === uid;
-          setSwapDetected({
-            currentUserId: uid,
-            swappedWithId: isOldSide ? swap.new_worker_id : swap.old_worker_id,
-            swapId: swap.id,
-          });
+          setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId: swap.id });
         }
       }
     };
@@ -806,16 +790,8 @@ const Index = () => {
       if (error) return;
 
       if (!data) {
-        // Only show pin reset if there's no pending swap for this user
-        const { data: swapRows } = await supabase
-          .from('id_swaps')
-          .select('id, effective_date')
-          .or(`old_worker_id.eq.${userId.toUpperCase()},new_worker_id.eq.${userId.toUpperCase()}`)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        const todayLocal = toLocalDateStr(Date.now());
-        const hasPendingSwap = swapRows && swapRows.length > 0 && swapRows[0].effective_date <= todayLocal;
+        // Only show pin reset if this ID wasn't moved to a new one
+        const hasPendingSwap = !!(await findSwapAwayFrom(userId));
         if (hasPendingSwap) {
           // Swap detection loop will handle this — don't show pin reset modal
           return;
@@ -967,34 +943,11 @@ const Index = () => {
     if (pinVerified) {
     // Check for ID swap before granting access
     const uid = newUserId.toUpperCase();
-    const todayLocal = toLocalDateStr(Date.now());
-    const { data: swapRows } = await supabase
-      .from('id_swaps')
-      .select('id, old_worker_id, new_worker_id, effective_date')
-      .or(`old_worker_id.eq.${uid},new_worker_id.eq.${uid}`)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (swapRows && swapRows.length > 0) {
-      const swap = swapRows[0];
-      if (swap.effective_date > todayLocal) {
-        setUserId(newUserId, newUserName || undefined);
-        localStorage.setItem(PIN_VERIFIED_KEY, 'true');
-        setPinVerifiedThisSession(true);
-        setShowWelcome(false);
-        confirmIdentity(newUserId);
-        toast.success(`Welcome, ${newUserName || newUserId}! Your account is secured.`);
-        return;
-      }
-      // Per-user ack key
+    const swap = await findSwapAwayFrom(uid);
+    if (swap) {
       const ackKey = `performanceTracker_swapAck_${swap.id}_${uid}`;
       if (!localStorage.getItem(ackKey)) {
-        const isOldSide = swap.old_worker_id === uid;
-        setSwapDetected({
-          currentUserId: uid,
-          swappedWithId: isOldSide ? swap.new_worker_id : swap.old_worker_id,
-          swapId: swap.id,
-        });
+        setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId: swap.id });
         setShowWelcome(false);
         return; // Don't grant access
       }
@@ -1013,32 +966,11 @@ const Index = () => {
     // Check for ID swap before granting access
     if (userId) {
       const uid = userId.toUpperCase();
-      const todayLocal = toLocalDateStr(Date.now());
-      const { data: swapRows } = await supabase
-        .from('id_swaps')
-        .select('id, old_worker_id, new_worker_id, effective_date')
-        .or(`old_worker_id.eq.${uid},new_worker_id.eq.${uid}`)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (swapRows && swapRows.length > 0) {
-        const swap = swapRows[0];
-        if (swap.effective_date > todayLocal) {
-          localStorage.setItem(PIN_VERIFIED_KEY, 'true');
-          setPinVerifiedThisSession(true);
-          setShowPinGate(false);
-          confirmIdentity(userId || undefined);
-          return;
-        }
-        // Per-user ack key
+      const swap = await findSwapAwayFrom(uid);
+      if (swap) {
         const ackKey = `performanceTracker_swapAck_${swap.id}_${uid}`;
         if (!localStorage.getItem(ackKey)) {
-          const isOldSide = swap.old_worker_id === uid;
-          setSwapDetected({
-            currentUserId: uid,
-            swappedWithId: isOldSide ? swap.new_worker_id : swap.old_worker_id,
-            swapId: swap.id,
-          });
+          setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId: swap.id });
           return; // Don't grant access
         }
       }

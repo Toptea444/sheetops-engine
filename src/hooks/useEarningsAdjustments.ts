@@ -87,11 +87,57 @@ function transferAppliesToSheet(t: DayTransfer, sheetName: string): boolean {
   return t.sheet_name === sheetName;
 }
 
+export type OwnershipMap = Record<string, Array<{ from: string | null; to: string | null }>>;
+
+/**
+ * Directional ID-change model: a swap record `old → new` on `effective_date`
+ * means the person who held `old` uses `new` from that date onward.
+ *
+ * Starting from the ID the user is logged in with today, walk backwards:
+ * find the latest change that moved someone INTO the tracked ID (on/before the
+ * current window start). That ID is owned from that date; before it the user
+ * held `old`. Repeat until no earlier change exists.
+ *
+ * Returns half-open [from, to) windows per ID (null = open-ended) plus the
+ * swaps that form the user's chain (newest first).
+ */
+export function computeOwnership(uid: string, allSwaps: IdSwap[], todayLocal: string): { map: OwnershipMap; chain: IdSwap[] } {
+  const map: OwnershipMap = {};
+  const chain: IdSwap[] = [];
+  const effective = allSwaps.filter(s => s.effective_date <= todayLocal);
+  const used = new Set<string>();
+  let tracked = uid.toUpperCase();
+  let end: string | null = null;
+
+  for (let guard = 0; guard < 50; guard++) {
+    let best: IdSwap | null = null;
+    for (const s of effective) {
+      if (used.has(s.id)) continue;
+      if (s.new_worker_id.toUpperCase() !== tracked) continue;
+      if (end !== null && s.effective_date > end) continue;
+      if (!best || s.effective_date > best.effective_date ||
+        (s.effective_date === best.effective_date && s.created_at > best.created_at)) {
+        best = s;
+      }
+    }
+    if (!best) break;
+    used.add(best.id);
+    chain.push(best);
+    (map[tracked] ||= []).push({ from: best.effective_date, to: end });
+    end = best.effective_date;
+    tracked = best.old_worker_id.toUpperCase();
+  }
+
+  if (chain.length > 0) (map[tracked] ||= []).push({ from: null, to: end });
+  return { map, chain };
+}
+
 /**
  * Fetches swaps & transfers from the DB and provides a function
  * to apply them as corrections to raw sheet-based BonusResults.
+ * `alwaysOwnedIds` (e.g. a former ID the user entered) are never filtered out.
  */
-export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod) {
+export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod, alwaysOwnedIds?: string[]) {
   const [swaps, setSwaps] = useState<IdSwap[]>([]);
   const [transfers, setTransfers] = useState<DayTransfer[]>([]);
   const [adjustmentNotes, setAdjustmentNotes] = useState<AdjustmentNote[]>([]);
@@ -105,60 +151,32 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     setIsLoading(true);
     try {
       const [swapRes, transferRes] = await Promise.all([
-        // Fetch ALL swaps for this user across all cycles — a swap on cycle N
-        // affects how data is read when viewing cycle N-1 or any other cycle,
-        // so filtering by cycle_key here would cause double-counting when browsing
-        // historical cycles.
+        // Fetch ALL swaps: ID changes can chain (A→B, later B→C), and the
+        // table is small, so we walk the full history client-side.
         supabase
           .from('id_swaps')
           .select('*')
-          .or(`old_worker_id.eq.${userId.toUpperCase()},new_worker_id.eq.${userId.toUpperCase()}`)
           .order('effective_date', { ascending: true }),
-        // Day transfers remain cycle-scoped (they are specific financial corrections
-        // that only apply within the cycle they were recorded for)
         supabase.from('day_transfers').select('*').eq('cycle_key', cycleKey),
       ]);
 
       const allSwaps = (swapRes.data || []) as unknown as IdSwap[];
       const allTransfers = (transferRes.data || []) as unknown as DayTransfer[];
-      const effectiveSwaps = allSwaps.filter(s => s.effective_date <= todayLocal);
 
       setSwaps(allSwaps);
       setTransfers(allTransfers);
 
-      // Build adjustment notes relevant to this user
       const notes: AdjustmentNote[] = [];
       const uid = userId.toUpperCase();
 
-      effectiveSwaps.forEach(s => {
-        // In a bidirectional swap: two workers exchange IDs
-        // Swap record stores: old_worker_id <-> new_worker_id
-        // 
-        // From the swap record perspective:
-        // - The person who HAD old_worker_id NOW uses new_worker_id
-        // - The person who HAD new_worker_id NOW uses old_worker_id
-        //
-        // So for the current user (uid):
-        // - If uid === new_worker_id: user's OLD ID was old_worker_id, NEW ID is new_worker_id
-        // - If uid === old_worker_id: user's OLD ID was new_worker_id, NEW ID is old_worker_id
-        let userOldId: string, userNewId: string;
-        if (s.new_worker_id === uid) {
-          // User is now logged in with new_worker_id, meaning they came FROM old_worker_id
-          userOldId = s.old_worker_id;
-          userNewId = s.new_worker_id;
-        } else if (s.old_worker_id === uid) {
-          // User is now logged in with old_worker_id, meaning they came FROM new_worker_id
-          userOldId = s.new_worker_id;
-          userNewId = s.old_worker_id;
-        } else {
-          return;
-        }
+      const { chain } = computeOwnership(uid, allSwaps, todayLocal);
+      chain.forEach(s => {
         const dateLabel = new Date(s.effective_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         notes.push({
           type: 'swap_in',
           date: s.effective_date,
           amount: 0,
-          description: `Your ID was swapped from ${userOldId} to ${userNewId} on ${dateLabel}. Earnings before ${dateLabel} are from your previous ID (${userOldId}), and earnings from ${dateLabel} onward are under your current ID (${userNewId}).${s.notes ? ` Note: ${s.notes}` : ''}`,
+          description: `Your ID changed from ${s.old_worker_id} to ${s.new_worker_id} on ${dateLabel}. Days before ${dateLabel} come from ${s.old_worker_id}, and days from ${dateLabel} come from ${s.new_worker_id}.${s.notes ? ` Note: ${s.notes}` : ''}`,
           created_at: s.created_at,
         });
       });
@@ -238,66 +256,6 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
 
   useEffect(() => { load(); }, [load]);
 
-  /**
-   * Compute the full ownership map for the current user across ALL worker IDs
-   * they've ever held, based on the chronological swap history.
-   *
-   * Two-worker swap semantics: each swap record represents two workers exchanging
-   * IDs on `effective_date`. The current logged-in user's ID may therefore change
-   * over time. We walk swaps BACKWARDS from "now" (where the user's ID = uid):
-   * whenever the tracked ID appears in a swap, ownership of that ID ends at that
-   * swap's effective_date, and the tracked ID flips to the other side of the swap.
-   *
-   * Returns: { [workerId]: [{ from, to }, ...] } — half-open intervals [from, to)
-   * where `null` means -∞ / +∞. The current user owned `workerId` during those
-   * date windows.
-   *
-   * Example — single swap A↔B on Mar 16, current user logged in as B:
-   *   Before Mar 16 they had A. After Mar 16 they have B.
-   *   Result: { A: [{null, Mar16}], B: [{Mar16, null}] }
-   */
-  const buildOwnershipMap = useCallback((
-    uid: string,
-    sortedEffectiveSwaps: IdSwap[],
-  ): Record<string, Array<{ from: string | null; to: string | null }>> => {
-    const map: Record<string, Array<{ from: string | null; to: string | null }>> = {};
-    let trackedId = uid;
-    let endTime: string | null = null;
-
-    // Walk newest → oldest
-    for (let i = sortedEffectiveSwaps.length - 1; i >= 0; i--) {
-      const s = sortedEffectiveSwaps[i];
-      if (s.old_worker_id === trackedId || s.new_worker_id === trackedId) {
-        (map[trackedId] ||= []).push({ from: s.effective_date, to: endTime });
-        endTime = s.effective_date;
-        trackedId = s.old_worker_id === trackedId ? s.new_worker_id : s.old_worker_id;
-      }
-    }
-
-    // Open-ended earliest window for the original ID this worker held
-    (map[trackedId] ||= []).push({ from: null, to: endTime });
-
-    // Sort each ID's windows by `from` ascending (null = -∞ first)
-    Object.values(map).forEach(wins => {
-      wins.sort((a, b) => {
-        if (a.from === b.from) return 0;
-        if (a.from === null) return -1;
-        if (b.from === null) return 1;
-        return a.from.localeCompare(b.from);
-      });
-    });
-
-    return map;
-  }, []);
-
-  const buildOwnershipWindows = useCallback((
-    uid: string,
-    workerId: string,
-    sortedEffectiveSwaps: IdSwap[],
-  ): Array<{ from: string | null; to: string | null }> => {
-    const map = buildOwnershipMap(uid, sortedEffectiveSwaps);
-    return map[workerId] || [];
-  }, [buildOwnershipMap]);
 
 
   /**
@@ -315,15 +273,9 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     const uid = userId.toUpperCase();
     let netAdjustment = 0;
 
-    // Swaps sorted ascending by effective_date (already ordered from DB query)
-    const effectiveSwaps = swaps
-      .filter(s => s.effective_date <= todayLocal)
-      .sort((a, b) => a.effective_date.localeCompare(b.effective_date));
-
-    // Check if any swaps involve this user at all
-    const userInvolvedInAnySwap = effectiveSwaps.some(
-      s => s.old_worker_id === uid || s.new_worker_id === uid
-    );
+    const { map: ownershipMap, chain } = computeOwnership(uid, swaps, todayLocal);
+    const userInvolvedInAnySwap = chain.length > 0;
+    const extraIds = new Set((alwaysOwnedIds || []).map((i) => i.toUpperCase()));
 
     // Find transfers involving this user
     const userTransfers = transfers.filter(t =>
@@ -334,20 +286,18 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       const resultId = result.workerId.toUpperCase();
       const adjusted = { ...result, dailyBreakdown: result.dailyBreakdown.map(d => ({ ...d })) };
       const resultSheet = result.sheetName || '';
-      
-      // ── Swaps: filter daily breakdown based on ownership windows ──
-      if (userInvolvedInAnySwap) {
-        // Build ownership windows: when did uid own this resultId?
-        const windows = buildOwnershipWindows(uid, resultId, effectiveSwaps);
 
+      // ── Swaps: keep only the days this user actually held resultId ──
+      if (userInvolvedInAnySwap) {
+        const windows = ownershipMap[resultId] || [];
         if (windows.length === 0) {
-          // uid never owned this resultId — drop all days
-          adjusted.dailyBreakdown = [];
+          // Not part of the swap chain. Former-ID lookups are always kept;
+          // anything else belongs to someone else.
+          if (!extraIds.has(resultId)) adjusted.dailyBreakdown = [];
         } else {
-          adjusted.dailyBreakdown = result.dailyBreakdown.map(d => ({ ...d })).filter(day => {
+          adjusted.dailyBreakdown = adjusted.dailyBreakdown.filter(day => {
             if (!day.fullDate) return true;
             const dayStr = toLocalDateStr(day.fullDate);
-            // Keep the day if it falls within ANY ownership window
             return windows.some(w => {
               const afterFrom = w.from === null || dayStr >= w.from;
               const beforeTo  = w.to   === null || dayStr <  w.to;
@@ -355,15 +305,11 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
             });
           });
         }
-
-        // Tag kept days with their source worker ID if it differs from current ID
-        if (resultId !== uid) {
-          adjusted.dailyBreakdown = adjusted.dailyBreakdown.map(day => ({
-            ...day,
-            sourceWorkerId: resultId,
-          }));
-        }
-        
+        // Tag every day with the ID it came from so the breakdown can label it
+        adjusted.dailyBreakdown = adjusted.dailyBreakdown.map(day => ({
+          ...day,
+          sourceWorkerId: resultId,
+        }));
         adjusted.totalBonus = adjusted.dailyBreakdown.reduce((sum, d) => sum + d.value, 0);
       }
       
@@ -439,7 +385,8 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     });
 
     return { adjustedResults, netAdjustment };
-  }, [userId, swaps, transfers, todayLocal]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, swaps, transfers, todayLocal, (alwaysOwnedIds || []).join('|')]);
 
   /**
    * Get transfer info for a specific worker, date, and sheet for showing +/- indicators
@@ -485,18 +432,10 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
   const getWorkerIdsToFetch = useCallback((): string[] => {
     if (!userId) return [];
     const uid = userId.toUpperCase();
-
-    const effectiveSwaps = swaps
-      .filter(s => s.effective_date <= todayLocal)
-      .sort((a, b) => a.effective_date.localeCompare(b.effective_date));
-
-    // Every worker ID that appears in the ownership map is one this user has
-    // held at some point in time — we need earnings data for all of them.
-    const ownershipMap = buildOwnershipMap(uid, effectiveSwaps);
-    const ids = new Set<string>([uid, ...Object.keys(ownershipMap)]);
-
+    const { map } = computeOwnership(uid, swaps, todayLocal);
+    const ids = new Set<string>([uid, ...Object.keys(map)]);
     return Array.from(ids);
-  }, [userId, swaps, todayLocal, buildOwnershipMap]);
+  }, [userId, swaps, todayLocal]);
 
 
   return {
