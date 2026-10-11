@@ -203,6 +203,13 @@ export function DailyEarningsTable({
     return getTransferInfo(currentUserId, dayStr, activeTab);
   };
 
+  // Mid-cycle ID swap: label each day with the ID its earnings came from
+  const swapIds = useMemo(() => {
+    const ids = new Set(sheetData.map(d => d.sourceWorkerId).filter(Boolean) as string[]);
+    return ids.size > 1 ? ids : null;
+  }, [sheetData]);
+  const isNewId = (id?: string) => !!id && !!currentUserId && id.toUpperCase() === currentUserId.toUpperCase();
+
   const displayedDays = showAll ? sheetData : sheetData.slice(0, 6);
 
   const tabLabel = (name: string) => (name.split(' ')[0] || name).toUpperCase();
@@ -296,6 +303,12 @@ export function DailyEarningsTable({
                   </div>
                 )}
 
+                {swapIds && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Your ID changed this cycle. Each day shows which ID it came from.
+                  </p>
+                )}
+
                 {sheetData.length === 0 ? (
                   <p className="text-center text-sm text-muted-foreground py-6">
                     No entries for this cycle
@@ -359,6 +372,18 @@ export function DailyEarningsTable({
                                 >
                                   <div className="flex items-center gap-1.5">
                                     <span>{day.date}</span>
+                                    {swapIds && day.sourceWorkerId && (
+                                      <span
+                                        title={`Earnings from ${day.sourceWorkerId}`}
+                                        className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium tabular-nums ${
+                                          isNewId(day.sourceWorkerId)
+                                            ? 'border-primary/30 bg-primary/10 text-primary'
+                                            : 'border-border bg-muted text-muted-foreground'
+                                        }`}
+                                      >
+                                        {isNewId(day.sourceWorkerId) ? 'New' : 'Old'} · {day.sourceWorkerId}
+                                      </span>
+                                    )}
                                     {transferInfo?.byUser && transferInfo.kind === 'user_deduction' && (
                                       <span
                                         title="You marked this date as a day you didn't work"

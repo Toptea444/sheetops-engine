@@ -1,3 +1,4 @@
+import { findSwapAwayFrom } from '@/lib/idSwaps';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
@@ -32,6 +33,7 @@ import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
 import { TransportSubsidyCard } from '@/components/dashboard/TransportSubsidyCard';
 import { RankingBonusPreferenceModal } from '@/components/dashboard/RankingBonusPreferenceModal';
 import { SheetSettingsModal } from '@/components/dashboard/SheetSettingsModal';
+import { SwapAccountModal } from '@/components/dashboard/SwapAccountModal';
 import { UserEarningsAdjustModal } from '@/components/dashboard/UserEarningsAdjustModal';
 import { FeatureUpdateModal } from '@/components/FeatureUpdateModal';
 import { RankingBonusMomentumBanner } from '@/components/dashboard/RankingBonusMomentumBanner';
@@ -224,6 +226,7 @@ const Index = () => {
     reload: reloadAdjustments,
   } = useEarningsAdjustments(userId, selectedCycle, formerWorkerId ? [formerWorkerId] : undefined);
   const [showUserAdjustModal, setShowUserAdjustModal] = useState(false);
+  const [showSwapAccountModal, setShowSwapAccountModal] = useState(false);
 
   // Apply adjustments to results
   const { adjustedResults, netAdjustment } = useMemo(() => {
@@ -982,6 +985,32 @@ const Index = () => {
     confirmIdentity(userId || undefined);
   }, [confirmIdentity, userId]);
 
+  // Side-effect-free lookup used by the self-swap modal
+  const checkIdOnSheets = useCallback(async (id: string): Promise<{ valid: boolean; userName?: string }> => {
+    for (const sheet of sheets.filter(s => !s.disabled)) {
+      const data = sheetDataCache[sheet.name] ?? await fetchSheetData(sheet.name);
+      if (!data) continue;
+      const worker = searchWorker(data, id);
+      if (worker) return { valid: true, userName: worker.userName || undefined };
+    }
+    return { valid: false };
+  }, [sheets, sheetDataCache, fetchSheetData, searchWorker]);
+
+  // After a user swaps their own ID: move them straight onto the new ID.
+  // PIN was carried over server-side, so they stay logged in.
+  const handleSelfSwap = useCallback(async ({ newId, userName: newName, swapId }: { newId: string; userName?: string; swapId: string }) => {
+    const oldId = (userId || '').toUpperCase();
+    localStorage.setItem(`performanceTracker_swapAck_${swapId}_${oldId}`, 'true');
+    localStorage.setItem(`performanceTracker_swapAck_${swapId}_${newId}`, 'true');
+    if (oldId) await releaseSession(oldId);
+    setResults([]);
+    setDataError(null);
+    setUserId(newId, newName || undefined);
+    localStorage.setItem(PIN_VERIFIED_KEY, 'true');
+    setPinVerifiedThisSession(true);
+    confirmIdentity(newId);
+  }, [userId, releaseSession, setUserId, confirmIdentity]);
+
   const handlePinGateSwitchUser = useCallback(async () => {
     if (userId) await releaseSession(userId);
     localStorage.removeItem(PIN_VERIFIED_KEY);
@@ -1444,11 +1473,18 @@ const Index = () => {
         open={showSheetSettingsModal}
         onClose={() => setShowSheetSettingsModal(false)}
         onOpenRankingBonus={openRankingPreferenceFromSettings}
-        onOpenTransportSubsidy={openTransportSubsidyFromSettings}
+        onOpenSwapAccount={() => { setShowSheetSettingsModal(false); setShowSwapAccountModal(true); }}
         onOpenEarningsAdjust={() => { setShowSheetSettingsModal(false); setShowUserAdjustModal(true); }}
         rankingIncludedInTotal={includeRankingBonusInTotal}
-        subsidyOptedIn={subsidyOptedIn}
-        subsidyKId={subsidyKId}
+        currentId={userId}
+      />
+
+      <SwapAccountModal
+        open={showSwapAccountModal}
+        onClose={() => setShowSwapAccountModal(false)}
+        currentId={userId}
+        onValidateId={checkIdOnSheets}
+        onSwapped={handleSelfSwap}
       />
 
       <UserEarningsAdjustModal
