@@ -9,7 +9,7 @@ import type {
   BonusValueType,
 } from '@/types/bonus';
 
-const SPREADSHEET_ID = '18Vjztt0odhAMzZiqIv4_HgIl5ebrzh4p67NFMWOQyQg';
+const SPREADSHEET_ID = '1pZGeK-Qic4wh40eLeeqgeltOsYjXJFE3EN-Vbj4i0ks';
 
 /** Extract a user-friendly message from edge function errors */
 function extractUserFriendlyError(err: unknown, fallback: string): string {
