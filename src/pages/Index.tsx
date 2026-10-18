@@ -529,6 +529,7 @@ const Index = () => {
     const idsForCache = idsToSearch;
     const cachedResults: BonusResult[] = [];
     let cachedSheetNamesFromSnapshots: string[] = [];
+    let cachedCycleSnapshots: Record<string, SheetData> = {};
     if (isPastCycle) {
       const seen = new Set<string>();
       for (const cacheId of idsForCache) {
@@ -554,6 +555,7 @@ const Index = () => {
       }
       // Also pre-load cached sheet snapshots so leaderboard / breakdowns work.
       const cachedSheets = await loadAllSheetSnapshots(currentCycleKey);
+      cachedCycleSnapshots = cachedSheets;
       cachedSheetNamesFromSnapshots = Object.keys(cachedSheets).filter((name) =>
         sheetMatchesCycle(name, selectedCycle, cachedSheets[name])
       );
@@ -581,10 +583,10 @@ const Index = () => {
 
     for (const sheetName of effectiveSelectedSheets) {
       const cachedFallback = isPastCycle
-        ? newCache[sheetName]
+        ? cachedCycleSnapshots[sheetName]
         : (sheetDataCache[sheetName] ?? newCache[sheetName]);
       let data = forceRefetch ? null : (sheetDataCache[sheetName] ?? newCache[sheetName]);
-      if (isPastCycle) data = forceRefetch ? null : newCache[sheetName];
+      if (isPastCycle) data = forceRefetch ? null : cachedCycleSnapshots[sheetName];
 
       // Past cycles always check the active spreadsheet first. Only use the
       // snapshot for this cycle and this spreadsheet when the live tab is
