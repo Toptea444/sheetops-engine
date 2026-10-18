@@ -1,1 +1,2 @@
 - ID swaps are directional (old_worker_id → new_worker_id from effective_date); ownership is computed by walking the full swap chain backwards from the logged-in ID (computeOwnership). Why: IDs get reassigned, and the old bidirectional model gave users other people's earnings.
+- The active spreadsheet ID is defined once in `src/lib/spreadsheetConfig.ts`, and cycle-cache keys include that source ID. Why: changing the live spreadsheet must not make archived data from a previous source appear current.

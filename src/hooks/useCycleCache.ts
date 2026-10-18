@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getCycleKey } from '@/lib/cycleUtils';
+import { getSpreadsheetCycleCacheKey } from '@/lib/spreadsheetConfig';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import type { BonusResult, SheetData } from '@/types/bonus';
 
@@ -38,7 +39,7 @@ export function useCycleCache() {
    */
   const saveWorkerResult = useCallback(
     async (workerId: string, sheetName: string, cycle: CyclePeriod, result: BonusResult) => {
-      const key = getCycleKey(cycle);
+      const key = getSpreadsheetCycleCacheKey(getCycleKey(cycle));
       try {
         const { error } = await supabase.from('cycle_worker_cache' as any).upsert(
           {
@@ -63,7 +64,7 @@ export function useCycleCache() {
    */
   const saveSheetSnapshot = useCallback(
     async (sheetName: string, cycle: CyclePeriod, sheetData: SheetData) => {
-      const key = getCycleKey(cycle);
+      const key = getSpreadsheetCycleCacheKey(getCycleKey(cycle));
       try {
         const { error } = await supabase.from('cycle_sheet_cache' as any).upsert(
           {
@@ -92,7 +93,7 @@ export function useCycleCache() {
           .from('cycle_worker_cache' as any)
           .select('result_data, sheet_name, updated_at')
           .eq('worker_id', workerId)
-          .eq('cycle_key', cycleKey);
+          .eq('cycle_key', getSpreadsheetCycleCacheKey(cycleKey));
 
         if (error) {
           console.warn('[CycleCache] load worker results error:', error.message);
@@ -126,7 +127,7 @@ export function useCycleCache() {
           .from('cycle_sheet_cache' as any)
           .select('sheet_data')
           .eq('sheet_name', sheetName)
-          .eq('cycle_key', cycleKey)
+          .eq('cycle_key', getSpreadsheetCycleCacheKey(cycleKey))
           .maybeSingle();
 
         if (error) {
@@ -152,7 +153,7 @@ export function useCycleCache() {
         const { data, error } = await supabase
           .from('cycle_sheet_cache' as any)
           .select('sheet_name, sheet_data, updated_at')
-          .eq('cycle_key', cycleKey);
+          .eq('cycle_key', getSpreadsheetCycleCacheKey(cycleKey));
 
         if (error) {
           console.warn('[CycleCache] load all snapshots error:', error.message);

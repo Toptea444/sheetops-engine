@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { SheetData } from '@/types/bonus';
+import { SPREADSHEET_ID } from '@/lib/spreadsheetConfig';
 
-const SPREADSHEET_ID = '1pZGeK-Qic4wh40eLeeqgeltOsYjXJFE3EN-Vbj4i0ks';
 const TRANSPORT_SUBSIDY_SHEET = 'transport subsidy';
 
 const COOKIE_SETUP_DONE = 'performanceTracker_transportSubsidySetupDone';

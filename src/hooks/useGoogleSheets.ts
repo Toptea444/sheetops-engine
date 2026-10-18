@@ -8,8 +8,7 @@ import type {
   DailyBonus,
   BonusValueType,
 } from '@/types/bonus';
-
-const SPREADSHEET_ID = '1pZGeK-Qic4wh40eLeeqgeltOsYjXJFE3EN-Vbj4i0ks';
+import { SPREADSHEET_ID } from '@/lib/spreadsheetConfig';
 
 /** Extract a user-friendly message from edge function errors */
 function extractUserFriendlyError(err: unknown, fallback: string): string {
