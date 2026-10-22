@@ -460,8 +460,15 @@ const Index = () => {
   };
   
   useEffect(() => {
+    let cancelled = false;
     const init = async () => {
+      if (userId) {
+        try { await resolveStageSheet(userId); } catch { /* default sheet */ }
+        if (cancelled) return;
+        setSheetDataCache({});
+      }
       const sheetsList = await fetchSheets();
+      if (cancelled) return;
       if (sheetsList.length > 0) {
         // Exclude disabled sheets AND the Weekly Bonus GH sheet
         const enabledSheets = sheetsList.filter(s => 
@@ -472,7 +479,8 @@ const Index = () => {
       setIsInitializing(false);
     };
     init();
-  }, [fetchSheets]);
+    return () => { cancelled = true; };
+  }, [fetchSheets, userId]);
 
   // Show welcome modal for new users, PIN gate for returning users
   // Note: Identity confirmation is now handled within WelcomeModal/SessionPinGate for users WITHOUT a PIN.

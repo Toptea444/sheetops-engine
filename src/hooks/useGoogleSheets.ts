@@ -8,7 +8,7 @@ import type {
   DailyBonus,
   BonusValueType,
 } from '@/types/bonus';
-import { SPREADSHEET_ID } from '@/lib/spreadsheetConfig';
+import { getActiveSpreadsheetId } from '@/lib/spreadsheetConfig';
 
 /** Extract a user-friendly message from edge function errors */
 function extractUserFriendlyError(err: unknown, fallback: string): string {
@@ -62,7 +62,7 @@ export function useGoogleSheets() {
     setError(null);
     try {
       const { data, error: fnError } = await supabase.functions.invoke('fetch-google-sheets', {
-        body: { action: 'getSheets', spreadsheetId: SPREADSHEET_ID },
+        body: { action: 'getSheets', spreadsheetId: getActiveSpreadsheetId() },
       });
 
       if (fnError) {
@@ -88,7 +88,7 @@ export function useGoogleSheets() {
     setError(null);
     try {
       const { data, error: fnError } = await supabase.functions.invoke('fetch-google-sheets', {
-        body: { action: 'getSheetData', spreadsheetId: SPREADSHEET_ID, sheetName },
+        body: { action: 'getSheetData', spreadsheetId: getActiveSpreadsheetId(), sheetName },
       });
 
       if (fnError) {
