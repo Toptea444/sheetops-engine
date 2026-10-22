@@ -564,6 +564,38 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'get_stage_sheets': {
+        const { data: row } = await supabase
+          .from('admin_settings').select('setting_value')
+          .eq('setting_key', 'stage_spreadsheets').maybeSingle();
+        result = { sheets: Array.isArray(row?.setting_value) ? row.setting_value : [] };
+        break;
+      }
+
+      case 'update_stage_sheets': {
+        const list = params?.sheets;
+        const valid = Array.isArray(list) && list.length <= 50 && list.every((s: any) =>
+          s && typeof s.stage === 'string' && s.stage.length > 0 && s.stage.length <= 30 &&
+          typeof s.spreadsheetId === 'string' && /^[a-zA-Z0-9-_]{20,100}$/.test(s.spreadsheetId) &&
+          typeof s.enabled === 'boolean');
+        if (!valid) { result = { success: false, error: 'Invalid stage sheet list' }; break; }
+        const clean = list.map((s: any) => ({ stage: s.stage, label: typeof s.label === 'string' ? s.label.slice(0, 60) : undefined, spreadsheetId: s.spreadsheetId, enabled: s.enabled }));
+        const { data: existing } = await supabase
+          .from('admin_settings').select('id').eq('setting_key', 'stage_spreadsheets').maybeSingle();
+        if (existing) {
+          await supabase.from('admin_settings')
+            .update({ setting_value: clean, updated_at: new Date().toISOString() }).eq('id', existing.id);
+        } else {
+          await supabase.from('admin_settings').insert({
+            setting_key: 'stage_spreadsheets', setting_value: clean,
+            description: 'Per-stage bonus Google Sheets registry',
+          });
+        }
+        await logAudit(supabase, 'update_stage_sheets', { count: clean.length }, 'settings', 'stage_spreadsheets');
+        result = { success: true };
+        break;
+      }
+
       case 'get_intro_config': {
         const { data: row } = await supabase
           .from('admin_settings')

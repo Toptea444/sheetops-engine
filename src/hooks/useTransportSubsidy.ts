@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { SheetData } from '@/types/bonus';
-import { SPREADSHEET_ID } from '@/lib/spreadsheetConfig';
+import { getActiveSpreadsheetId } from '@/lib/spreadsheetConfig';
 
 const TRANSPORT_SUBSIDY_SHEET = 'transport subsidy';
 
@@ -55,7 +55,7 @@ export function useTransportSubsidy() {
     setError(null);
     try {
       const { data, error: fnError } = await supabase.functions.invoke('fetch-google-sheets', {
-        body: { action: 'getSheetData', spreadsheetId: SPREADSHEET_ID, sheetName: TRANSPORT_SUBSIDY_SHEET },
+        body: { action: 'getSheetData', spreadsheetId: getActiveSpreadsheetId(), sheetName: TRANSPORT_SUBSIDY_SHEET },
       });
 
       if (fnError) throw new Error('Failed to fetch transport subsidy data');
