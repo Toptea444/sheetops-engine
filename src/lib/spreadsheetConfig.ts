@@ -1,5 +1,5 @@
 /** Default/fallback spreadsheet used when no stage sheet matches the worker. */
-export const SPREADSHEET_ID = '1pZGeK-Qic4wh40eLeeqgeltOsYjXJFE3EN-Vbj4i0ks';
+export const SPREADSHEET_ID = '18Vjztt0odhAMzZiqIv4_HgIl5ebrzh4p67NFMWOQyQg';
 
 export interface StageSheet {
   stage: string;
