@@ -1,4 +1,5 @@
 import { findSwapAwayFrom } from '@/lib/idSwaps';
+import { resolveStageSheet } from '@/lib/stageSheetResolver';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
