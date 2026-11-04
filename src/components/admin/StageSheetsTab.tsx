@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAdminData } from '@/hooks/useAdminData';
 import { supabase } from '@/integrations/supabase/client';
 import { SPREADSHEET_ID, StageSheet, parseSpreadsheetId } from '@/lib/spreadsheetConfig';
+import { DEFAULT_SHEET_STAGE_KEY } from '@/lib/stageSheetResolver';
 import { Loader2, Plus, Save, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -14,13 +15,22 @@ type Row = StageSheet & { url: string; test?: 'ok' | 'fail' | 'testing' };
 export function StageSheetsTab({ adminSecret }: { adminSecret: string }) {
   const { adminRequest } = useAdminData();
   const [rows, setRows] = useState<Row[]>([]);
+  const [defaultEnabled, setDefaultEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
       const res = await adminRequest(adminSecret, 'get_stage_sheets');
       const list: StageSheet[] = res?.sheets || [];
-      setRows(list.map((s) => ({ ...s, url: s.spreadsheetId })));
+      const def = list.find(
+        (s) => s.stage.replace(/[^A-Za-z0-9]/g, '').toUpperCase() === DEFAULT_SHEET_STAGE_KEY,
+      );
+      setDefaultEnabled(def ? def.enabled : true);
+      setRows(
+        list
+          .filter((s) => s !== def)
+          .map((s) => ({ ...s, url: s.spreadsheetId })),
+      );
     })();
   }, [adminRequest, adminSecret]);
 
@@ -38,7 +48,9 @@ export function StageSheetsTab({ adminSecret }: { adminSecret: string }) {
   };
 
   const save = async () => {
-    const sheets: StageSheet[] = [];
+    const sheets: StageSheet[] = [
+      { stage: DEFAULT_SHEET_STAGE_KEY, label: 'Default sheet (fallback)', spreadsheetId: SPREADSHEET_ID, enabled: defaultEnabled },
+    ];
     for (const r of rows) {
       const id = parseSpreadsheetId(r.url);
       if (!r.stage.trim() || !id) return toast.error(`Fix stage "${r.stage || '(empty)'}": needs a name and a valid link`);
@@ -56,11 +68,29 @@ export function StageSheetsTab({ adminSecret }: { adminSecret: string }) {
       <CardHeader>
         <CardTitle className="text-base">Stage Sheets</CardTitle>
         <p className="text-xs text-muted-foreground">
-          Add each stage's bonus sheet link. When a worker logs in, the app checks all enabled sheets to find their ID.
-          If none match, it uses the default sheet ({SPREADSHEET_ID.slice(0, 10)}…).
+          Add each stage's bonus sheet link and name it S1, S2, S3, T-1 or T0. A worker's stage is read
+          straight from their ID (e.g. GHAS1… → S1, GHAS0… → T0, GHAS-1… → T-1), so sheets that don't
+          show a stage anywhere still work — the app just looks for their ID inside the file.
+          If their ID isn't found anywhere, they fall back to the default sheet below.
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/5 p-2">
+          <div className="min-w-[200px] flex-1">
+            <p className="text-sm font-medium">Default sheet (fallback)</p>
+            <p className="text-xs text-muted-foreground">
+              Main link used when a worker's ID isn't found on any stage sheet below.
+            </p>
+          </div>
+          <code className="hidden text-xs text-muted-foreground sm:inline">
+            {SPREADSHEET_ID.slice(0, 12)}…
+          </code>
+          <Switch
+            checked={defaultEnabled}
+            onCheckedChange={setDefaultEnabled}
+            aria-label="Use default sheet as fallback"
+          />
+        </div>
         {rows.length === 0 && (
           <p className="text-sm text-muted-foreground">No stage sheets yet. Everyone uses the default sheet.</p>
         )}
