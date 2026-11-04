@@ -464,7 +464,13 @@ const Index = () => {
     let cancelled = false;
     const init = async () => {
       if (userId) {
-        try { await resolveStageSheet(userId); } catch { /* default sheet */ }
+        try {
+          const resolved = await resolveStageSheet(userId);
+          if (cancelled) return;
+          if (!resolved) {
+            toast.error("Your ID wasn't found on any active stage sheet. Please ask your admin to check the Stage Sheets settings.");
+          }
+        } catch { /* default sheet */ }
         if (cancelled) return;
         setSheetDataCache({});
       }
