@@ -42,6 +42,9 @@ function safeJsonParse(text: string): any {
 
 function friendlyError(httpCode: number, reason: string, resource: string): string {
   const upper = reason.toUpperCase();
+  if (upper.includes('OFFICE FILE') || upper.includes('EXCEL') || upper.includes('THIS OPERATION IS NOT SUPPORTED FOR THIS DOCUMENT')) {
+    return 'This link is an Excel workbook, not a Google Sheet. Open it in Google Sheets, choose File → Save as Google Sheets, then add the new Google Sheets link here.';
+  }
   if (httpCode === 403 || upper.includes("PERMISSION_DENIED")) {
     return `Access denied — the spreadsheet is not publicly accessible right now. The management may have restricted permissions or is updating data. Please try again later.`;
   }

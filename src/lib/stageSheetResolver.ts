@@ -2,28 +2,26 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   SPREADSHEET_ID,
   StageSheet,
-  getStoredStageSheetFor,
   setActiveSpreadsheetId,
 } from '@/lib/spreadsheetConfig';
 import { normalizeStageToken, parseStageFromWorkerId } from '@/lib/workerIdStage';
+import {
+  DEFAULT_SHEET_STAGE_KEY,
+  getEnabledStageSheets,
+  isDefaultFallbackEnabled,
+} from '@/lib/stageSheetRegistry';
 
-/** Special registry entry that toggles the default sheet as a fallback. */
-export const DEFAULT_SHEET_STAGE_KEY = '__default__';
+export { DEFAULT_SHEET_STAGE_KEY };
 
 export async function loadStageSheets(): Promise<StageSheet[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('admin_settings')
     .select('setting_value')
     .eq('setting_key', 'stage_spreadsheets')
     .maybeSingle();
+  if (error) throw new Error('Could not load the stage sheet settings. Please try again later.');
   const list = (data?.setting_value as unknown as StageSheet[]) || [];
   return Array.isArray(list) ? list.filter((s) => s?.spreadsheetId) : [];
-}
-
-/** False only when an admin explicitly disabled the default sheet as fallback. */
-export function isDefaultFallbackEnabled(registry: StageSheet[]): boolean {
-  const def = registry.find((s) => normalizeStageToken(s.stage) === DEFAULT_SHEET_STAGE_KEY);
-  return def ? def.enabled : true;
 }
 
 const norm = (v: string) => v.toUpperCase().replace(/\s+/g, '');
@@ -34,7 +32,17 @@ async function fetchSheetNames(spreadsheetId: string): Promise<SheetName[]> {
   const { data: meta, error } = await supabase.functions.invoke('fetch-google-sheets', {
     body: { action: 'getSheets', spreadsheetId },
   });
-  if (error) throw new Error('getSheets failed');
+  if (error) {
+    const context = (error as { context?: Response }).context;
+    try {
+      const body = await context?.json();
+      if (typeof body?.error === 'string') throw new Error(body.error);
+    } catch (details) {
+      if (details instanceof Error && details.message !== 'Unexpected end of JSON input') throw details;
+    }
+    throw new Error(error.message || 'Could not open this Google Sheet. Check its link and sharing settings.');
+  }
+  if (typeof meta?.error === 'string') throw new Error(meta.error);
   return meta?.sheets || [];
 }
 
@@ -48,22 +56,26 @@ function orderCandidateTabs(names: SheetName[]): string[] {
   const daily = visible.filter((n) => /DAILY|PERFORMANCE/i.test(n));
   const ranking = visible.filter(n => /RANKING/i.test(n));
   const rest = visible.filter((n) => !/DAILY|PERFORMANCE|RANKING/i.test(n));
-  return [...daily.slice(0, 5), ...ranking.slice(0, 1), ...rest.slice(0, 4)];
+  return [...daily, ...ranking, ...rest];
 }
 
 /** True when any cell of the searched tabs exactly equals the worker ID. */
 async function sheetContainsWorker(spreadsheetId: string, workerId: string): Promise<boolean> {
-  const names = await fetchSheetNames(spreadsheetId).catch(() => [] as SheetName[]);
+  const names = await fetchSheetNames(spreadsheetId);
   const candidates = orderCandidateTabs(names);
   const target = norm(workerId);
   for (const name of candidates) {
     try {
-      const { data } = await supabase.functions.invoke('fetch-google-sheets', {
+      const { data, error } = await supabase.functions.invoke('fetch-google-sheets', {
         body: { action: 'getSheetData', spreadsheetId, sheetName: name },
       });
+      if (error) throw new Error(error.message || `Could not read the ${name} tab.`);
+      if (typeof data?.error === 'string') throw new Error(data.error);
       const rows: unknown[][] = [data?.headers || [], ...(data?.rows || [])];
       if (rows.some((r) => r.some((c) => norm(String(c ?? '')) === target))) return true;
-    } catch { /* try next tab */ }
+    } catch (error) {
+      throw error instanceof Error ? error : new Error('Could not read a tab in this stage sheet.');
+    }
   }
   return false;
 }
@@ -76,23 +88,18 @@ async function sheetContainsWorker(spreadsheetId: string, workerId: string): Pro
  * back to the default sheet when enabled, otherwise returns null.
  */
 export async function resolveStageSheet(workerId: string): Promise<string | null> {
-  const stored = getStoredStageSheetFor(workerId);
-  let all: StageSheet[] = [];
-  try { all = await loadStageSheets(); } catch { /* fallback */ }
+  const all = await loadStageSheets();
 
   const defaultEnabled = isDefaultFallbackEnabled(all);
-  const registry = all.filter(
-    (s) => s.enabled && s.spreadsheetId &&
-      normalizeStageToken(s.stage) !== DEFAULT_SHEET_STAGE_KEY,
-  );
+  const registry = getEnabledStageSheets(all);
 
   if (registry.length === 0) {
-    setActiveSpreadsheetId(null);
-    return defaultEnabled ? SPREADSHEET_ID : null;
-  }
-  if (stored && registry.some((s) => s.spreadsheetId === stored)) {
-    setActiveSpreadsheetId(stored, workerId);
-    return stored;
+    if (defaultEnabled) {
+      setActiveSpreadsheetId(null);
+      return SPREADSHEET_ID;
+    }
+    setActiveSpreadsheetId('__unresolved__', workerId);
+    return null;
   }
 
   const parsedStage = parseStageFromWorkerId(workerId);
@@ -104,16 +111,27 @@ export async function resolveStageSheet(workerId: string): Promise<string | null
       ]
     : registry;
 
-  const hits = await Promise.all(
+  const searches = await Promise.all(
     ordered.map(async (s) => {
-      try { return (await sheetContainsWorker(s.spreadsheetId, workerId)) ? s.spreadsheetId : null; }
-      catch { return null; }
+      try {
+        return { spreadsheetId: s.spreadsheetId, found: await sheetContainsWorker(s.spreadsheetId, workerId), error: null };
+      } catch (error) {
+        return { spreadsheetId: s.spreadsheetId, found: false, error: error instanceof Error ? error : new Error('Could not check a stage sheet.') };
+      }
     }),
   );
-  const match = hits.find(Boolean) || null;
+  const match = searches.find((search) => search.found)?.spreadsheetId || null;
   if (match) {
     setActiveSpreadsheetId(match, workerId);
     return match;
+  }
+  const stageSearchError = token
+    ? searches.find((search, index) => normalizeStageToken(ordered[index]?.stage || '') === token && search.error)?.error
+    : undefined;
+  const searchError = stageSearchError || searches.find((search) => search.error)?.error;
+  if (searchError) {
+    setActiveSpreadsheetId('__unresolved__', workerId);
+    throw searchError;
   }
   if (defaultEnabled) {
     setActiveSpreadsheetId(null);
