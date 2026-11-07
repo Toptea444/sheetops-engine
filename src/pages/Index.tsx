@@ -1,5 +1,6 @@
 import { findSwapAwayFrom } from '@/lib/idSwaps';
 import { resolveStageSheet } from '@/lib/stageSheetResolver';
+import { setActiveSpreadsheetId } from '@/lib/spreadsheetConfig';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
@@ -83,6 +84,7 @@ const Index = () => {
     sheets, 
     fetchSheets, 
     fetchSheetData,
+    clearSheets,
     searchWorker,
     calculateBonus,
     clearError,
@@ -116,6 +118,7 @@ const Index = () => {
   const [results, setResults] = useState<BonusResult[]>([]);
   const [dataError, setDataError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [resolvedSpreadsheetId, setResolvedSpreadsheetId] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
@@ -149,6 +152,7 @@ const Index = () => {
   // dependency change). Without this guard the effect re-runs in a loop and
   // wipes results to [] on the live cycle.
   const lastHandledCycleKeyRef = useRef<string | null>(null);
+  const dataLoadGenerationRef = useRef(0);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
@@ -463,19 +467,38 @@ const Index = () => {
   useEffect(() => {
     let cancelled = false;
     const init = async () => {
+      const generation = ++dataLoadGenerationRef.current;
+      setIsInitializing(true);
+      setDataError(null);
+      setResults([]);
+      setSelectedSheets([]);
+      setSheetDataCache({});
+      setIsFetchingData(false);
+      setResolvedSpreadsheetId(null);
+      clearSheets();
       if (userId) {
+        let resolved: string | null;
         try {
-          const resolved = await resolveStageSheet(userId);
+          resolved = await resolveStageSheet(userId);
           if (cancelled) return;
-          if (!resolved) {
-            toast.error("Your ID wasn't found on any active stage sheet. Please ask your admin to check the Stage Sheets settings.");
-          }
-        } catch { /* default sheet */ }
+        } catch (error) {
+          if (cancelled) return;
+          setDataError(error instanceof Error ? error.message : 'Could not check the configured stage sheets. Please try again later.');
+          setIsInitializing(false);
+          return;
+        }
         if (cancelled) return;
-        setSheetDataCache({});
+        if (!resolved) {
+          setActiveSpreadsheetId('__unresolved__', userId);
+          setDataError("Your ID wasn't found on an active stage sheet, and the default sheet fallback is turned off. Please ask your admin to check the Stage Sheets settings.");
+          setIsInitializing(false);
+          return;
+        }
+        setResolvedSpreadsheetId(resolved);
       }
       const sheetsList = await fetchSheets();
       if (cancelled) return;
+      if (generation !== dataLoadGenerationRef.current) return;
       if (sheetsList.length > 0) {
         // Exclude disabled sheets AND the Weekly Bonus GH sheet
         const enabledSheets = sheetsList.filter(s => 
@@ -487,7 +510,7 @@ const Index = () => {
     };
     init();
     return () => { cancelled = true; };
-  }, [fetchSheets, userId]);
+  }, [fetchSheets, userId, clearSheets]);
 
   // Show welcome modal for new users, PIN gate for returning users
   // Note: Identity confirmation is now handled within WelcomeModal/SessionPinGate for users WITHOUT a PIN.

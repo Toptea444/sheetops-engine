@@ -77,6 +77,7 @@ export function useGoogleSheets() {
     } catch (err) {
       const message = extractUserFriendlyError(err, 'Failed to fetch sheets');
       setError(message);
+      setSheets([]);
       return [] as SheetInfo[];
     } finally {
       setIsLoading(false);
@@ -112,6 +113,12 @@ export function useGoogleSheets() {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  const clearSheets = useCallback(() => {
+    setSheets([]);
+    setSheetData(null);
+    setError(null);
   }, []);
 
   const searchWorker = useCallback((data: SheetData, workerId: string): WorkerData | null => {
@@ -269,6 +276,7 @@ export function useGoogleSheets() {
     sheetData,
     fetchSheets,
     fetchSheetData,
+    clearSheets,
     searchWorker,
     calculateBonus,
     getAvailableDays,

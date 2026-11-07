@@ -565,9 +565,10 @@ Deno.serve(async (req) => {
       }
 
       case 'get_stage_sheets': {
-        const { data: row } = await supabase
+        const { data: row, error } = await supabase
           .from('admin_settings').select('setting_value')
           .eq('setting_key', 'stage_spreadsheets').maybeSingle();
+        if (error) { result = { success: false, error: 'Could not load stage sheet settings.' }; break; }
         result = { sheets: Array.isArray(row?.setting_value) ? row.setting_value : [] };
         break;
       }
@@ -580,17 +581,13 @@ Deno.serve(async (req) => {
           typeof s.enabled === 'boolean');
         if (!valid) { result = { success: false, error: 'Invalid stage sheet list' }; break; }
         const clean = list.map((s: any) => ({ stage: s.stage, label: typeof s.label === 'string' ? s.label.slice(0, 60) : undefined, spreadsheetId: s.spreadsheetId, enabled: s.enabled }));
-        const { data: existing } = await supabase
-          .from('admin_settings').select('id').eq('setting_key', 'stage_spreadsheets').maybeSingle();
-        if (existing) {
-          await supabase.from('admin_settings')
-            .update({ setting_value: clean, updated_at: new Date().toISOString() }).eq('id', existing.id);
-        } else {
-          await supabase.from('admin_settings').insert({
-            setting_key: 'stage_spreadsheets', setting_value: clean,
-            description: 'Per-stage bonus Google Sheets registry',
-          });
-        }
+        const { error: writeError } = await supabase.from('admin_settings').upsert({
+          setting_key: 'stage_spreadsheets',
+          setting_value: clean,
+          updated_at: new Date().toISOString(),
+          description: 'Per-stage bonus Google Sheets registry',
+        }, { onConflict: 'setting_key' });
+        if (writeError) { result = { success: false, error: 'Could not save stage sheet settings.' }; break; }
         await logAudit(supabase, 'update_stage_sheets', { count: clean.length }, 'settings', 'stage_spreadsheets');
         result = { success: true };
         break;
