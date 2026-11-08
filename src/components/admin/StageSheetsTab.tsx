@@ -55,10 +55,11 @@ export function StageSheetsTab({ adminSecret }: { adminSecret: string }) {
     let message = typeof data?.error === 'string' ? data.error : '';
     if (!message && error) {
       const context = (error as { context?: Response }).context;
+      let body: { error?: unknown } | null = null;
       try {
-        const body = await context?.json();
-        if (typeof body?.error === 'string') message = body.error;
+        body = await context?.json() ?? null;
       } catch { /* use the function error message below */ }
+      if (typeof body?.error === 'string') message = body.error;
       if (!message) message = error.message;
     }
     if (data?.sheets?.length) update(i, { test: 'ok', testMessage: `Connected — ${data.sheets.length} tabs found.` });
