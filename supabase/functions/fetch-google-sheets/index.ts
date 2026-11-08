@@ -98,7 +98,7 @@ serve(async (req) => {
         console.error("Google Sheets API error:", errorText);
         const parsed = safeJsonParse(errorText);
         const code = response.status;
-        const reason = parsed?.error?.status || parsed?.error?.message || "";
+        const reason = `${parsed?.error?.status || ""} ${parsed?.error?.message || ""}`;
         return jsonResponse({ error: friendlyError(code, reason, "spreadsheet metadata") }, code);
       }
 
@@ -128,7 +128,7 @@ serve(async (req) => {
       console.error("Google Sheets API error:", errorText);
       const parsed = safeJsonParse(errorText);
       const code = response.status;
-      const reason = parsed?.error?.status || parsed?.error?.message || "";
+      const reason = `${parsed?.error?.status || ""} ${parsed?.error?.message || ""}`;
       return jsonResponse({ error: friendlyError(code, reason, `sheet "${sheetName}"`) }, code);
     }
 

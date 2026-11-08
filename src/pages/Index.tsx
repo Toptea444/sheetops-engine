@@ -544,6 +544,7 @@ const Index = () => {
 
   const fetchUserData = useCallback(async (forceRefetch = false) => {
     if (!userId || !resolvedSpreadsheetId || selectedSheets.length === 0 || !identityConfirmed) return;
+    const loadGeneration = dataLoadGenerationRef.current;
 
     setDataError(null);
     setIsFetchingData(true);
@@ -691,6 +692,7 @@ const Index = () => {
       }
     }
 
+    if (loadGeneration !== dataLoadGenerationRef.current) return;
     setSheetDataCache(newCache);
 
     // Merge cached results in (cache wins for sheets we couldn't reproduce live).
