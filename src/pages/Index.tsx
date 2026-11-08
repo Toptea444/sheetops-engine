@@ -495,6 +495,8 @@ const Index = () => {
           return;
         }
         setResolvedSpreadsheetId(resolved);
+      } else {
+        setActiveSpreadsheetId(null);
       }
       const sheetsList = await fetchSheets();
       if (cancelled) return;
@@ -541,7 +543,8 @@ const Index = () => {
   }, [userId, identityConfirmed]);
 
   const fetchUserData = useCallback(async (forceRefetch = false) => {
-    if (!userId || selectedSheets.length === 0 || !identityConfirmed) return;
+    if (!userId || !resolvedSpreadsheetId || selectedSheets.length === 0 || !identityConfirmed) return;
+    const loadGeneration = dataLoadGenerationRef.current;
 
     setDataError(null);
     setIsFetchingData(true);
@@ -689,6 +692,7 @@ const Index = () => {
       }
     }
 
+    if (loadGeneration !== dataLoadGenerationRef.current) return;
     setSheetDataCache(newCache);
 
     // Merge cached results in (cache wins for sheets we couldn't reproduce live).
@@ -721,21 +725,21 @@ const Index = () => {
     if (!foundInAnySheet && mergedResults.length === 0 && userId) {
       setDataError(`No data found for "${userId}" in any of the selected sheets.`);
     }
-  }, [userId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle, areSameSheetSelection, formerWorkerId]);
+  }, [userId, resolvedSpreadsheetId, selectedSheets, sheetDataCache, fetchSheetData, searchWorker, calculateBonus, setUserName, identityConfirmed, selectedCycle, saveWorkerResult, saveSheetSnapshot, loadWorkerResults, loadAllSheetSnapshots, getWorkerIdsToFetch, sheetMatchesCycle, areSameSheetSelection, formerWorkerId]);
 
   useEffect(() => {
-    if (userId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
+    if (userId && resolvedSpreadsheetId && selectedSheets.length > 0 && !isInitializing && identityConfirmed) {
       const isPastCycle = getCycleKey(selectedCycle) !== getCycleKey(getCycleOptions(0)[0]);
       fetchUserData(isPastCycle);
     }
-  }, [userId, selectedSheets, selectedCycle, isInitializing, identityConfirmed]);
+  }, [userId, resolvedSpreadsheetId, selectedSheets, selectedCycle, isInitializing, identityConfirmed]);
 
   // Re-fetch when swap data loads asynchronously — ensures old-ID earnings are included.
   // Fixes race condition: fetchUserData() can run before useEarningsAdjustments finishes
   // loading swaps from Supabase, so swaps was [] and only the current ID was searched.
   const lastFetchedSwapCount = useRef(0);
   useEffect(() => {
-    if (!userId || !identityConfirmed || isInitializing || selectedSheets.length === 0) return;
+    if (!userId || !resolvedSpreadsheetId || !identityConfirmed || isInitializing || selectedSheets.length === 0) return;
     if (adjustmentsLoading) return;
 
     const currentSwapCount = earningsSwaps.length;
@@ -743,7 +747,7 @@ const Index = () => {
       lastFetchedSwapCount.current = currentSwapCount;
       fetchUserData(true);
     }
-  }, [earningsSwaps, adjustmentsLoading, userId, identityConfirmed, isInitializing, selectedSheets, fetchUserData]);
+  }, [earningsSwaps, adjustmentsLoading, userId, resolvedSpreadsheetId, identityConfirmed, isInitializing, selectedSheets, fetchUserData]);
 
   // Prompt the user to enter their former Worker ID (for their June 16–21
 
@@ -781,14 +785,14 @@ const Index = () => {
 
   // Background polling: re-fetch data every 5 minutes when notifications are enabled
   useEffect(() => {
-    if (!notificationsEnabled || !userId || !identityConfirmed || selectedSheets.length === 0) return;
+    if (!notificationsEnabled || !userId || !resolvedSpreadsheetId || !identityConfirmed || selectedSheets.length === 0) return;
 
     const interval = setInterval(() => {
       fetchUserData(true); // force refetch to bypass cache
     }, NOTIFICATION_POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [notificationsEnabled, userId, identityConfirmed, selectedSheets, fetchUserData]);
+  }, [notificationsEnabled, userId, resolvedSpreadsheetId, identityConfirmed, selectedSheets, fetchUserData]);
 
   // Background swap detection: check every 30s if logged-in user has been swapped
   useEffect(() => {

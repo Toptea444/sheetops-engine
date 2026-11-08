@@ -34,12 +34,11 @@ async function fetchSheetNames(spreadsheetId: string): Promise<SheetName[]> {
   });
   if (error) {
     const context = (error as { context?: Response }).context;
+    let body: { error?: unknown } | null = null;
     try {
-      const body = await context?.json();
-      if (typeof body?.error === 'string') throw new Error(body.error);
-    } catch (details) {
-      if (details instanceof Error && details.message !== 'Unexpected end of JSON input') throw details;
-    }
+      body = await context?.json() ?? null;
+    } catch { /* fall back to the function error */ }
+    if (typeof body?.error === 'string') throw new Error(body.error);
     throw new Error(error.message || 'Could not open this Google Sheet. Check its link and sharing settings.');
   }
   if (typeof meta?.error === 'string') throw new Error(meta.error);
@@ -88,6 +87,7 @@ async function sheetContainsWorker(spreadsheetId: string, workerId: string): Pro
  * back to the default sheet when enabled, otherwise returns null.
  */
 export async function resolveStageSheet(workerId: string): Promise<string | null> {
+  setActiveSpreadsheetId('__unresolved__', workerId);
   const all = await loadStageSheets();
 
   const defaultEnabled = isDefaultFallbackEnabled(all);
