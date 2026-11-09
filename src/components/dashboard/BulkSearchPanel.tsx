@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, endOfWeek, format, isAfter, isSameDay, startOfMonth, startOfWeek, subDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface BulkSearchPanelProps {
@@ -30,6 +30,7 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
   const [workerIds, setWorkerIds] = useState<string[]>(['']);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
+  const [hoveredDate, setHoveredDate] = useState<Date | undefined>();
   const [activePreset, setActivePreset] = useState<DatePreset>('custom');
 
   const handleAddWorkerId = () => {
@@ -60,16 +61,16 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
         setEndDate(today);
         break;
       case 'last7days':
-        setStartDate(subDays(today, 6));
-        setEndDate(today);
+        setStartDate(today);
+        setEndDate(subDays(today, 6));
         break;
       case 'thisWeek':
-        setStartDate(startOfWeek(today, { weekStartsOn: 1 }));
-        setEndDate(endOfWeek(today, { weekStartsOn: 1 }));
+        setStartDate(endOfWeek(today, { weekStartsOn: 1 }));
+        setEndDate(startOfWeek(today, { weekStartsOn: 1 }));
         break;
       case 'thisMonth':
-        setStartDate(startOfMonth(today));
-        setEndDate(endOfMonth(today));
+        setStartDate(endOfMonth(today));
+        setEndDate(startOfMonth(today));
         break;
       case 'custom':
         // Keep current dates, just switch to custom mode
@@ -77,13 +78,25 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
     }
   };
 
-  const handleStartDateChange = (date: Date | undefined) => {
-    setStartDate(date);
+  const handleDateClick = (date: Date) => {
     setActivePreset('custom');
+    if (!startDate || endDate || isAfter(date, startDate)) {
+      setStartDate(date);
+      setEndDate(undefined);
+    } else {
+      setEndDate(date);
+    }
+    setHoveredDate(undefined);
   };
 
-  const handleEndDateChange = (date: Date | undefined) => {
-    setEndDate(date);
+  const handleDateHover = (date: Date) => {
+    if (startDate && !endDate && !isAfter(date, startDate)) setHoveredDate(date);
+  };
+
+  const handleClearDates = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setHoveredDate(undefined);
     setActivePreset('custom');
   };
 
@@ -91,7 +104,9 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
     e.preventDefault();
     const validIds = workerIds.filter(id => id.trim());
     if (validIds.length > 0 && startDate && endDate) {
-      onSearch(validIds, startDate, endDate);
+      const earlierDate = isAfter(endDate, startDate) ? startDate : endDate;
+      const laterDate = isAfter(endDate, startDate) ? endDate : startDate;
+      onSearch(validIds, earlierDate, laterDate);
     }
   };
 
@@ -99,11 +114,17 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
     setWorkerIds(['']);
     setStartDate(undefined);
     setEndDate(undefined);
+    setHoveredDate(undefined);
     setActivePreset('custom');
   };
 
   const validWorkerIds = workerIds.filter(id => id.trim());
   const isFormValid = validWorkerIds.length > 0 && startDate && endDate && hasData;
+  const previewEnd = endDate || hoveredDate;
+  const previewDates = startDate && previewEnd && !isAfter(previewEnd, startDate)
+    ? eachDayOfInterval({ start: previewEnd, end: startDate })
+    : [];
+  const selectedDates = [startDate, endDate].filter((date): date is Date => Boolean(date));
 
   return (
     <Card className="corporate-shadow">
@@ -203,60 +224,49 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
             </div>
           </div>
 
-          {/* Date Range - Only show when custom or after selecting a preset */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Start Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !startDate && 'text-muted-foreground'
-                    )}
-                  >
-                    {startDate ? format(startDate, 'PPP') : 'Select date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={startDate}
-                    onSelect={handleStartDateChange}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+          {/* Single descending date-range picker */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">Date range</Label>
+              {(startDate || endDate) && (
+                <Button type="button" variant="ghost" size="sm" onClick={handleClearDates} className="h-6 px-2 text-xs">
+                  Clear
+                </Button>
+              )}
             </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">End Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !endDate && 'text-muted-foreground'
-                    )}
-                  >
-                    {endDate ? format(endDate, 'PPP') : 'Select date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={endDate}
-                    onSelect={handleEndDateChange}
-                    disabled={(date) => startDate ? date < startDate : false}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn('w-full justify-start text-left font-normal', !startDate && 'text-muted-foreground')}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {!startDate && 'Select date range'}
+                  {startDate && !endDate && `Start: ${format(startDate, 'PPP')} — choose an earlier end date`}
+                  {startDate && endDate && `${format(endDate, 'PPP')} – ${format(startDate, 'PPP')}`}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="range"
+                  selected={startDate ? { from: endDate || startDate, to: startDate } : undefined}
+                  onDayClick={handleDateClick}
+                  onDayMouseEnter={handleDateHover}
+                  onDayMouseLeave={() => setHoveredDate(undefined)}
+                  disabled={(date) => startDate ? isAfter(date, startDate) && !isSameDay(date, startDate) : false}
+                  modifiers={{ range_preview: previewDates, range_selected: selectedDates }}
+                  modifiersClassNames={{
+                    range_preview: 'bg-primary/15 text-foreground',
+                    range_selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
+                  }}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+                <p className="border-t px-3 py-2 text-xs text-muted-foreground">
+                  Select the later date first, then an equal or earlier date.
+                </p>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Submit Button */}

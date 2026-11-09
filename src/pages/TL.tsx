@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { loadStageSheets } from '@/lib/stageSheetResolver';
-import { getActiveSpreadsheetId, setActiveSpreadsheetId, SPREADSHEET_ID, type StageSheet } from '@/lib/spreadsheetConfig';
+import { setActiveSpreadsheetId, SPREADSHEET_ID, type StageSheet } from '@/lib/spreadsheetConfig';
 import { isDefaultStageSheet } from '@/lib/stageSheetRegistry';
 
 function sourceLabel(source: StageSheet): string {
@@ -85,15 +85,10 @@ const TL = () => {
 
         if (cancelled) return;
         setSpreadsheetSources(sources);
-        const storedId = getActiveSpreadsheetId();
-        const initialSource = sources.find((source) => source.spreadsheetId === storedId) || sources[0];
-        if (!initialSource) {
+        if (sources.length === 0) {
           setSearchError('No enabled spreadsheet sources are configured. Ask an admin to check the Stage Sheets settings.');
           return;
         }
-
-        setSelectedSpreadsheetId(initialSource.spreadsheetId);
-        await loadSelectedSpreadsheet(initialSource.spreadsheetId);
       } catch (error) {
         if (!cancelled) {
           setSearchError(error instanceof Error ? error.message : 'Could not load the saved stage sheets.');
