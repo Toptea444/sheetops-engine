@@ -61,16 +61,16 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
         setEndDate(today);
         break;
       case 'last7days':
-        setStartDate(today);
-        setEndDate(subDays(today, 6));
+        setStartDate(subDays(today, 6));
+        setEndDate(today);
         break;
       case 'thisWeek':
-        setStartDate(endOfWeek(today, { weekStartsOn: 1 }));
-        setEndDate(startOfWeek(today, { weekStartsOn: 1 }));
+        setStartDate(startOfWeek(today, { weekStartsOn: 1 }));
+        setEndDate(endOfWeek(today, { weekStartsOn: 1 }));
         break;
       case 'thisMonth':
-        setStartDate(endOfMonth(today));
-        setEndDate(startOfMonth(today));
+        setStartDate(startOfMonth(today));
+        setEndDate(endOfMonth(today));
         break;
       case 'custom':
         // Keep current dates, just switch to custom mode
@@ -80,7 +80,7 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
 
   const handleDateClick = (date: Date) => {
     setActivePreset('custom');
-    if (!startDate || endDate || isAfter(date, startDate)) {
+    if (!startDate || endDate || !isAfter(date, startDate)) {
       setStartDate(date);
       setEndDate(undefined);
     } else {
@@ -90,7 +90,7 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
   };
 
   const handleDateHover = (date: Date) => {
-    if (startDate && !endDate && !isAfter(date, startDate)) setHoveredDate(date);
+    if (startDate && !endDate && isAfter(date, startDate)) setHoveredDate(date);
   };
 
   const handleClearDates = () => {
@@ -104,9 +104,7 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
     e.preventDefault();
     const validIds = workerIds.filter(id => id.trim());
     if (validIds.length > 0 && startDate && endDate) {
-      const earlierDate = isAfter(endDate, startDate) ? startDate : endDate;
-      const laterDate = isAfter(endDate, startDate) ? endDate : startDate;
-      onSearch(validIds, earlierDate, laterDate);
+      onSearch(validIds, startDate, endDate);
     }
   };
 
@@ -121,8 +119,8 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
   const validWorkerIds = workerIds.filter(id => id.trim());
   const isFormValid = validWorkerIds.length > 0 && startDate && endDate && hasData;
   const previewEnd = endDate || hoveredDate;
-  const previewDates = startDate && previewEnd && !isAfter(previewEnd, startDate)
-    ? eachDayOfInterval({ start: previewEnd, end: startDate })
+  const previewDates = startDate && previewEnd && isAfter(previewEnd, startDate)
+    ? eachDayOfInterval({ start: startDate, end: previewEnd })
     : [];
   const selectedDates = [startDate, endDate].filter((date): date is Date => Boolean(date));
 
@@ -238,22 +236,26 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className={cn('w-full justify-start text-left font-normal', !startDate && 'text-muted-foreground')}
+                  className={cn('h-auto min-h-10 w-full justify-start whitespace-normal py-2 text-left font-normal', !startDate && 'text-muted-foreground')}
                 >
                   <Calendar className="mr-2 h-4 w-4" />
                   {!startDate && 'Select date range'}
-                  {startDate && !endDate && `Start: ${format(startDate, 'PPP')} — choose an earlier end date`}
-                  {startDate && endDate && `${format(endDate, 'PPP')} – ${format(startDate, 'PPP')}`}
+                  {startDate && !endDate && (
+                    <span className="min-w-0 whitespace-normal break-words text-left">
+                      Start: {format(startDate, 'PPP')} — choose a later end date
+                    </span>
+                  )}
+                  {startDate && endDate && `${format(startDate, 'PPP')} – ${format(endDate, 'PPP')}`}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <CalendarComponent
                   mode="range"
-                  selected={startDate ? { from: endDate || startDate, to: startDate } : undefined}
+                  selected={startDate ? { from: startDate, to: endDate || startDate } : undefined}
                   onDayClick={handleDateClick}
                   onDayMouseEnter={handleDateHover}
                   onDayMouseLeave={() => setHoveredDate(undefined)}
-                  disabled={(date) => startDate ? isAfter(date, startDate) && !isSameDay(date, startDate) : false}
+                  disabled={(date) => startDate ? !isAfter(date, startDate) && !isSameDay(date, startDate) : false}
                   modifiers={{ range_preview: previewDates, range_selected: selectedDates }}
                   modifiersClassNames={{
                     range_preview: 'bg-primary/15 text-foreground',
@@ -263,7 +265,7 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
                   className="pointer-events-auto"
                 />
                 <p className="border-t px-3 py-2 text-xs text-muted-foreground">
-                  Select the later date first, then an equal or earlier date.
+                  Select the earlier date first, then an equal or later date.
                 </p>
               </PopoverContent>
             </Popover>
