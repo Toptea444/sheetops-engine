@@ -11,6 +11,15 @@ import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import type { BonusResult, WorkerData } from '@/types/bonus';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { loadStageSheets } from '@/lib/stageSheetResolver';
+import { getActiveSpreadsheetId, setActiveSpreadsheetId, SPREADSHEET_ID, type StageSheet } from '@/lib/spreadsheetConfig';
+import { isDefaultStageSheet } from '@/lib/stageSheetRegistry';
+
+function sourceLabel(source: StageSheet): string {
+  if (isDefaultStageSheet(source.stage)) return 'Default sheet (fallback)';
+  return source.label ? `${source.stage} — ${source.label}` : source.stage;
+}
 
 const TL = () => {
   const { 
@@ -28,22 +37,86 @@ const TL = () => {
   const [results, setResults] = useState<BonusResult[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [spreadsheetSources, setSpreadsheetSources] = useState<StageSheet[]>([]);
+  const [selectedSpreadsheetId, setSelectedSpreadsheetId] = useState('');
   const [deductionResult, setDeductionResult] = useState<DeductionResult | null>(null);
   const [searchDates, setSearchDates] = useState<{ start: Date; end: Date } | null>(null);
   const [selectedWorkerForDeduction, setSelectedWorkerForDeduction] = useState<BonusResult | null>(null);
 
-  // Initialize: fetch sheets list
+  const resetResults = useCallback(() => {
+    setResults([]);
+    setSearchError(null);
+    setDeductionResult(null);
+    setSearchDates(null);
+    setSelectedWorkerForDeduction(null);
+  }, []);
+
+  const loadSelectedSpreadsheet = useCallback(async (spreadsheetId: string) => {
+    setActiveSpreadsheetId(spreadsheetId);
+    resetResults();
+
+    const sheetsList = await fetchSheets();
+    const usableSheets = sheetsList.filter((sheet) => !sheet.disabled);
+    if (usableSheets.length > 0) {
+      setActiveSheet(usableSheets[0].name);
+      await fetchSheetData(usableSheets[0].name);
+    } else {
+      setActiveSheet('');
+    }
+  }, [fetchSheets, fetchSheetData, resetResults]);
+
+  // Initialize: load saved spreadsheet sources, then fetch the selected source's tabs.
   useEffect(() => {
+    let cancelled = false;
     const init = async () => {
-      const sheetsList = await fetchSheets();
-      if (sheetsList.length > 0) {
-        setActiveSheet(sheetsList[0].name);
-        await fetchSheetData(sheetsList[0].name);
+      setIsInitializing(true);
+      try {
+        const registry = await loadStageSheets();
+        const savedDefault = registry.find((source) => isDefaultStageSheet(source.stage));
+        const sources = registry.filter((source) => source.enabled && source.spreadsheetId);
+        if (!savedDefault) {
+          sources.unshift({
+            stage: '__default__',
+            label: 'Default sheet (fallback)',
+            spreadsheetId: SPREADSHEET_ID,
+            enabled: true,
+          });
+        }
+
+        if (cancelled) return;
+        setSpreadsheetSources(sources);
+        const storedId = getActiveSpreadsheetId();
+        const initialSource = sources.find((source) => source.spreadsheetId === storedId) || sources[0];
+        if (!initialSource) {
+          setSearchError('No enabled spreadsheet sources are configured. Ask an admin to check the Stage Sheets settings.');
+          return;
+        }
+
+        setSelectedSpreadsheetId(initialSource.spreadsheetId);
+        await loadSelectedSpreadsheet(initialSource.spreadsheetId);
+      } catch (error) {
+        if (!cancelled) {
+          setSearchError(error instanceof Error ? error.message : 'Could not load the saved stage sheets.');
+        }
+      } finally {
+        if (!cancelled) setIsInitializing(false);
       }
-      setIsInitializing(false);
     };
     init();
-  }, [fetchSheets, fetchSheetData]);
+    return () => { cancelled = true; };
+  }, [loadSelectedSpreadsheet]);
+
+  const handleSpreadsheetChange = useCallback(async (spreadsheetId: string) => {
+    setSelectedSpreadsheetId(spreadsheetId);
+    setIsInitializing(true);
+    try {
+      await loadSelectedSpreadsheet(spreadsheetId);
+    } catch (error) {
+      setSearchError(error instanceof Error ? error.message : 'Could not load the selected spreadsheet.');
+    } finally {
+      setIsInitializing(false);
+    }
+  }, [loadSelectedSpreadsheet]);
 
   // Handle sheet tab change
   const handleSheetChange = useCallback(async (sheetName: string) => {
@@ -58,17 +131,13 @@ const TL = () => {
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {
-    setResults([]);
-    setSearchError(null);
-    setDeductionResult(null);
-    setSearchDates(null);
-    setSelectedWorkerForDeduction(null);
+    resetResults();
     await fetchSheets();
     if (activeSheet) {
       await fetchSheetData(activeSheet);
     }
     toast.success('Data refreshed successfully');
-  }, [fetchSheets, fetchSheetData, activeSheet]);
+  }, [fetchSheets, fetchSheetData, activeSheet, resetResults]);
 
   // Handle bulk search and calculation
   const handleBulkSearch = useCallback((workerIds: string[], startDate: Date, endDate: Date) => {
@@ -157,6 +226,32 @@ const TL = () => {
         <div className="mb-6 flex items-center gap-2">
           <Users className="h-5 w-5 text-primary" />
           <h1 className="text-xl font-semibold">TL Dashboard</h1>
+        </div>
+
+        {/* Spreadsheet source selector */}
+        <div className="mb-6 rounded-lg border bg-card p-4 corporate-shadow">
+          <div className="mb-2">
+            <p className="text-sm font-medium">Spreadsheet source</p>
+            <p className="text-xs text-muted-foreground">
+              Choose one of the saved stage sheets to use for this TL dashboard.
+            </p>
+          </div>
+          <Select
+            value={selectedSpreadsheetId}
+            onValueChange={handleSpreadsheetChange}
+            disabled={isInitializing || spreadsheetSources.length === 0}
+          >
+            <SelectTrigger className="max-w-xl">
+              <SelectValue placeholder="Choose a saved stage sheet" />
+            </SelectTrigger>
+            <SelectContent>
+              {spreadsheetSources.map((source) => (
+                <SelectItem key={source.spreadsheetId} value={source.spreadsheetId}>
+                  {sourceLabel(source)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Error Display */}
