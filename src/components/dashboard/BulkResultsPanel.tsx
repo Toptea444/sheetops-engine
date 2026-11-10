@@ -1,4 +1,4 @@
-import { TrendingUp, Users, Calendar, Award, Coins, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, Calendar, Coins, AlertTriangle, ChevronDown, ChevronUp, FileSpreadsheet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -81,12 +81,12 @@ export function BulkResultsPanel({ results, sheetName }: BulkResultsPanelProps) 
       )}
 
       {/* Summary Card */}
-      <Card className="overflow-hidden">
-        <div className="corporate-gradient p-6 text-primary-foreground">
+      <Card className="overflow-hidden corporate-shadow">
+        <div className="corporate-gradient p-5 text-primary-foreground sm:p-6">
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-sm text-white/70 mb-1">Combined Total</p>
-              <p className="text-4xl font-bold tracking-tight">
+              <p className="break-all text-3xl font-bold tracking-tight sm:text-4xl">
                 {formatValue(grandTotal, valueType)}
               </p>
             </div>
@@ -104,6 +104,7 @@ export function BulkResultsPanel({ results, sheetName }: BulkResultsPanelProps) 
               <Calendar className="h-4 w-4" />
               <span>{results[0]?.dateRange.start} — {results[0]?.dateRange.end}</span>
             </div>
+            {sheetName && <div className="flex min-w-0 items-center gap-1.5"><FileSpreadsheet className="h-4 w-4 shrink-0" /><span className="break-all">{sheetName}</span></div>}
             <Badge variant="secondary" className="bg-white/20 text-white border-0 hover:bg-white/30">
               {totalDaysWithBonus} total earning days
             </Badge>
@@ -112,6 +113,7 @@ export function BulkResultsPanel({ results, sheetName }: BulkResultsPanelProps) 
 
         {/* Comparison Table */}
         <CardContent className="p-0">
+          <div className="border-b px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Worker results</div>
           <div className="divide-y">
             {results.map((result, index) => (
               <Collapsible 
@@ -150,7 +152,10 @@ export function BulkResultsPanel({ results, sheetName }: BulkResultsPanelProps) 
                           {formatValue(result.totalBonus, valueType)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {result.dailyBreakdown.filter(d => d.value > 0).length} days
+                          {result.dailyBreakdown.filter(d => d.value > 0).length} earning days
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-primary">
+                          {expandedWorkers.has(result.workerId) ? 'Hide breakdown' : 'View breakdown'}
                         </p>
                       </div>
                       {expandedWorkers.has(result.workerId) ? (

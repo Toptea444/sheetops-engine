@@ -363,29 +363,7 @@ const TL = () => {
               sheetName={activeSheet || undefined}
             />
 
-            {/* Worker Selection for Deduction - Only when multiple results */}
-            {results.length > 1 && (
-              <div className="p-4 rounded-lg border bg-card">
-                <p className="text-sm font-medium mb-2 text-muted-foreground">
-                  Select worker for deduction:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {results.map((r) => (
-                    <button
-                      key={r.workerId}
-                      onClick={() => handleWorkerSelect(r)}
-                      className={`px-3 py-1.5 rounded-md text-sm font-mono transition-colors ${
-                        selectedWorkerForDeduction?.workerId === r.workerId
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted hover:bg-muted/80'
-                      }`}
-                    >
-                      {r.workerId}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+
           </div>
 
           {/* Right Panel: Results - Takes remaining space */}
@@ -400,6 +378,9 @@ const TL = () => {
                 {selectedWorkerForDeduction && searchDates && (
                   <DaysNotWorkedPanel
                     result={selectedWorkerForDeduction}
+                    workers={results}
+                    onWorkerSelect={handleWorkerSelect}
+                    hasSummary={!!deductionResult}
                     startDate={searchDates.start}
                     endDate={searchDates.end}
                     onCalculate={handleDeductionCalculate}

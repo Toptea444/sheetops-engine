@@ -5,11 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { BonusResult, DailyBonus } from '@/types/bonus';
 import { cn } from '@/lib/utils';
 
 interface DaysNotWorkedPanelProps {
   result: BonusResult;
+  workers: BonusResult[];
+  onWorkerSelect: (worker: BonusResult) => void;
+  hasSummary: boolean;
   startDate: Date;
   endDate: Date;
   onCalculate: (deductions: DeductionResult) => void;
@@ -54,7 +58,7 @@ function formatDateDisplay(date: Date): string {
   return `${months[date.getMonth()]} ${date.getDate()}, ${days[date.getDay()]}`;
 }
 
-export function DaysNotWorkedPanel({ result, startDate, endDate, onCalculate }: DaysNotWorkedPanelProps) {
+export function DaysNotWorkedPanel({ result, workers, onWorkerSelect, hasSummary, startDate, endDate, onCalculate }: DaysNotWorkedPanelProps) {
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [hasCalculated, setHasCalculated] = useState(false);
 
@@ -71,6 +75,12 @@ export function DaysNotWorkedPanel({ result, startDate, endDate, onCalculate }: 
     }
     return map;
   }, [result.dailyBreakdown]);
+
+  const selectedTotal = Array.from(selectedDates).reduce((sum, dateStr) => {
+    const day = new Date(dateStr).getDate();
+    return sum + (bonusMap.get(day)?.value ?? 0);
+  }, 0);
+  const formatValue = (value: number) => result.valueType === 'percent' ? `${value.toFixed(2)}%` : formatCurrency(value);
 
   const toggleDate = (dateStr: string) => {
     const newSelected = new Set(selectedDates);
@@ -127,27 +137,45 @@ export function DaysNotWorkedPanel({ result, startDate, endDate, onCalculate }: 
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CalendarOff className="h-5 w-5 text-destructive" />
-            <span>Days Not Worked</span>
+    <Card className="corporate-shadow">
+      <CardHeader className="space-y-4 pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CalendarOff className="h-5 w-5 text-primary" />
+              Days Not Worked
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">Select the days to deduct from this worker’s bonus.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={selectAll}>
-              <Check className="h-3 w-3 mr-1" />
-              All
+            <Button type="button" variant="outline" size="sm" onClick={selectAll}>
+              <Check className="mr-1 h-3 w-3" /> Select all
             </Button>
-            <Button variant="outline" size="sm" onClick={clearAll}>
-              <X className="h-3 w-3 mr-1" />
-              Clear
+            <Button type="button" variant="ghost" size="sm" onClick={clearAll}>
+              <X className="mr-1 h-3 w-3" /> Clear
             </Button>
           </div>
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Select dates the collector did not work. These will be deducted from the total bonus.
-        </p>
+        </div>
+        <div className="rounded-lg bg-muted/50 p-3">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Worker for deduction</p>
+          {workers.length > 1 ? (
+            <Select value={result.workerId} onValueChange={(id) => {
+              const worker = workers.find((item) => item.workerId === id);
+              if (worker) onWorkerSelect(worker);
+            }}>
+              <SelectTrigger aria-label="Worker for deduction" className="w-full bg-card sm:max-w-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {workers.map((worker) => (
+                  <SelectItem key={worker.workerId} value={worker.workerId}>{worker.workerId} — {worker.userName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="break-words text-sm font-medium"><span className="font-mono">{result.workerId}</span> <span className="text-muted-foreground">— {result.userName}</span></p>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {/* Date Selection Grid */}
@@ -160,11 +188,10 @@ export function DaysNotWorkedPanel({ result, startDate, endDate, onCalculate }: 
             const hasBonus = bonus && bonus.value > 0;
 
             return (
-              <div
+              <label
                 key={dateStr}
-                onClick={() => toggleDate(dateStr)}
                 className={cn(
-                  "flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all",
+                  "flex min-h-16 items-center gap-2 rounded-lg border p-3 cursor-pointer transition-colors",
                   isSelected
                     ? "border-destructive bg-destructive/10"
                     : "border-border hover:border-muted-foreground/50 hover:bg-muted/30"
@@ -173,7 +200,6 @@ export function DaysNotWorkedPanel({ result, startDate, endDate, onCalculate }: 
                 <Checkbox
                   checked={isSelected}
                   onCheckedChange={() => toggleDate(dateStr)}
-                  className="pointer-events-none"
                 />
                 <div className="flex-1 min-w-0">
                   <p className={cn(
@@ -189,27 +215,21 @@ export function DaysNotWorkedPanel({ result, startDate, endDate, onCalculate }: 
                     {hasBonus ? formatCurrency(bonus.value) : '—'}
                   </p>
                 </div>
-              </div>
+              </label>
             );
           })}
         </div>
 
-        {/* Selected Count */}
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">
-              {selectedDates.size} day{selectedDates.size !== 1 ? 's' : ''} selected
-            </Badge>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted/40 p-3">
+          <div className="space-y-1">
+            <Badge variant="secondary">{selectedDates.size} day{selectedDates.size !== 1 ? 's' : ''} selected</Badge>
+            <p className="text-xs text-muted-foreground">Selected deduction: <span className="font-semibold text-foreground">{formatValue(selectedTotal)}</span></p>
           </div>
-          <Button 
-            onClick={handleCalculate} 
-            disabled={selectedDates.size === 0}
-            className="gap-2"
-          >
-            <Calculator className="h-4 w-4" />
-            Calculate Deduction
+          <Button type="button" onClick={handleCalculate} disabled={selectedDates.size === 0} className="w-full gap-2 sm:w-auto">
+            <Calculator className="h-4 w-4" /> Calculate deduction
           </Button>
         </div>
+        {hasSummary && !hasCalculated && <p className="mt-2 text-xs text-muted-foreground" role="status">Selection changed. Calculate again to update the summary below.</p>}
       </CardContent>
     </Card>
   );
@@ -230,61 +250,44 @@ export function DeductionSummary({ deduction, valueType = 'amount' }: DeductionS
   };
 
   return (
-    <Card className="border-destructive/30 bg-destructive/5">
-      <CardHeader className="pb-3">
+    <Card className="corporate-shadow">
+      <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Minus className="h-5 w-5 text-destructive" />
-          Deduction Summary
+          <Minus className="h-5 w-5 text-destructive" /> Deduction summary
         </CardTitle>
+        <p className="text-sm text-muted-foreground">Calculated for {deduction.deductedDays.length} selected day{deduction.deductedDays.length !== 1 ? 's' : ''}.</p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Deducted Days List */}
+        <div className="space-y-3 rounded-lg bg-muted/40 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="text-muted-foreground">Original bonus</span>
+            <span className="font-mono font-semibold">{formatValue(deduction.baseAmount)}</span>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="text-muted-foreground">Total deduction</span>
+            <span className="font-mono font-semibold text-destructive">−{formatValue(deduction.totalDeduction)}</span>
+          </div>
+          <Separator />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-semibold">Final bonus</span>
+            <span className={cn('break-all font-mono text-xl font-bold', deduction.finalAmount >= 0 ? 'text-primary' : 'text-destructive')}>
+              {formatValue(deduction.finalAmount)}
+            </span>
+          </div>
+        </div>
         {deduction.deductedDays.length > 0 && (
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground mb-2">Days Deducted:</p>
-            <div className="max-h-[150px] overflow-y-auto space-y-1">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Days deducted</p>
+            <div className="max-h-[150px] space-y-1 overflow-y-auto">
               {deduction.deductedDays.map((day, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center justify-between py-1.5 px-3 rounded bg-background/50"
-                >
-                  <span className="text-sm">{day.date}</span>
-                  <span className="text-sm font-mono text-destructive">
-                    -{formatValue(day.value)}
-                  </span>
+                <div key={index} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm">
+                  <span>{day.date}</span>
+                  <span className="font-mono text-destructive">−{formatValue(day.value)}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
-
-        <Separator />
-
-        {/* Calculation Summary */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Base Amount</span>
-            <span className="font-mono font-semibold">
-              {formatValue(deduction.baseAmount)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-destructive">
-            <span>Total Deduction ({deduction.deductedDays.length} days)</span>
-            <span className="font-mono font-semibold">
-              -{formatValue(deduction.totalDeduction)}
-            </span>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between text-lg">
-            <span className="font-semibold">Final Amount</span>
-            <span className={cn(
-              "font-mono font-bold text-xl",
-              deduction.finalAmount >= 0 ? "text-success" : "text-destructive"
-            )}>
-              {formatValue(deduction.finalAmount)}
-            </span>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
