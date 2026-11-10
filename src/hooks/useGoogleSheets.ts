@@ -58,11 +58,15 @@ export function useGoogleSheets() {
   const [sheetData, setSheetData] = useState<SheetData | null>(null);
 
   const fetchSheets = useCallback(async () => {
+    const spreadsheetId = getActiveSpreadsheetId();
+    // If the active spreadsheet changes mid-fetch (e.g. TL source switch),
+    // the response belongs to the old source and must not overwrite state.
+    const isCurrent = () => getActiveSpreadsheetId() === spreadsheetId;
     setIsLoading(true);
     setError(null);
     try {
       const { data, error: fnError } = await supabase.functions.invoke('fetch-google-sheets', {
-        body: { action: 'getSheets', spreadsheetId: getActiveSpreadsheetId() },
+        body: { action: 'getSheets', spreadsheetId },
       });
 
       if (fnError) {
@@ -72,12 +76,14 @@ export function useGoogleSheets() {
       if (data?.error) throw new Error(data.error);
 
       const list: SheetInfo[] = data?.sheets || [];
-      setSheets(list);
+      if (isCurrent()) setSheets(list);
       return list;
     } catch (err) {
       const message = extractUserFriendlyError(err, 'Failed to fetch sheets');
-      setError(message);
-      setSheets([]);
+      if (isCurrent()) {
+        setError(message);
+        setSheets([]);
+      }
       return [] as SheetInfo[];
     } finally {
       setIsLoading(false);
@@ -85,11 +91,15 @@ export function useGoogleSheets() {
   }, []);
 
   const fetchSheetData = useCallback(async (sheetName: string) => {
+    const spreadsheetId = getActiveSpreadsheetId();
+    // If the active spreadsheet changes mid-fetch (e.g. TL source switch),
+    // the response belongs to the old source and must not overwrite state.
+    const isCurrent = () => getActiveSpreadsheetId() === spreadsheetId;
     setIsLoading(true);
     setError(null);
     try {
       const { data, error: fnError } = await supabase.functions.invoke('fetch-google-sheets', {
-        body: { action: 'getSheetData', spreadsheetId: getActiveSpreadsheetId(), sheetName },
+        body: { action: 'getSheetData', spreadsheetId, sheetName },
       });
 
       if (fnError) {
@@ -104,11 +114,11 @@ export function useGoogleSheets() {
         sheetName,
       };
 
-      setSheetData(result);
+      if (isCurrent()) setSheetData(result);
       return result;
     } catch (err) {
       const message = extractUserFriendlyError(err, 'Failed to fetch sheet data');
-      setError(message);
+      if (isCurrent()) setError(message);
       return null;
     } finally {
       setIsLoading(false);

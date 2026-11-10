@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import { Users } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Loader2, Users } from 'lucide-react';
 import { Header } from '@/components/dashboard/Header';
 import { SheetTabs } from '@/components/dashboard/SheetTabs';
 import { BulkSearchPanel } from '@/components/dashboard/BulkSearchPanel';
@@ -22,21 +22,28 @@ function sourceLabel(source: StageSheet): string {
 }
 
 const TL = () => {
-  const { 
-    isLoading, 
-    error, 
-    sheets, 
-    sheetData, 
-    fetchSheets, 
+  const {
+    isLoading,
+    error,
+    sheets,
+    sheetData,
+    fetchSheets,
     fetchSheetData,
+    clearSheets,
     searchWorker,
-    calculateBonus 
+    calculateBonus
   } = useGoogleSheets();
 
   const [activeSheet, setActiveSheet] = useState('');
   const [results, setResults] = useState<BonusResult[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [isInitializing, setIsInitializing] = useState(true);
+  // True only until the first spreadsheet has loaded. Only this state may
+  // show a full-page loader; later spreadsheet switches keep the page mounted
+  // and load inline so typed search input and layout are preserved.
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [isSwitchingSpreadsheet, setIsSwitchingSpreadsheet] = useState(false);
+  // Monotonic id so a slow earlier spreadsheet load can't overwrite a newer one.
+  const loadIdRef = useRef(0);
   const [spreadsheetSources, setSpreadsheetSources] = useState<StageSheet[]>([]);
   const [selectedSpreadsheetId, setSelectedSpreadsheetId] = useState('');
   const [deductionResult, setDeductionResult] = useState<DeductionResult | null>(null);
@@ -52,24 +59,34 @@ const TL = () => {
   }, []);
 
   const loadSelectedSpreadsheet = useCallback(async (spreadsheetId: string) => {
+    const loadId = ++loadIdRef.current;
+    setIsSwitchingSpreadsheet(true);
     setActiveSpreadsheetId(spreadsheetId);
     resetResults();
+    // Drop the previous spreadsheet's tabs/data so they don't flash as if
+    // they belonged to the newly selected source.
+    clearSheets();
+    setActiveSheet('');
 
-    const sheetsList = await fetchSheets();
-    const usableSheets = sheetsList.filter((sheet) => !sheet.disabled);
-    if (usableSheets.length > 0) {
-      setActiveSheet(usableSheets[0].name);
-      await fetchSheetData(usableSheets[0].name);
-    } else {
-      setActiveSheet('');
+    try {
+      const sheetsList = await fetchSheets();
+      if (loadId !== loadIdRef.current) return; // superseded by a newer switch
+      const usableSheets = sheetsList.filter((sheet) => !sheet.disabled);
+      if (usableSheets.length > 0) {
+        setActiveSheet(usableSheets[0].name);
+        await fetchSheetData(usableSheets[0].name);
+        if (loadId !== loadIdRef.current) return;
+      }
+    } finally {
+      if (loadId === loadIdRef.current) setIsSwitchingSpreadsheet(false);
     }
-  }, [fetchSheets, fetchSheetData, resetResults]);
+  }, [fetchSheets, fetchSheetData, resetResults, clearSheets]);
 
-  // Initialize: load saved spreadsheet sources, then fetch the selected source's tabs.
+  // Initialize: load saved spreadsheet sources, then auto-load the default
+  // (or first) source so the dashboard opens with data ready.
   useEffect(() => {
     let cancelled = false;
     const init = async () => {
-      setIsInitializing(true);
       try {
         const registry = await loadStageSheets();
         const savedDefault = registry.find((source) => isDefaultStageSheet(source.stage));
@@ -89,12 +106,17 @@ const TL = () => {
           setSearchError('No enabled spreadsheet sources are configured. Ask an admin to check the Stage Sheets settings.');
           return;
         }
+
+        const initialSource =
+          sources.find((source) => isDefaultStageSheet(source.stage)) ?? sources[0];
+        setSelectedSpreadsheetId(initialSource.spreadsheetId);
+        await loadSelectedSpreadsheet(initialSource.spreadsheetId);
       } catch (error) {
         if (!cancelled) {
           setSearchError(error instanceof Error ? error.message : 'Could not load the saved stage sheets.');
         }
       } finally {
-        if (!cancelled) setIsInitializing(false);
+        if (!cancelled) setIsBootstrapping(false);
       }
     };
     init();
@@ -102,16 +124,15 @@ const TL = () => {
   }, [loadSelectedSpreadsheet]);
 
   const handleSpreadsheetChange = useCallback(async (spreadsheetId: string) => {
+    if (spreadsheetId === selectedSpreadsheetId) return;
     setSelectedSpreadsheetId(spreadsheetId);
-    setIsInitializing(true);
     try {
+      // Inline loading only — the page stays mounted (no full-page reload).
       await loadSelectedSpreadsheet(spreadsheetId);
     } catch (error) {
       setSearchError(error instanceof Error ? error.message : 'Could not load the selected spreadsheet.');
-    } finally {
-      setIsInitializing(false);
     }
-  }, [loadSelectedSpreadsheet]);
+  }, [loadSelectedSpreadsheet, selectedSpreadsheetId]);
 
   // Handle sheet tab change
   const handleSheetChange = useCallback(async (sheetName: string) => {
@@ -204,7 +225,9 @@ const TL = () => {
 
   const dismissError = () => setSearchError(null);
 
-  if (isInitializing) {
+  // Full-page loader only on first open, before any spreadsheet is known.
+  // Spreadsheet switches use isSwitchingSpreadsheet and load inline below.
+  if (isBootstrapping) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <LoadingState message="Connecting to Google Sheets..." />
@@ -214,7 +237,7 @@ const TL = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header onRefresh={handleRefresh} isLoading={isLoading} />
+      <Header onRefresh={handleRefresh} isLoading={isLoading || isSwitchingSpreadsheet} />
       
       <main className="flex-1 container mx-auto px-4 py-6 max-w-7xl">
         {/* Page Title */}
@@ -231,22 +254,30 @@ const TL = () => {
               Choose one of the saved stage sheets to use for this TL dashboard.
             </p>
           </div>
-          <Select
-            value={selectedSpreadsheetId}
-            onValueChange={handleSpreadsheetChange}
-            disabled={isInitializing || spreadsheetSources.length === 0}
-          >
-            <SelectTrigger className="max-w-xl">
-              <SelectValue placeholder="Choose a saved stage sheet" />
-            </SelectTrigger>
-            <SelectContent>
-              {spreadsheetSources.map((source) => (
-                <SelectItem key={source.spreadsheetId} value={source.spreadsheetId}>
-                  {sourceLabel(source)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select
+              value={selectedSpreadsheetId}
+              onValueChange={handleSpreadsheetChange}
+              disabled={isSwitchingSpreadsheet || spreadsheetSources.length === 0}
+            >
+              <SelectTrigger className="max-w-xl">
+                <SelectValue placeholder="Choose a saved stage sheet" />
+              </SelectTrigger>
+              <SelectContent>
+                {spreadsheetSources.map((source) => (
+                  <SelectItem key={source.spreadsheetId} value={source.spreadsheetId}>
+                    {sourceLabel(source)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isSwitchingSpreadsheet && (
+              <span className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                Loading sheet…
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Error Display */}
@@ -265,7 +296,7 @@ const TL = () => {
             sheets={sheets}
             activeSheet={activeSheet}
             onSheetChange={handleSheetChange}
-            isLoading={isLoading}
+            isLoading={isLoading || isSwitchingSpreadsheet}
           />
         </div>
 
@@ -275,7 +306,7 @@ const TL = () => {
           <div className="lg:sticky lg:top-6 lg:self-start space-y-6">
             <BulkSearchPanel
               onSearch={handleBulkSearch}
-              isLoading={isLoading}
+              isLoading={isLoading || isSwitchingSpreadsheet}
               hasData={!!sheetData}
             />
 
@@ -306,7 +337,7 @@ const TL = () => {
 
           {/* Right Panel: Results - Takes remaining space */}
           <div className="space-y-6 min-w-0">
-            {isLoading && results.length === 0 ? (
+            {isSwitchingSpreadsheet || (isLoading && results.length === 0) ? (
               <LoadingState message="Loading sheet data..." />
             ) : (
               <>

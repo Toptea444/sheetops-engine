@@ -1,5 +1,5 @@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileSpreadsheet } from 'lucide-react';
+import { FileSpreadsheet, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { SheetInfo } from '@/types/bonus';
 
@@ -13,9 +13,18 @@ interface SheetTabsProps {
 export function SheetTabs({ sheets, activeSheet, onSheetChange, isLoading }: SheetTabsProps) {
   if (!sheets.length) {
     return (
-      <div className="flex items-center gap-2 rounded-lg bg-muted p-4 text-muted-foreground">
-        <FileSpreadsheet className="h-5 w-5" />
-        <span>No sheets available</span>
+      <div className="flex items-center gap-2 rounded-lg bg-muted p-4 text-muted-foreground" role="status">
+        {isLoading ? (
+          <>
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span>Loading sheets…</span>
+          </>
+        ) : (
+          <>
+            <FileSpreadsheet className="h-5 w-5" />
+            <span>No sheets available</span>
+          </>
+        )}
       </div>
     );
   }
