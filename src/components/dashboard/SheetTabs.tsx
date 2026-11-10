@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, FileSpreadsheet } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { SheetInfo } from '@/types/bonus';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -63,19 +64,28 @@ export function SheetTabs({ sheets, activeSheet, onSheetChange, isLoading }: She
   };
 
   if (!sheets.length) {
+    if (isLoading) {
+      return (
+        <div role="status" aria-live="polite" aria-label="Loading sheets">
+          <span className="sr-only">Loading sheets…</span>
+          <div aria-hidden="true" className="flex h-10 items-center gap-3 rounded-lg border bg-card px-3 md:hidden">
+            <Skeleton className="h-4 w-4 shrink-0 motion-reduce:animate-none" />
+            <Skeleton className="h-4 w-36 max-w-[60%] motion-reduce:animate-none" />
+            <Skeleton className="ml-auto h-4 w-4 shrink-0 motion-reduce:animate-none" />
+          </div>
+          <div aria-hidden="true" className="hidden h-[46px] min-w-0 items-center gap-2 overflow-hidden rounded-lg border bg-card px-3 corporate-shadow md:flex">
+            <Skeleton className="h-4 w-4 shrink-0 motion-reduce:animate-none" />
+            <Skeleton className="h-8 w-32 shrink-0 motion-reduce:animate-none" />
+            <Skeleton className="h-8 w-40 shrink-0 motion-reduce:animate-none" />
+            <Skeleton className="h-8 w-28 shrink-0 motion-reduce:animate-none" />
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex items-center gap-2 rounded-lg bg-muted p-4 text-muted-foreground" role="status">
-        {isLoading ? (
-          <>
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <span>Loading sheets…</span>
-          </>
-        ) : (
-          <>
-            <FileSpreadsheet className="h-5 w-5" />
-            <span>No sheets available</span>
-          </>
-        )}
+        <FileSpreadsheet className="h-5 w-5" />
+        <span>No sheets available</span>
       </div>
     );
   }
