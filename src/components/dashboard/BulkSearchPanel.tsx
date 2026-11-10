@@ -179,7 +179,7 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData, sourceLabel, she
                     placeholder={`Worker ID ${index + 1}`}
                     value={id}
                     onChange={(e) => handleWorkerIdChange(index, e.target.value)}
-                    className="font-mono flex-1"
+                    className="min-w-0 font-mono flex-1"
                   />
                   {workerIds.length > 1 && (
                     <Button

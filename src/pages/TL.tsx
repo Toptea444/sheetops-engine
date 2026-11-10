@@ -260,7 +260,7 @@ const TL = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <Header onRefresh={handleRefresh} isLoading={isLoading || isSwitchingSpreadsheet} />
       
-      <main className="flex-1 container mx-auto px-4 py-6 max-w-7xl">
+      <main className="flex-1 container mx-auto w-full min-w-0 px-4 py-6 max-w-7xl">
         {/* Page Header */}
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -272,15 +272,15 @@ const TL = () => {
               Bulk bonus calculator with deductions
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
             {selectedSource && (
-              <Badge variant="secondary" className="gap-1.5 font-normal">
+              <Badge variant="secondary" className="max-w-full gap-1.5 break-all font-normal">
                 <FileSpreadsheet className="h-3.5 w-3.5" />
                 {sourceLabel(selectedSource)}
               </Badge>
             )}
             {activeSheet && (
-              <Badge variant="outline" className="gap-1.5 font-normal">
+              <Badge variant="outline" className="max-w-full gap-1.5 break-all font-normal">
                 <FileSpreadsheet className="h-3.5 w-3.5" />
                 {activeSheet}
               </Badge>
@@ -352,9 +352,9 @@ const TL = () => {
         )}
 
         {/* Main Content Grid - Improved Desktop Layout */}
-        <div className="grid gap-6 lg:grid-cols-[380px_1fr] xl:grid-cols-[400px_1fr]">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)]">
           {/* Left Panel: Bulk Search - Sticky on desktop */}
-          <div className="lg:sticky lg:top-44 lg:self-start space-y-6">
+          <div className="min-w-0 lg:sticky lg:top-44 lg:self-start space-y-6">
             <BulkSearchPanel
               onSearch={handleBulkSearch}
               isLoading={isLoading || isSwitchingSpreadsheet}
