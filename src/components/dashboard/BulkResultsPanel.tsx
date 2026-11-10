@@ -121,16 +121,16 @@ export function BulkResultsPanel({ results, sheetName }: BulkResultsPanelProps) 
               >
                 <CollapsibleTrigger className="w-full">
                   <div className={cn(
-                    "flex items-center justify-between p-4 hover:bg-muted/50 transition-colors cursor-pointer",
+                    "flex flex-wrap items-center justify-between gap-3 p-4 hover:bg-muted/50 transition-colors cursor-pointer",
                     index === 0 && "rounded-t-none"
                   )}>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex shrink-0 items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm">
                         {index + 1}
                       </div>
-                      <div className="text-left">
-                        <p className="font-mono font-semibold">{result.workerId}</p>
-                        <p className="text-sm text-muted-foreground">{result.userName}</p>
+                      <div className="min-w-0 text-left">
+                        <p className="break-all font-mono font-semibold">{result.workerId}</p>
+                        <p className="break-words text-sm text-muted-foreground">{result.userName}</p>
                       </div>
                       {result.stage !== 'N/A' && (
                         <Badge variant="outline" className="hidden sm:inline-flex">

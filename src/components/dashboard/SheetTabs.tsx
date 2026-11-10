@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, FileSpreadsheet, Loader2 } from 'lucide-react';
 import type { SheetInfo } from '@/types/bonus';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 interface SheetTabsProps {
   sheets: SheetInfo[];
@@ -37,6 +39,7 @@ function groupSheets(sheets: SheetInfo[]): SheetGroup[] {
 
 export function SheetTabs({ sheets, activeSheet, onSheetChange, isLoading }: SheetTabsProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
@@ -81,7 +84,38 @@ export function SheetTabs({ sheets, activeSheet, onSheetChange, isLoading }: She
   const showGroupLabels = groups.length > 1;
 
   return (
-    <div className="flex items-center gap-1 rounded-lg border bg-card p-1.5 corporate-shadow">
+    <>
+    <div className="min-w-0 md:hidden">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="outline" role="combobox" aria-label="Choose sheet tab" aria-expanded={open} disabled={isLoading} className="w-full min-w-0 justify-between gap-2 font-normal">
+            <FileSpreadsheet className="h-4 w-4 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1 truncate text-left">{activeSheet || 'Choose a sheet tab'}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">{sheets.length} tabs</span>
+            <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] p-0">
+          <Command>
+            <CommandInput placeholder="Search sheet tabs..." aria-label="Search sheet tabs" />
+            <CommandList className="max-h-[min(300px,50vh)]">
+              <CommandEmpty>No matching tabs.</CommandEmpty>
+              {groups.map((group, index) => (
+                <CommandGroup key={group.label ?? index} heading={showGroupLabels ? group.label : undefined}>
+                  {group.sheets.map((sheet) => (
+                    <CommandItem key={sheet.id} value={sheet.name} disabled={!!sheet.disabled} onSelect={() => { setOpen(false); if (sheet.name !== activeSheet) onSheetChange(sheet.name); }} className="min-h-11 gap-2">
+                      <Check className={cn('h-4 w-4 shrink-0', activeSheet === sheet.name ? 'opacity-100 text-primary' : 'opacity-0')} />
+                      <span className="min-w-0 break-words">{sheet.name}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ))}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+    <div className="hidden min-w-0 items-center gap-1 rounded-lg border bg-card p-1.5 corporate-shadow md:flex">
       <Button
         type="button"
         variant="ghost"
@@ -158,5 +192,6 @@ export function SheetTabs({ sheets, activeSheet, onSheetChange, isLoading }: She
         <ChevronRight className="h-4 w-4" />
       </Button>
     </div>
+    </>
   );
 }
