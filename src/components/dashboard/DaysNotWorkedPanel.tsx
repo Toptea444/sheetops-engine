@@ -161,7 +161,11 @@ export function DaysNotWorkedPanel({ result, workers, onWorkerSelect, hasSummary
           {workers.length > 1 ? (
             <Select value={result.workerId} onValueChange={(id) => {
               const worker = workers.find((item) => item.workerId === id);
-              if (worker) onWorkerSelect(worker);
+              if (worker && worker.workerId !== result.workerId) {
+                setSelectedDates(new Set());
+                setHasCalculated(false);
+                onWorkerSelect(worker);
+              }
             }}>
               <SelectTrigger aria-label="Worker for deduction" className="w-full bg-card sm:max-w-sm">
                 <SelectValue />
@@ -179,7 +183,10 @@ export function DaysNotWorkedPanel({ result, workers, onWorkerSelect, hasSummary
       </CardHeader>
       <CardContent>
         {/* Date Selection Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-1">
+        <div
+          key={result.workerId}
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-1 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300"
+        >
           {allDates.map((date) => {
             const dateStr = date.toISOString();
             const dayNum = date.getDate();
