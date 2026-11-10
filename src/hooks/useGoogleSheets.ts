@@ -131,6 +131,11 @@ export function useGoogleSheets() {
     setError(null);
   }, []);
 
+  /** Drop only the loaded tab data (keeps the tab list) — e.g. on tab switch. */
+  const clearSheetData = useCallback(() => {
+    setSheetData(null);
+  }, []);
+
   const searchWorker = useCallback((data: SheetData, workerId: string): WorkerData | null => {
     if (!data || data.rows.length === 0) return null;
 
@@ -287,6 +292,7 @@ export function useGoogleSheets() {
     fetchSheets,
     fetchSheetData,
     clearSheets,
+    clearSheetData,
     searchWorker,
     calculateBonus,
     getAvailableDays,
