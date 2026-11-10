@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Search, Users, Calendar, Plus, X, Trash2 } from 'lucide-react';
+import { Search, Users, Calendar, Plus, X, Trash2, FileSpreadsheet, ClipboardPaste } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,8 @@ interface BulkSearchPanelProps {
   onSearch: (workerIds: string[], startDate: Date, endDate: Date) => void;
   isLoading: boolean;
   hasData: boolean;
+  sourceLabel?: string;
+  sheetName?: string;
 }
 
 type DatePreset = 'today' | 'last7days' | 'thisWeek' | 'thisMonth' | 'custom';
@@ -26,8 +29,11 @@ const datePresets: { label: string; value: DatePreset }[] = [
   { label: 'Custom', value: 'custom' },
 ];
 
-export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPanelProps) {
+export function BulkSearchPanel({ onSearch, isLoading, hasData, sourceLabel, sheetName }: BulkSearchPanelProps) {
   const [workerIds, setWorkerIds] = useState<string[]>(['']);
+  const [showPaste, setShowPaste] = useState(false);
+  const [pastedIds, setPastedIds] = useState('');
+  const pastedList = pastedIds.split(/[\s,;]+/).map(id => id.trim().toUpperCase()).filter(Boolean);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [hoveredDate, setHoveredDate] = useState<Date | undefined>();
@@ -140,6 +146,10 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
         </CardTitle>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+          <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <span className="min-w-0 break-words"><span className="font-medium text-foreground">Searching in: </span>{sourceLabel || 'Choose a source'}{sheetName ? ` / ${sheetName}` : ''}</span>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Worker IDs Input */}
           <div className="space-y-2">
@@ -186,6 +196,20 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
               ))}
             </div>
             
+            <Button type="button" variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => setShowPaste(!showPaste)} aria-expanded={showPaste}>
+              <ClipboardPaste className="h-4 w-4" /> {showPaste ? 'Hide paste IDs' : 'Paste multiple IDs'}
+            </Button>
+            {showPaste && (
+              <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+                <Label htmlFor="paste-worker-ids">Paste worker IDs</Label>
+                <Textarea id="paste-worker-ids" value={pastedIds} onChange={(e) => setPastedIds(e.target.value)} placeholder="One ID per line, or separated by commas" rows={3} />
+                <p className="text-xs text-muted-foreground">Up to 10 IDs. Importing replaces the current list.</p>
+                {pastedList.length > 10 && <p role="alert" className="text-xs text-destructive">Please enter no more than 10 IDs.</p>}
+                <Button type="button" variant="outline" size="sm" disabled={!pastedList.length || pastedList.length > 10} onClick={() => { setWorkerIds(pastedList); setPastedIds(''); setShowPaste(false); }}>
+                  Import {pastedList.length || ''} IDs
+                </Button>
+              </div>
+            )}
             {workerIds.length < 10 && (
               <Button
                 type="button"
@@ -206,15 +230,16 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPane
               <Calendar className="h-4 w-4 text-muted-foreground" />
               Quick Select
             </Label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-1 overflow-x-auto rounded-lg bg-muted p-1" aria-label="Date presets">
               {datePresets.map((preset) => (
                 <Button
                   key={preset.value}
                   type="button"
-                  variant={activePreset === preset.value ? 'default' : 'outline'}
+                  variant={activePreset === preset.value ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => handlePresetClick(preset.value)}
-                  className="text-xs"
+                  aria-pressed={activePreset === preset.value}
+                  className="h-8 shrink-0 px-2 text-xs"
                 >
                   {preset.label}
                 </Button>

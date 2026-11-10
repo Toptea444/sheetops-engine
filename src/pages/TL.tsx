@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Loader2, Users } from 'lucide-react';
+import { FileSpreadsheet, Layers, Loader2, Users } from 'lucide-react';
 import { Header } from '@/components/dashboard/Header';
 import { SheetTabs } from '@/components/dashboard/SheetTabs';
 import { BulkSearchPanel } from '@/components/dashboard/BulkSearchPanel';
@@ -7,10 +7,10 @@ import { BulkResultsPanel } from '@/components/dashboard/BulkResultsPanel';
 import { DaysNotWorkedPanel, DeductionSummary, type DeductionResult } from '@/components/dashboard/DaysNotWorkedPanel';
 import { ErrorAlert } from '@/components/dashboard/ErrorAlert';
 import { LoadingState } from '@/components/dashboard/LoadingState';
+import { Badge } from '@/components/ui/badge';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import type { BonusResult, WorkerData } from '@/types/bonus';
 import { toast } from 'sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { loadStageSheets } from '@/lib/stageSheetResolver';
 import { setActiveSpreadsheetId, SPREADSHEET_ID, type StageSheet } from '@/lib/spreadsheetConfig';
@@ -30,6 +30,8 @@ const TL = () => {
     fetchSheets,
     fetchSheetData,
     clearSheets,
+    clearSheetData,
+    clearError,
     searchWorker,
     calculateBonus
   } = useGoogleSheets();
@@ -142,18 +144,30 @@ const TL = () => {
     setDeductionResult(null);
     setSearchDates(null);
     setSelectedWorkerForDeduction(null);
+    // Drop the previous tab's data so a failed fetch can't leave stale data
+    // searchable under the new tab's name.
+    clearSheetData();
     await fetchSheetData(sheetName);
-  }, [fetchSheetData]);
+  }, [fetchSheetData, clearSheetData]);
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {
     resetResults();
-    await fetchSheets();
+    const sheetsList = await fetchSheets();
+    if (sheetsList.length === 0) {
+      toast.error('Refresh failed — see the error above');
+      return;
+    }
     if (activeSheet) {
-      await fetchSheetData(activeSheet);
+      clearSheetData();
+      const data = await fetchSheetData(activeSheet);
+      if (!data) {
+        toast.error('Refresh failed — see the error above');
+        return;
+      }
     }
     toast.success('Data refreshed successfully');
-  }, [fetchSheets, fetchSheetData, activeSheet, resetResults]);
+  }, [fetchSheets, fetchSheetData, activeSheet, resetResults, clearSheetData]);
 
   // Handle bulk search and calculation
   const handleBulkSearch = useCallback((workerIds: string[], startDate: Date, endDate: Date) => {
@@ -223,7 +237,14 @@ const TL = () => {
     setDeductionResult(null);
   }, []);
 
-  const dismissError = () => setSearchError(null);
+  const dismissError = () => {
+    setSearchError(null);
+    clearError();
+  };
+
+  const selectedSource = spreadsheetSources.find(
+    (source) => source.spreadsheetId === selectedSpreadsheetId,
+  );
 
   // Full-page loader only on first open, before any spreadsheet is known.
   // Spreadsheet switches use isSwitchingSpreadsheet and load inline below.
@@ -240,74 +261,106 @@ const TL = () => {
       <Header onRefresh={handleRefresh} isLoading={isLoading || isSwitchingSpreadsheet} />
       
       <main className="flex-1 container mx-auto px-4 py-6 max-w-7xl">
-        {/* Page Title */}
-        <div className="mb-6 flex items-center gap-2">
-          <Users className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-semibold">TL Dashboard</h1>
-        </div>
-
-        {/* Spreadsheet source selector */}
-        <div className="mb-6 rounded-lg border bg-card p-4 corporate-shadow">
-          <div className="mb-2">
-            <p className="text-sm font-medium">Spreadsheet source</p>
-            <p className="text-xs text-muted-foreground">
-              Choose one of the saved stage sheets to use for this TL dashboard.
+        {/* Page Header */}
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              <h1 className="text-xl font-semibold">TL Dashboard</h1>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Bulk bonus calculator with deductions
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Select
-              value={selectedSpreadsheetId}
-              onValueChange={handleSpreadsheetChange}
-              disabled={isSwitchingSpreadsheet || spreadsheetSources.length === 0}
-            >
-              <SelectTrigger className="max-w-xl">
-                <SelectValue placeholder="Choose a saved stage sheet" />
-              </SelectTrigger>
-              <SelectContent>
-                {spreadsheetSources.map((source) => (
-                  <SelectItem key={source.spreadsheetId} value={source.spreadsheetId}>
-                    {sourceLabel(source)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {isSwitchingSpreadsheet && (
-              <span className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                Loading sheet…
-              </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedSource && (
+              <Badge variant="secondary" className="gap-1.5 font-normal">
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                {sourceLabel(selectedSource)}
+              </Badge>
             )}
+            {activeSheet && (
+              <Badge variant="outline" className="gap-1.5 font-normal">
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                {activeSheet}
+              </Badge>
+            )}
+            {sheets.length > 0 && (
+              <Badge variant="outline" className="gap-1.5 font-normal">
+                <Layers className="h-3.5 w-3.5" />
+                {sheets.length} tab{sheets.length !== 1 ? 's' : ''}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Data Source Toolbar — sticky so source + tabs stay in reach */}
+        <div className="mb-6 rounded-lg border bg-card p-3 corporate-shadow md:sticky md:top-14 md:z-40">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <div className="shrink-0 space-y-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Spreadsheet source
+              </p>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={selectedSpreadsheetId}
+                  onValueChange={handleSpreadsheetChange}
+                  disabled={isLoading || isSwitchingSpreadsheet || spreadsheetSources.length === 0}
+                >
+                  <SelectTrigger className="w-full md:w-64">
+                    <SelectValue placeholder="Choose a saved stage sheet" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {spreadsheetSources.map((source) => (
+                      <SelectItem
+                        key={`${source.stage}-${source.spreadsheetId}`}
+                        value={source.spreadsheetId}
+                      >
+                        {sourceLabel(source)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {isSwitchingSpreadsheet && (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" role="status" aria-label="Loading sheet" />
+                )}
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Sheet tab
+              </p>
+              <SheetTabs
+                sheets={sheets}
+                activeSheet={activeSheet}
+                onSheetChange={handleSheetChange}
+                isLoading={isLoading || isSwitchingSpreadsheet}
+              />
+            </div>
           </div>
         </div>
 
         {/* Error Display */}
         {(error || searchError) && (
           <div className="mb-6">
-            <ErrorAlert 
-              message={error || searchError || ''} 
-              onDismiss={dismissError} 
+            <ErrorAlert
+              message={error || searchError || ''}
+              onDismiss={dismissError}
             />
           </div>
         )}
 
-        {/* Sheet Tabs */}
-        <div className="mb-6">
-          <SheetTabs
-            sheets={sheets}
-            activeSheet={activeSheet}
-            onSheetChange={handleSheetChange}
-            isLoading={isLoading || isSwitchingSpreadsheet}
-          />
-        </div>
-
         {/* Main Content Grid - Improved Desktop Layout */}
         <div className="grid gap-6 lg:grid-cols-[380px_1fr] xl:grid-cols-[400px_1fr]">
           {/* Left Panel: Bulk Search - Sticky on desktop */}
-          <div className="lg:sticky lg:top-6 lg:self-start space-y-6">
+          <div className="lg:sticky lg:top-44 lg:self-start space-y-6">
             <BulkSearchPanel
               onSearch={handleBulkSearch}
               isLoading={isLoading || isSwitchingSpreadsheet}
               hasData={!!sheetData}
+              sourceLabel={selectedSource ? sourceLabel(selectedSource) : undefined}
+              sheetName={activeSheet || undefined}
             />
 
             {/* Worker Selection for Deduction - Only when multiple results */}
