@@ -1565,7 +1565,7 @@ const Index = () => {
 
             {/* Total first: the cycle selector stays visible and accessible. */}
             {aiInsight && <InsightBanner insight={aiInsight} loading={aiInsightLoading} signature={aiInsightSignature} />}
-            <section aria-label="Earnings overview" className="rounded-3xl border border-border/70 bg-card px-5 py-7 sm:px-8 sm:py-10">
+            <section aria-label="Earnings overview" className="rounded-3xl border border-primary/20 bg-card bg-gradient-to-br from-primary/[0.08] to-primary/[0.04] px-5 py-7 dark:border-primary/30 dark:from-primary/[0.14] dark:to-primary/[0.07] sm:px-8 sm:py-10">
               <div ref={cycleSelectorRef} className="mb-6 flex justify-start">
                 <CycleSelector cycles={cycleOptions} selectedCycle={selectedCycle} onCycleChange={setSelectedCycle} isLoading={isLoading} />
               </div>
