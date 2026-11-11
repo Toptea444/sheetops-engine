@@ -226,8 +226,9 @@ export function DailyEarningsTable({
   return (
     <div className="space-y-3">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between gap-2">
-          <TabsList className="h-9 p-0.5 bg-muted/40">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <div className="min-w-0 overflow-x-auto">
+          <TabsList className="h-9 w-max p-0.5 bg-muted/40">
             {sheetNames.map((name) => (
               <TabsTrigger 
                 key={name} 
@@ -248,11 +249,12 @@ export function DailyEarningsTable({
               </TabsTrigger>
             )}
           </TabsList>
+          </div>
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-            className="h-8 text-sm gap-1 text-muted-foreground"
+            className="h-8 shrink-0 text-sm gap-1 text-muted-foreground"
           >
             {sortOrder === 'desc' ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
             {sortOrder === 'desc' ? 'Newest' : 'Oldest'}

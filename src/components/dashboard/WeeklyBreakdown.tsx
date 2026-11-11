@@ -99,7 +99,7 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
   }, [results, cycle]);
 
   if (isLoading) {
-    return <Skeleton className="h-[140px] w-full" />;
+    return <div className="space-y-4"><Skeleton className="h-4 w-28" /><Skeleton className="h-[150px] w-full" /></div>;
   }
 
   const maxTotal = Math.max(...weekData.map((w) => w.total), 1);
@@ -109,16 +109,17 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
 
   if (grandTotal === 0) {
     return (
-      <div className="h-[120px] flex items-center justify-center text-sm text-muted-foreground border rounded-md bg-muted/20">
-        No earnings data for this cycle
+      <div className="flex min-h-[180px] flex-col items-start justify-center gap-2 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">Weekly breakdown</p>
+        <p>No earnings data for this cycle</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">Weekly Breakdown</p>
-      <div className="space-y-2">
+    <div className="space-y-5">
+      <p className="text-sm font-semibold">Weekly breakdown</p>
+      <div className="space-y-3">
         {weekData.map((week) => {
           const pct = maxTotal > 0 ? (week.total / maxTotal) * 100 : 0;
           return (
@@ -136,9 +137,9 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
                   )}
                 </div>
               </div>
-              <div className="h-2 w-full rounded-full bg-muted/40 overflow-hidden">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  className="h-full rounded-full bg-primary motion-safe:transition-all motion-safe:duration-500"
                   style={{ width: `${Math.max(pct, week.total > 0 ? 2 : 0)}%` }}
                 />
               </div>
@@ -146,7 +147,7 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
           );
         })}
       </div>
-      <div className="flex justify-end pt-1 border-t border-border/50">
+      <div className="flex justify-end border-t border-border/70 pt-3">
         {isHidden ? (
           <div className="h-4 w-24 rounded-md bg-muted animate-pulse" />
         ) : (

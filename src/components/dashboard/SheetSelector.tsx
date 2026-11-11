@@ -50,9 +50,9 @@ export function SheetSelector({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="gap-2" disabled={isLoading}>
+        <Button variant="outline" className="h-9 gap-2 text-xs" disabled={isLoading}>
           <FileSpreadsheet className="h-4 w-4" />
-          <span className="hidden sm:inline">Data Sources</span>
+          <span>Data sources</span>
           <Badge variant="secondary" className="ml-1">
             {selectedCount}
           </Badge>

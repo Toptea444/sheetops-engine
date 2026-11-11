@@ -62,11 +62,11 @@ export function CycleSummaryCard({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full flex-col">
       {/* Header with toggle */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <p className="text-sm text-muted-foreground">Total Earnings</p>
+          <p className="text-xs font-medium text-muted-foreground">Total earnings</p>
           {includesRankingBonus && (
             <span className="text-[11px] font-medium text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
               + ranking bonus
@@ -99,7 +99,8 @@ export function CycleSummaryCard({
             variant="ghost"
             size="icon"
             onClick={handleToggle}
-            className="h-8 w-8"
+            className="h-9 w-9 text-muted-foreground"
+            aria-label={displayMode === 'dots' ? 'Show earnings' : 'Hide earnings'}
             title={displayMode === 'dots' ? 'Show amount' : 'Show dots'}
           >
             {displayMode === 'dots' ? (
@@ -112,18 +113,18 @@ export function CycleSummaryCard({
       </div>
 
       {/* Main earnings display */}
-      <div>
+      <div className="mt-3">
         {isHidden ? (
-          <div className="h-9 w-40 rounded-lg bg-muted animate-pulse" />
+          <div className="h-11 w-40 rounded-md bg-muted" aria-label="Earnings hidden" />
         ) : (
-          <p className="text-3xl font-extrabold tracking-tight text-foreground">
+          <p className="break-all text-4xl font-semibold tracking-tight text-foreground tabular-nums sm:text-5xl">
             {formattedAmount}
           </p>
         )}
       </div>
 
       {/* Progress bar */}
-      <div className="space-y-2">
+      <div className="mt-8 space-y-2">
         <Progress value={progressPercent} className="h-1.5" />
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>Day {daysElapsed}/{totalDays}</span>
@@ -132,17 +133,17 @@ export function CycleSummaryCard({
       </div>
 
       {/* Stats row */}
-      <div className="flex gap-8 pt-1">
+      <div className="mt-7 grid grid-cols-2 gap-4 border-t border-border/70 pt-5">
         <div>
-          <p className="text-xs text-muted-foreground">Days with Earnings</p>
-          <p className="text-lg font-semibold">{daysActive}</p>
+          <p className="text-xs text-muted-foreground">Days with earnings</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums">{daysActive}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Daily Avg</p>
+          <p className="text-xs text-muted-foreground">Daily average</p>
           {isHidden ? (
-            <div className="h-7 w-20 rounded-md bg-muted animate-pulse mt-0.5" />
+            <div className="mt-1 h-6 w-20 rounded-md bg-muted" />
           ) : (
-            <p className="text-lg font-semibold">₦{Math.round(avgDaily).toLocaleString()}</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums">₦{Math.round(avgDaily).toLocaleString()}</p>
           )}
         </div>
       </div>
