@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { FileSpreadsheet } from 'lucide-react';
 import type { BonusResult } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { isDateInCycle } from '@/lib/cycleUtils';
@@ -54,9 +55,9 @@ export function SheetBreakdownCards({
 
   if (isLoading) {
     return (
-      <div className="flex gap-3 overflow-x-auto pb-1">
+      <div className="flex gap-3 overflow-x-auto pb-2">
         {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-16 w-32 shrink-0" />
+          <Skeleton key={i} className="h-28 w-56 shrink-0 rounded-2xl" />
         ))}
       </div>
     );
@@ -71,15 +72,16 @@ export function SheetBreakdownCards({
   };
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+    <div className="flex gap-3 overflow-x-auto pb-2">
       {sheetBreakdown.map((sheet) => (
         <div 
           key={sheet.name} 
-          className="shrink-0 px-3 py-2.5 rounded-lg border bg-card/70 min-w-[132px]"
+          className="w-56 shrink-0 rounded-2xl border border-border/70 bg-card p-4 shadow-sm"
         >
-          <div className="flex items-center gap-2 mb-1">
-            <p className="text-xs text-muted-foreground truncate max-w-[110px]">
-              {sheet.name.split(' ')[0]}
+          <div className="mb-4 flex min-w-0 items-start gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><FileSpreadsheet className="h-4 w-4" /></span>
+            <p className="min-w-0 flex-1 break-words text-xs font-medium leading-4 text-muted-foreground" title={sheet.name}>
+              {sheet.name}
             </p>
             {sheet.isPercent && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">%</Badge>
@@ -93,7 +95,7 @@ export function SheetBreakdownCards({
           {displayMode === 'dots' ? (
             <div className="h-5 w-16 rounded-md bg-muted animate-pulse mt-0.5" />
           ) : (
-            <p className="text-base font-semibold">
+            <p className="break-all text-xl font-bold tracking-tight tabular-nums">
               {sheet.isPercent 
                 ? `${sheet.total.toFixed(1)}%`
                 : `₦${sheet.total.toLocaleString()}`

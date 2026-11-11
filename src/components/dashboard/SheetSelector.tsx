@@ -52,7 +52,7 @@ export function SheetSelector({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="gap-2" disabled={isLoading}>
           <FileSpreadsheet className="h-4 w-4" />
-          <span className="hidden sm:inline">Data Sources</span>
+          <span>Data Sources</span>
           <Badge variant="secondary" className="ml-1">
             {selectedCount}
           </Badge>

@@ -68,7 +68,7 @@ import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
-import { Settings, CalendarDays } from 'lucide-react';
+import { Settings, CalendarDays, Sparkles, Layers3, BarChart3, Table2, Compass } from 'lucide-react';
 
 
 
@@ -1626,8 +1626,15 @@ const Index = () => {
               </div>
             )}
 
-            {/* Top Controls Section */}
-            <div className="flex flex-col gap-3 mb-8">
+            {/* Welcome and cycle controls */}
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-primary"><Sparkles className="h-3.5 w-3.5" /> Your dashboard</p>
+                <h1 className="break-words text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{userName ? `Welcome back, ${userName}` : 'Your earnings, at a glance'}</h1>
+                <p className="mt-1 text-sm text-muted-foreground">Track your progress, one day at a time.</p>
+              </div>
+            </div>
+            <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-4">
               <div className="flex items-center justify-between gap-3 min-w-0">
                 <div ref={cycleSelectorRef}>
                   <CycleSelector
@@ -1641,7 +1648,7 @@ const Index = () => {
                   <LogoutButton onLogout={handlePinGateSwitchUser} />
                 )}
               </div>
-              <div className="min-w-0 flex items-center gap-2">
+              <div className="min-w-0 flex flex-wrap items-center gap-2">
                 <SheetSelector
                   sheets={sheets.filter(s => !isTransportSubsidySheet(s.name))}
                   selectedSheets={selectedSheets}
@@ -1689,8 +1696,10 @@ const Index = () => {
             )}
 
             {/* Hero Summary Section - Main Focus */}
-            <div className="mb-8">
-              <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6 sm:p-8">
+            <div className="mb-7">
+              <div className="relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-[#222954] via-[#313877] to-[#255b72] p-5 shadow-[0_18px_45px_-20px_rgba(38,46,100,0.6)] sm:p-8">
+                <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-24 h-64 w-64 rounded-full border border-white/10 bg-white/[0.04]" />
+                <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 right-12 h-60 w-60 rounded-full border border-teal-200/10" />
                 <CycleSummaryCard
                   cycle={selectedCycle}
                   totalEarnings={cycleStats.totalEarnings}
@@ -1707,6 +1716,7 @@ const Index = () => {
 
             {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
             <div className="mb-8">
+              <div className="mb-3 flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Layers3 className="h-4 w-4" /></span><div><h2 className="text-sm font-semibold">Earnings by source</h2><p className="text-xs text-muted-foreground">A closer look at your selected sheets</p></div></div>
               <SheetBreakdownCards
                 results={displayResults}
                 sheetNames={displaySelectedSheets}
@@ -1725,7 +1735,8 @@ const Index = () => {
 
             {/* Weekly Breakdown */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+              <div className="overflow-hidden rounded-[1.25rem] border border-border/70 bg-card p-5 shadow-sm sm:p-7">
+                <div className="mb-5 flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-500/10 text-teal-700 dark:text-teal-300"><BarChart3 className="h-5 w-5" /></span><div><h2 className="font-semibold">Your weekly rhythm</h2><p className="text-xs text-muted-foreground">See how your earnings build up</p></div></div>
                 <WeeklyBreakdown 
                   results={displayResults} 
                   cycle={selectedCycle}
@@ -1737,7 +1748,8 @@ const Index = () => {
 
             {/* Daily Earnings Table - Detailed breakdown */}
             <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6">
+              <div className="space-y-6 overflow-x-auto rounded-[1.25rem] border border-border/70 bg-card p-5 shadow-sm sm:p-7">
+                <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></span><div><h2 className="font-semibold">The daily details</h2><p className="text-xs text-muted-foreground">Explore your earnings day by day</p></div></div>
                 <DailyEarningsTable
                   results={displayResults}
                   sheetNames={displaySelectedSheets}
@@ -1770,7 +1782,7 @@ const Index = () => {
 
             {/* Leaderboard */}
             <div className="mb-8 scroll-mt-20" ref={leaderboardRef}>
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
+              <div className="overflow-hidden rounded-[1.25rem] border border-border/70 bg-card p-5 shadow-sm sm:p-7">
                 <LeaderboardPanel
                   sheetData={leaderboardSheetData}
                   currentUserId={userId}
@@ -1783,9 +1795,10 @@ const Index = () => {
             </div>
 
             {/* Secondary Panels Grid - Goals, Streaks, Projection at the end */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="mb-4 flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Compass className="h-5 w-5" /></span><div><h2 className="font-semibold">Keep your momentum</h2><p className="text-xs text-muted-foreground">Goals, milestones and insights for your cycle</p></div></div>
+            <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {/* Goals Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="overflow-hidden rounded-[1.25rem] border border-border/70 bg-card p-5 shadow-sm sm:p-6">
                 <GoalsPanel
                   results={adjustedResults}
                   cycle={selectedCycle}
@@ -1795,7 +1808,7 @@ const Index = () => {
               </div>
 
               {/* Streaks Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="overflow-hidden rounded-[1.25rem] border border-border/70 bg-card p-5 shadow-sm sm:p-6">
                 <StreaksPanel
                   streakData={streakData}
                   achievements={achievements}
@@ -1805,7 +1818,7 @@ const Index = () => {
               </div>
 
               {/* Earnings Projection */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="overflow-hidden rounded-[1.25rem] border border-border/70 bg-card p-5 shadow-sm sm:p-6">
                 <EarningsProjection
                   results={adjustedResults}
                   cycle={selectedCycle}
@@ -1815,7 +1828,7 @@ const Index = () => {
               </div>
 
               {/* Activity Feed */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
+              <div className="overflow-hidden rounded-[1.25rem] border border-border/70 bg-card p-5 shadow-sm sm:p-6">
                 <ActivityFeed
                   sheetData={leaderboardSheetData}
                   currentUserId={userId}

@@ -135,9 +135,9 @@ export function LeaderboardPanel({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-primary" />
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300"><Trophy className="h-5 w-5" /></span>
           <h3 className="font-semibold">Leaderboard</h3>
           {userStage && (
             <Badge variant="secondary" className="text-xs">
