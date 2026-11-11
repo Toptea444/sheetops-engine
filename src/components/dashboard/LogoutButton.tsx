@@ -16,7 +16,15 @@ export function LogoutButton({ onLogout }: { onLogout: () => void | Promise<void
         <LogOut className="h-3.5 w-3.5" />
         <span>Log out</span>
       </button>
-      <AlertDialog open={open} onOpenChange={setOpen}>
+      <LogoutDialog open={open} onOpenChange={setOpen} onLogout={onLogout} />
+    </>
+  );
+}
+
+
+export function LogoutDialog({ open, onOpenChange, onLogout }: { open: boolean; onOpenChange: (open: boolean) => void; onLogout: () => void | Promise<void> }) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
         <AlertDialogContent className="max-w-sm rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Log out?</AlertDialogTitle>
@@ -34,7 +42,6 @@ export function LogoutButton({ onLogout }: { onLogout: () => void | Promise<void
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
-    </>
+    </AlertDialog>
   );
 }

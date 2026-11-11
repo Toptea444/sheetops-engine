@@ -82,7 +82,10 @@ export function InsightBanner({ insight, loading, signature }: InsightBannerProp
           const Icon = TONE_ICON[tone] || Activity;
           return <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', iconTone)} />;
         })()}
-        <p className="text-xs sm:text-sm leading-snug flex-1">{insight.insight}</p>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-xs font-semibold">Earnings insight</p>
+          <p className="text-xs leading-snug sm:text-sm">{insight.insight}</p>
+        </div>
         <button
           onClick={handleDismiss}
           aria-label="Dismiss insight"

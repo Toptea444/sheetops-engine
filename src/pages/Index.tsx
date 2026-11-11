@@ -28,7 +28,6 @@ import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { ClaimedDayAlerts } from '@/components/dashboard/ClaimedDayAlerts';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
-import { LogoutButton } from '@/components/dashboard/LogoutButton';
 import { LastWeekRankAlert } from '@/components/dashboard/LastWeekRankAlert';
 import { getLastCompletedWeek, sheetHasDataForWeek } from '@/hooks/useLeaderboard';
 import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
@@ -68,7 +67,6 @@ import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
-import { Settings, CalendarDays } from 'lucide-react';
 
 
 
@@ -1599,6 +1597,9 @@ const Index = () => {
       >
         <Header
           compact
+          onOpenSheetSettings={() => setShowSheetSettingsModal(true)}
+          onOpenCycleSummary={cycleSummaryData ? handleOpenCycleSummaryStatic : undefined}
+          onLogout={identityConfirmed ? handlePinGateSwitchUser : undefined}
           onRefresh={handleRefresh} 
           isLoading={isLoading}
           userId={userId}
@@ -1645,25 +1646,14 @@ const Index = () => {
               />
             </section>
 
-            {/* Controls remain available without competing with the balance. */}
-            <div className="my-5 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <section aria-label="Earnings by source" className="my-6">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div><h2 className="text-sm font-semibold tracking-normal">Earnings by source</h2><p className="mt-1 text-xs text-muted-foreground">Selected sources are included in your earnings total.</p></div>
                 <SheetSelector sheets={sheets.filter(s => !isTransportSubsidySheet(s.name))} selectedSheets={selectedSheets} onSelectionChange={handleSheetSelectionChange} isLoading={isLoading} />
-                <button onClick={() => setShowSheetSettingsModal(true)} className="flex h-10 w-10 items-center justify-center rounded-full bg-card text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Open sheet settings" title="Open sheet settings"><Settings className="h-4 w-4" /></button>
-                {cycleSummaryData && <button onClick={handleOpenCycleSummaryStatic} className="flex h-10 items-center gap-1.5 rounded-full bg-card px-4 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="View last cycle summary"><CalendarDays className="h-4 w-4" />Last cycle</button>}
               </div>
-              {identityConfirmed && <LogoutButton onLogout={handlePinGateSwitchUser} />}
-            </div>
-
-            <RankingBonusMomentumBanner userId={userId} userName={userName} isLoggedIn={identityConfirmed && pinVerifiedThisSession} totalRankingBonusEarnings={totalRankingBonusEarnings} />
-            {aiInsight && <div className="mb-4"><InsightBanner insight={aiInsight} loading={aiInsightLoading} signature={aiInsightSignature} /></div>}
-
-            {(isLoading || displaySelectedSheets.length > 0) && (
-              <section aria-label="Earnings by source" className="mb-6">
-                <h2 className="mb-3 text-sm font-semibold tracking-normal">Earnings by source</h2>
-                <SheetBreakdownCards results={displayResults} sheetNames={displaySelectedSheets} cycle={selectedCycle} isLoading={isLoading} displayMode={earningsDisplay} subsidyData={null} subsidyOptedIn={false} formerWorkerId={formerWorkerId} />
-              </section>
-            )}
+              <SheetBreakdownCards results={displayResults} sheetNames={displaySelectedSheets} cycle={selectedCycle} isLoading={isLoading} displayMode={earningsDisplay} subsidyData={null} subsidyOptedIn={false} formerWorkerId={formerWorkerId} />
+              {!isLoading && displaySelectedSheets.length === 0 && <p className="rounded-2xl bg-card p-4 text-sm text-muted-foreground">Choose data sources to see your earnings breakdown.</p>}
+            </section>
 
             <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,1fr)]">
               <div className="min-w-0 space-y-5">
@@ -1674,11 +1664,13 @@ const Index = () => {
                 </section>
                 <LastWeekRankAlert enabled={identityConfirmed && !!userId} weekKey={lastWeekStart !== null ? String(lastWeekStart) : null} weekLabel={lastWeekInfo ? lastWeekInfo.week.label : ''} hasData={lastWeekHasData} onOpen={openLastWeekLeaderboard} />
                 <section className="scroll-mt-20 rounded-2xl bg-card p-5 sm:p-7" ref={leaderboardRef}>
+                  <RankingBonusMomentumBanner userId={userId} userName={userName} isLoggedIn={identityConfirmed && pinVerifiedThisSession} totalRankingBonusEarnings={totalRankingBonusEarnings} />
                   <LeaderboardPanel sheetData={leaderboardSheetData} currentUserId={userId} currentUserName={userName} userStage={userStage} cycle={selectedCycle} focusWeekRequest={leaderboardFocus} />
                 </section>
               </div>
               <aside aria-label="Cycle insights" className="grid min-w-0 content-start gap-5 sm:grid-cols-2 lg:grid-cols-1">
                 <section className="min-w-0 rounded-2xl bg-card p-5 sm:col-span-2 sm:p-6 lg:col-span-1"><WeeklyBreakdown results={displayResults} cycle={selectedCycle} isLoading={isLoading} displayMode={earningsDisplay} /></section>
+                {aiInsight && <div className="min-w-0 sm:col-span-2 lg:col-span-1"><InsightBanner insight={aiInsight} loading={aiInsightLoading} signature={aiInsightSignature} /></div>}
                 <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><GoalsPanel results={adjustedResults} cycle={selectedCycle} cycleTarget={getCycleTarget(getCycleKey(selectedCycle))} onUpdateCycleTarget={setCycleTarget} /></section>
                 <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><StreaksPanel streakData={streakData} achievements={achievements} totalUnlocked={totalUnlocked} isLoading={isLoading} /></section>
                 <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><EarningsProjection results={adjustedResults} cycle={selectedCycle} cycleTarget={getCycleTarget(getCycleKey(selectedCycle))} isLoading={isLoading} /></section>
