@@ -117,8 +117,8 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">Weekly Breakdown</p>
-      <div className="space-y-2">
+      <h2 className="text-base font-semibold tracking-tight">Weekly breakdown</h2>
+      <div className="space-y-3 pt-3">
         {weekData.map((week) => {
           const pct = maxTotal > 0 ? (week.total / maxTotal) * 100 : 0;
           return (
@@ -136,9 +136,9 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
                   )}
                 </div>
               </div>
-              <div className="h-2 w-full rounded-full bg-muted/40 overflow-hidden">
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  className="h-full rounded-full bg-primary motion-safe:transition-all motion-safe:duration-500"
                   style={{ width: `${Math.max(pct, week.total > 0 ? 2 : 0)}%` }}
                 />
               </div>

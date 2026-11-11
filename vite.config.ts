@@ -8,6 +8,7 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
+    allowedHosts: [".e2b.app"],
     port: 8080,
     hmr: {
       overlay: false,

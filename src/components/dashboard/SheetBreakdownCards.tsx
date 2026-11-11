@@ -56,7 +56,7 @@ export function SheetBreakdownCards({
     return (
       <div className="flex gap-3 overflow-x-auto pb-1">
         {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-16 w-32 shrink-0" />
+          <Skeleton key={i} className="h-20 w-44 shrink-0 rounded-2xl" />
         ))}
       </div>
     );
@@ -71,15 +71,15 @@ export function SheetBreakdownCards({
   };
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+    <div className="flex gap-3 overflow-x-auto pb-2">
       {sheetBreakdown.map((sheet) => (
         <div 
           key={sheet.name} 
-          className="shrink-0 px-3 py-2.5 rounded-lg border bg-card/70 min-w-[132px]"
+          className="w-44 shrink-0 rounded-2xl bg-card px-4 py-3"
         >
           <div className="flex items-center gap-2 mb-1">
-            <p className="text-xs text-muted-foreground truncate max-w-[110px]">
-              {sheet.name.split(' ')[0]}
+            <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={sheet.name}>
+              {sheet.name}
             </p>
             {sheet.isPercent && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">%</Badge>
@@ -91,9 +91,9 @@ export function SheetBreakdownCards({
             </p>
           )}
           {displayMode === 'dots' ? (
-            <div className="h-5 w-16 rounded-md bg-muted animate-pulse mt-0.5" />
+            <div className="mt-2 h-5 w-20 rounded bg-muted" />
           ) : (
-            <p className="text-base font-semibold">
+            <p className="mt-2 break-all text-lg font-semibold tracking-tight tabular-nums">
               {sheet.isPercent 
                 ? `${sheet.total.toFixed(1)}%`
                 : `₦${sheet.total.toLocaleString()}`
