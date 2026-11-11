@@ -1627,11 +1627,9 @@ const Index = () => {
             )}
 
             {/* Dashboard controls */}
-            <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="mb-1 text-xs font-medium text-muted-foreground">Collector dashboard</p>
-                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Overview</h1>
-              </div>
+            <div className="mb-6">
+              <p className="mb-1 text-xs font-medium text-muted-foreground">Collector dashboard</p>
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Your overview</h1>
             </div>
             <div className="mb-7 flex flex-col gap-3 border-b border-border/70 pb-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center justify-between gap-3">
@@ -1695,8 +1693,8 @@ const Index = () => {
             )}
 
             {/* Earnings overview */}
-            <div className="mb-6 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-              <div className="min-w-0 rounded-xl border border-border/70 bg-card p-5 sm:p-7">
+            <div className="mb-6 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div className="min-w-0 rounded-2xl bg-[#222b46] p-5 text-white dark:bg-[#293354] sm:p-7">
                 <CycleSummaryCard
                   cycle={selectedCycle}
                   totalEarnings={cycleStats.totalEarnings}
@@ -1709,7 +1707,7 @@ const Index = () => {
                   includesRankingBonus={rankingBonusContributesToTotal}
                 />
               </div>
-              <div className="min-w-0 rounded-xl border border-border/70 bg-card p-5 sm:p-7">
+              <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-5 sm:p-7">
                 <WeeklyBreakdown
                   results={displayResults}
                   cycle={selectedCycle}
@@ -1721,7 +1719,7 @@ const Index = () => {
 
             {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
             <div className="mb-8">
-              <h2 className="mb-3 text-sm font-semibold tracking-normal">Earnings by source</h2>
+              <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-sm font-semibold tracking-normal">Earnings by source</h2><span className="text-xs text-muted-foreground">Selected sheets</span></div>
               <SheetBreakdownCards
                 results={displayResults}
                 sheetNames={displaySelectedSheets}
@@ -1738,56 +1736,58 @@ const Index = () => {
 
             {/* Removed standalone AdjustmentsPanel — now shown inside Daily Earnings section */}
 
-            {/* Daily Earnings Table - Detailed breakdown */}
-            <div className="mb-8">
-              <div className="space-y-5 overflow-x-auto rounded-xl border border-border/70 bg-card p-5 sm:p-7">
-                <h2 className="text-sm font-semibold tracking-normal">Daily earnings</h2>
-                <DailyEarningsTable
-                  results={displayResults}
-                  sheetNames={displaySelectedSheets}
-                  cycle={selectedCycle}
-                  isLoading={isLoading}
-                  getTransferInfo={getTransferInfoForDate}
-                  currentUserId={userId}
-                  subsidyData={null}
-                  subsidyOptedIn={false}
-                  subsidyKId={null}
+            <div className="mb-8 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(280px,1fr)]">
+              <div className="min-w-0 space-y-5">
+                {/* Daily Earnings Table - Detailed breakdown */}
+                <div>
+                  <div className="space-y-5 overflow-x-auto rounded-xl border border-border/70 bg-card p-5 sm:p-7">
+                    <h2 className="text-sm font-semibold tracking-normal">Daily earnings</h2>
+                    <DailyEarningsTable
+                      results={displayResults}
+                      sheetNames={displaySelectedSheets}
+                      cycle={selectedCycle}
+                      isLoading={isLoading}
+                      getTransferInfo={getTransferInfoForDate}
+                      currentUserId={userId}
+                      subsidyData={null}
+                      subsidyOptedIn={false}
+                      subsidyKId={null}
+                    />
+                    {/* Adjustments info — collapsed inside the daily view */}
+                    {adjustmentNotes.length > 0 && (
+                      <AdjustmentsPanel
+                        notes={adjustmentNotes}
+                        netAdjustment={netAdjustment}
+                        isLoading={adjustmentsLoading}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <LastWeekRankAlert
+                  enabled={identityConfirmed && !!userId}
+                  weekKey={lastWeekStart !== null ? String(lastWeekStart) : null}
+                  weekLabel={lastWeekInfo ? lastWeekInfo.week.label : ''}
+                  hasData={lastWeekHasData}
+                  onOpen={openLastWeekLeaderboard}
                 />
-                {/* Adjustments info — collapsed inside the daily view */}
-                {adjustmentNotes.length > 0 && (
-                  <AdjustmentsPanel
-                    notes={adjustmentNotes}
-                    netAdjustment={netAdjustment}
-                    isLoading={adjustmentsLoading}
-                  />
-                )}
+
+                {/* Leaderboard */}
+                <div className="scroll-mt-20" ref={leaderboardRef}>
+                  <div className="overflow-hidden rounded-xl border border-border/70 bg-card p-5 sm:p-7">
+                    <LeaderboardPanel
+                      sheetData={leaderboardSheetData}
+                      currentUserId={userId}
+                      currentUserName={userName}
+                      userStage={userStage}
+                      cycle={selectedCycle}
+                      focusWeekRequest={leaderboardFocus}
+                    />
+                  </div>
+                </div>
+
               </div>
-            </div>
-
-            <LastWeekRankAlert
-              enabled={identityConfirmed && !!userId}
-              weekKey={lastWeekStart !== null ? String(lastWeekStart) : null}
-              weekLabel={lastWeekInfo ? lastWeekInfo.week.label : ''}
-              hasData={lastWeekHasData}
-              onOpen={openLastWeekLeaderboard}
-            />
-
-            {/* Leaderboard */}
-            <div className="mb-8 scroll-mt-20" ref={leaderboardRef}>
-              <div className="overflow-hidden rounded-xl border border-border/70 bg-card p-5 sm:p-7">
-                <LeaderboardPanel
-                  sheetData={leaderboardSheetData}
-                  currentUserId={userId}
-                  currentUserName={userName}
-                  userStage={userStage}
-                  cycle={selectedCycle}
-                  focusWeekRequest={leaderboardFocus}
-                />
-              </div>
-            </div>
-
-            {/* Secondary Panels Grid - Goals, Streaks, Projection at the end */}
-            <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <aside aria-label="Progress and activity" className="grid content-start grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
               {/* Goals Panel */}
               <div className="overflow-hidden rounded-xl border border-border/70 bg-card p-5 sm:p-6">
                 <GoalsPanel
@@ -1826,6 +1826,7 @@ const Index = () => {
                   cycle={selectedCycle}
                 />
               </div>
+              </aside>
             </div>
           </div>
         </main>

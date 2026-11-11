@@ -212,7 +212,7 @@ export function DailyEarningsTable({
 
   const displayedDays = showAll ? sheetData : sheetData.slice(0, 6);
 
-  const tabLabel = (name: string) => (name.split(' ')[0] || name).toUpperCase();
+  const tabLabel = (name: string) => name;
 
   if (isLoading) {
     return (
@@ -234,7 +234,7 @@ export function DailyEarningsTable({
                 key={name} 
                 value={name}
                 title={name}
-                className="text-sm h-8 px-3 text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                className="h-8 max-w-[180px] truncate px-3 text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
               >
                 {tabLabel(name)}
               </TabsTrigger>

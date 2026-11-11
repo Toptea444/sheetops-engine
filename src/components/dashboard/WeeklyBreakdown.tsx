@@ -102,60 +102,52 @@ export function WeeklyBreakdown({ results, cycle, isLoading, displayMode = 'amou
     return <div className="space-y-4"><Skeleton className="h-4 w-28" /><Skeleton className="h-[150px] w-full" /></div>;
   }
 
-  const maxTotal = Math.max(...weekData.map((w) => w.total), 1);
-  const grandTotal = weekData.reduce((sum, w) => sum + w.total, 0);
-
+  const maxMagnitude = Math.max(...weekData.map((week) => Math.abs(week.total)), 1);
+  const grandTotal = weekData.reduce((sum, week) => sum + week.total, 0);
   const isHidden = displayMode === 'dots';
-
-  if (grandTotal === 0) {
-    return (
-      <div className="flex min-h-[180px] flex-col items-start justify-center gap-2 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">Weekly breakdown</p>
-        <p>No earnings data for this cycle</p>
-      </div>
-    );
-  }
+  const hasNegative = weekData.some((week) => week.total < 0);
+  const hasData = weekData.some((week) => week.total !== 0);
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm font-semibold">Weekly breakdown</p>
-      <div className="space-y-3">
-        {weekData.map((week) => {
-          const pct = maxTotal > 0 ? (week.total / maxTotal) * 100 : 0;
-          return (
-            <div key={week.label} className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground font-medium">{week.label}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-muted-foreground">{week.days}d</span>
-                  {isHidden ? (
-                    <div className="h-4 w-16 rounded-md bg-muted animate-pulse" />
-                  ) : (
-                    <span className="font-semibold tabular-nums">
-                      ₦{week.total.toLocaleString()}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary motion-safe:transition-all motion-safe:duration-500"
-                  style={{ width: `${Math.max(pct, week.total > 0 ? 2 : 0)}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex justify-end border-t border-border/70 pt-3">
-        {isHidden ? (
-          <div className="h-4 w-24 rounded-md bg-muted animate-pulse" />
+    <div className="flex h-full flex-col">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold">Weekly earnings</p>
+          <p className="mt-1 text-xs text-muted-foreground">Earnings by week in this cycle</p>
+        </div>
+        {hasData && (isHidden ? (
+          <span className="h-5 w-20 rounded bg-muted" aria-label="Weekly total hidden" />
         ) : (
-          <span className="text-xs font-semibold tabular-nums">
-            Total: ₦{grandTotal.toLocaleString()}
-          </span>
-        )}
+          <span className="text-sm font-semibold tabular-nums">₦{grandTotal.toLocaleString()}</span>
+        ))}
       </div>
+      {!hasData ? (
+        <div className="flex min-h-[190px] items-center justify-center text-sm text-muted-foreground">No earnings data for this cycle</div>
+      ) : (
+        <div className="mt-5 min-w-0 overflow-x-auto">
+          <div className="flex min-w-max items-end justify-around gap-3" aria-label="Weekly earnings chart">
+            {weekData.map((week) => {
+              const positiveHeight = week.total > 0 ? Math.max(4, (week.total / maxMagnitude) * (hasNegative ? 70 : 140)) : 0;
+              const negativeHeight = week.total < 0 ? Math.max(4, (Math.abs(week.total) / maxMagnitude) * 70) : 0;
+              return (
+                <div key={week.label} className="flex w-20 shrink-0 flex-col items-center">
+                  <div className="mb-2 text-center text-xs font-medium tabular-nums">
+                    {isHidden ? <span className="inline-block h-3 w-12 rounded bg-muted" aria-label={`${week.label} amount hidden`} /> : `₦${week.total.toLocaleString()}`}
+                  </div>
+                  <div className="flex w-full flex-col items-center" aria-hidden="true">
+                    <div className="flex w-full items-end justify-center border-b border-border" style={{ height: hasNegative ? 70 : 140 }}>
+                      <div className="w-8 rounded-t-md bg-primary/80" style={{ height: isHidden ? (hasNegative ? 35 : 70) : positiveHeight }} />
+                    </div>
+                    {hasNegative && <div className="flex h-[70px] w-full justify-center"><div className="w-8 rounded-b-md bg-destructive/70" style={{ height: isHidden ? 0 : negativeHeight }} /></div>}
+                  </div>
+                  <p className="mt-2 text-xs font-medium text-muted-foreground">{week.label}</p>
+                  <p className="text-[11px] text-muted-foreground">{week.days} days</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

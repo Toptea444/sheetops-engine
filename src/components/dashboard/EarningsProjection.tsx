@@ -132,11 +132,11 @@ export function EarningsProjection({
       </div>
 
       {/* Projected Total */}
-      <div className="p-3 rounded-lg bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20">
+      <div className="rounded-lg bg-muted/40 p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground">Projected by cycle end</p>
-            <p className="text-xl font-bold">₦{Math.round(projectedTotal).toLocaleString()}</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">₦{Math.round(projectedTotal).toLocaleString()}</p>
           </div>
           <div
             className={`
@@ -157,7 +157,7 @@ export function EarningsProjection({
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-2">
-        <div className="p-2.5 rounded-lg bg-muted/30 border">
+        <div className="border-t border-border/70 py-3">
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Target className="h-3 w-3" />
             Daily Avg
@@ -166,7 +166,7 @@ export function EarningsProjection({
             ₦{Math.round(dailyAverage).toLocaleString()}
           </p>
         </div>
-        <div className="p-2.5 rounded-lg bg-muted/30 border">
+        <div className="border-t border-border/70 py-3">
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             Days Left

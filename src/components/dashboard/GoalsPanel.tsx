@@ -87,16 +87,11 @@ export function GoalsPanel({
       </div>
 
       {/* Goal card */}
-      <div className={cn(
-        'p-3 rounded-lg border transition-all duration-300',
-        isComplete
-          ? 'bg-success/5 border-success/30'
-          : 'bg-muted/20 border-border/60'
-      )}>
+      <div className="py-2">
         <div className="flex items-start gap-3">
           <div className={cn(
-            'h-8 w-8 rounded-full flex items-center justify-center shrink-0',
-            isComplete ? 'bg-success/20' : 'bg-muted'
+            'h-8 w-8 rounded-lg flex items-center justify-center shrink-0',
+            isComplete ? 'bg-success/10' : 'bg-primary/5'
           )}>
             {isComplete ? (
               <CheckCircle2 className="h-4 w-4 text-success" />
