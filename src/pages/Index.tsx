@@ -1564,8 +1564,9 @@ const Index = () => {
             )}
 
             {/* Total first: the cycle selector stays visible and accessible. */}
-            <section aria-label="Earnings overview" className="rounded-3xl bg-card px-5 py-7 sm:px-8 sm:py-10">
-              <div ref={cycleSelectorRef} className="mb-6 flex justify-center">
+            {aiInsight && <InsightBanner insight={aiInsight} loading={aiInsightLoading} signature={aiInsightSignature} />}
+            <section aria-label="Earnings overview" className="rounded-3xl border border-border/70 bg-card px-5 py-7 sm:px-8 sm:py-10">
+              <div ref={cycleSelectorRef} className="mb-6 flex justify-start">
                 <CycleSelector cycles={cycleOptions} selectedCycle={selectedCycle} onCycleChange={setSelectedCycle} isLoading={isLoading} />
               </div>
               <CycleSummaryCard
@@ -1601,7 +1602,6 @@ const Index = () => {
                 </section>
               </div>
               <aside aria-label="Cycle insights" className="grid min-w-0 content-start gap-5 sm:grid-cols-2 lg:grid-cols-1">
-                {aiInsight && <div className="min-w-0 sm:col-span-2 lg:col-span-1"><InsightBanner insight={aiInsight} loading={aiInsightLoading} signature={aiInsightSignature} /></div>}
                 <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><GoalsPanel results={adjustedResults} cycle={selectedCycle} cycleTarget={getCycleTarget(getCycleKey(selectedCycle))} onUpdateCycleTarget={setCycleTarget} /></section>
                 <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><StreaksPanel streakData={streakData} achievements={achievements} totalUnlocked={totalUnlocked} isLoading={isLoading} /></section>
                 <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><EarningsProjection results={adjustedResults} cycle={selectedCycle} cycleTarget={getCycleTarget(getCycleKey(selectedCycle))} isLoading={isLoading} /></section>

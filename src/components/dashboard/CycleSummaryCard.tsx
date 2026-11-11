@@ -39,7 +39,7 @@ export function CycleSummaryCard({
 
   if (isLoading) {
     return (
-      <div role="status" aria-label="Loading earnings" className="flex flex-col items-center gap-4 py-6">
+      <div role="status" aria-label="Loading earnings" className="flex flex-col items-start gap-4 py-6">
         <Skeleton className="h-4 w-28" />
         <Skeleton className="h-12 w-48 sm:h-14" />
         <Skeleton className="h-4 w-32" />
@@ -62,14 +62,14 @@ export function CycleSummaryCard({
   };
 
   return (
-    <div className="mx-auto w-full max-w-xl">
-      <div className="flex flex-col items-center text-center">
+    <div className="w-full">
+      <div className="flex flex-col items-start text-left">
         <p className="text-sm font-medium text-muted-foreground">Total earnings</p>
-        <div className="mt-3 flex max-w-full items-center justify-center gap-2">
+        <div className="mt-3 flex w-full min-w-0 items-center gap-2">
           {isHidden ? (
             <div aria-label="Earnings hidden" className="h-12 w-44 rounded-lg bg-muted sm:h-14" />
           ) : (
-            <p className="break-all text-4xl font-bold tracking-tight tabular-nums text-foreground sm:text-5xl lg:text-6xl">{formattedAmount}</p>
+            <p className="min-w-0 break-words text-5xl font-extrabold tracking-tight tabular-nums text-foreground [overflow-wrap:anywhere] sm:text-6xl">{formattedAmount}</p>
           )}
           <div className="relative shrink-0">
             <Button variant="ghost" size="icon" onClick={handleToggle} className="h-10 w-10 rounded-full text-muted-foreground" aria-label={isHidden ? 'Show earnings' : 'Hide earnings'} title={isHidden ? 'Show earnings' : 'Hide earnings'}>
@@ -90,9 +90,9 @@ export function CycleSummaryCard({
         <div className="flex justify-between gap-2 text-xs text-muted-foreground"><span>Day {daysElapsed} of {totalDays}</span><span>{daysRemaining} days left</span></div>
         <Progress value={progressPercent} className="h-1.5" />
       </div>
-      <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border/60 pt-5 text-center">
+      <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border/60 pt-5 text-left">
         <div><p className="text-xs text-muted-foreground">Days with earnings</p><p className="mt-1 text-lg font-semibold tabular-nums">{daysActive}</p></div>
-        <div><p className="text-xs text-muted-foreground">Daily average</p>{isHidden ? <div aria-label="Daily average hidden" className="mx-auto mt-2 h-5 w-20 rounded-md bg-muted" /> : <p className="mt-1 break-all text-lg font-semibold tabular-nums">₦{Math.round(avgDaily).toLocaleString()}</p>}</div>
+        <div><p className="text-xs text-muted-foreground">Daily average</p>{isHidden ? <div aria-label="Daily average hidden" className="mt-2 h-5 w-20 rounded-md bg-muted" /> : <p className="mt-1 break-words text-lg font-semibold tabular-nums [overflow-wrap:anywhere]">₦{Math.round(avgDaily).toLocaleString()}</p>}</div>
       </div>
     </div>
   );
