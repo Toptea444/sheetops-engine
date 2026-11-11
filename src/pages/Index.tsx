@@ -16,7 +16,6 @@ import { SheetBreakdownCards } from '@/components/dashboard/SheetBreakdownCards'
 import { DailyEarningsTable } from '@/components/dashboard/DailyEarningsTable';
 import { WeeklyBreakdown } from '@/components/dashboard/WeeklyBreakdown';
 import { GoalsPanel } from '@/components/dashboard/GoalsPanel';
-import { SheetSelector } from '@/components/dashboard/SheetSelector';
 import { ErrorAlert } from '@/components/dashboard/ErrorAlert';
 import { LoadingState } from '@/components/dashboard/LoadingState';
 import { StreaksPanel } from '@/components/dashboard/StreaksPanel';
@@ -1142,70 +1141,6 @@ const Index = () => {
     toast.info('Logged out. Please log in with your new Worker ID.');
   }, [clearIdentity, releaseSession, userId, ID_MIGRATION_ACK_KEY]);
 
-  const handleSheetSelectionChange = useCallback(async (newSelection: string[]) => {
-    const previousSelection = selectedSheets;
-    setSelectedSheets(newSelection);
-
-    const newSheets = newSelection.filter(
-      s => !previousSelection.includes(s) && !sheetDataCache[s]
-    );
-
-    if (newSheets.length > 0 && userId) {
-      setIsFetchingData(true);
-      const newCache = { ...sheetDataCache };
-      
-      for (const sheetName of newSheets) {
-        const data = await fetchSheetData(sheetName);
-        if (data) newCache[sheetName] = data;
-      }
-      
-      setSheetDataCache(newCache);
-      
-      const allTimeStart = new Date(2020, 0, 1);
-      const endDate = new Date();
-      const newResults: BonusResult[] = [];
-
-      for (const sheetName of newSelection) {
-        const data = newCache[sheetName];
-        if (data) {
-          const workerIdsToFetch = getWorkerIdsToFetch();
-          const idsToSearch = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
-          for (const workerId of idsToSearch) {
-            const worker = searchWorker(data, workerId);
-            if (worker) {
-              const result = calculateBonus(worker, allTimeStart, endDate);
-              newResults.push({ ...result, sheetName: sheetName });
-            }
-          }
-        }
-      }
-      
-      setResults(newResults);
-      setIsFetchingData(false);
-    } else if (userId) {
-      const allTimeStart = new Date(2020, 0, 1);
-      const endDate = new Date();
-      const newResults: BonusResult[] = [];
-
-      for (const sheetName of newSelection) {
-        const data = sheetDataCache[sheetName];
-        if (data) {
-          const workerIdsToFetch = getWorkerIdsToFetch();
-          const idsToSearch = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
-          for (const workerId of idsToSearch) {
-            const worker = searchWorker(data, workerId);
-            if (worker) {
-              const result = calculateBonus(worker, allTimeStart, endDate);
-              newResults.push({ ...result, sheetName: sheetName });
-            }
-          }
-        }
-      }
-      
-      setResults(newResults);
-    }
-  }, [selectedSheets, sheetDataCache, userId, fetchSheetData, searchWorker, calculateBonus, getWorkerIdsToFetch]);
-
   const cycleStats = useMemo(() => {
     let totalEarnings = 0;
     const activeDays = new Set<number>();
@@ -1646,19 +1581,16 @@ const Index = () => {
               />
             </section>
 
-            <section aria-label="Earnings by source" className="my-6">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div><h2 className="text-sm font-semibold tracking-normal">Earnings by source</h2><p className="mt-1 text-xs text-muted-foreground">Selected sources are included in your earnings total.</p></div>
-                <SheetSelector sheets={sheets.filter(s => !isTransportSubsidySheet(s.name))} selectedSheets={selectedSheets} onSelectionChange={handleSheetSelectionChange} isLoading={isLoading} />
-              </div>
+            <div className="my-6">
               <SheetBreakdownCards results={displayResults} sheetNames={displaySelectedSheets} cycle={selectedCycle} isLoading={isLoading} displayMode={earningsDisplay} subsidyData={null} subsidyOptedIn={false} formerWorkerId={formerWorkerId} />
-              {!isLoading && displaySelectedSheets.length === 0 && <p className="rounded-2xl bg-card p-4 text-sm text-muted-foreground">Choose data sources to see your earnings breakdown.</p>}
-            </section>
+            </div>
 
             <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,1fr)]">
               <div className="min-w-0 space-y-5">
-                <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-7">
-                  <h2 className="mb-5 text-base font-semibold tracking-tight">Daily earnings</h2>
+                <section className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-8">
+                  <WeeklyBreakdown results={displayResults} cycle={selectedCycle} isLoading={isLoading} displayMode={earningsDisplay} />
+                </section>
+                <section aria-label="Daily earnings" className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-8">
                   <DailyEarningsTable results={displayResults} sheetNames={displaySelectedSheets} cycle={selectedCycle} isLoading={isLoading} getTransferInfo={getTransferInfoForDate} currentUserId={userId} subsidyData={null} subsidyOptedIn={false} subsidyKId={null} />
                   {adjustmentNotes.length > 0 && <div className="mt-5"><AdjustmentsPanel notes={adjustmentNotes} netAdjustment={netAdjustment} isLoading={adjustmentsLoading} /></div>}
                 </section>
@@ -1669,7 +1601,6 @@ const Index = () => {
                 </section>
               </div>
               <aside aria-label="Cycle insights" className="grid min-w-0 content-start gap-5 sm:grid-cols-2 lg:grid-cols-1">
-                <section className="min-w-0 rounded-2xl bg-card p-5 sm:col-span-2 sm:p-6 lg:col-span-1"><WeeklyBreakdown results={displayResults} cycle={selectedCycle} isLoading={isLoading} displayMode={earningsDisplay} /></section>
                 {aiInsight && <div className="min-w-0 sm:col-span-2 lg:col-span-1"><InsightBanner insight={aiInsight} loading={aiInsightLoading} signature={aiInsightSignature} /></div>}
                 <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><GoalsPanel results={adjustedResults} cycle={selectedCycle} cycleTarget={getCycleTarget(getCycleKey(selectedCycle))} onUpdateCycleTarget={setCycleTarget} /></section>
                 <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><StreaksPanel streakData={streakData} achievements={achievements} totalUnlocked={totalUnlocked} isLoading={isLoading} /></section>
