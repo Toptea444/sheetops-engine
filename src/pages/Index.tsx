@@ -68,7 +68,7 @@ import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
-import { Settings, CalendarDays } from 'lucide-react';
+import { Settings, CalendarDays, List, Trophy, Target } from 'lucide-react';
 
 
 
@@ -1614,8 +1614,8 @@ const Index = () => {
           onDisableNotifications={disableNotifications}
         />
 
-        <main className="flex-1 w-full overflow-x-hidden px-4 sm:px-6 py-6">
-          <div className="w-full max-w-7xl mx-auto">
+        <main className="flex-1 w-full overflow-x-hidden px-4 py-6 sm:px-6 sm:py-8">
+          <div className="mx-auto w-full max-w-6xl">
             {/* Error */}
             {(error || dataError) && (
               <div className="mb-6">
@@ -1626,8 +1626,11 @@ const Index = () => {
               </div>
             )}
 
-            {/* Top Controls Section */}
-            <div className="flex flex-col gap-3 mb-8">
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+              <div><p className="text-xs font-medium text-muted-foreground">Bonus Tracker</p><h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Your overview</h1></div>
+            </div>
+            {/* Cycle and data controls */}
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center justify-between gap-3 min-w-0">
                 <div ref={cycleSelectorRef}>
                   <CycleSelector
@@ -1641,7 +1644,7 @@ const Index = () => {
                   <LogoutButton onLogout={handlePinGateSwitchUser} />
                 )}
               </div>
-              <div className="min-w-0 flex items-center gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <SheetSelector
                   sheets={sheets.filter(s => !isTransportSubsidySheet(s.name))}
                   selectedSheets={selectedSheets}
@@ -1688,140 +1691,83 @@ const Index = () => {
               </div>
             )}
 
-            {/* Hero Summary Section - Main Focus */}
-            <div className="mb-8">
-              <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6 sm:p-8">
-                <CycleSummaryCard
-                  cycle={selectedCycle}
-                  totalEarnings={cycleStats.totalEarnings}
-                  daysActive={cycleStats.daysActive}
-                  isLoading={isLoading}
-                  displayMode={earningsDisplay}
-                  onDisplayModeChange={setEarningsDisplay}
-                  tooltipDismissed={tooltipDismissed}
-                  onDismissTooltip={dismissTooltip}
-                  includesRankingBonus={rankingBonusContributesToTotal}
-                />
-              </div>
-            </div>
-
-            {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
-            <div className="mb-8">
-              <SheetBreakdownCards
-                results={displayResults}
-                sheetNames={displaySelectedSheets}
-                cycle={selectedCycle}
-                isLoading={isLoading}
-                displayMode={earningsDisplay}
-                subsidyData={null}
-                subsidyOptedIn={false}
-                formerWorkerId={formerWorkerId}
-              />
-            </div>
-
-            {/* Transport Subsidy Card — temporarily hidden */}
-
-            {/* Removed standalone AdjustmentsPanel — now shown inside Daily Earnings section */}
-
-            {/* Weekly Breakdown */}
-            <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
-                <WeeklyBreakdown 
-                  results={displayResults} 
-                  cycle={selectedCycle}
-                  isLoading={isLoading}
-                  displayMode={earningsDisplay}
-                />
-              </div>
-            </div>
-
-            {/* Daily Earnings Table - Detailed breakdown */}
-            <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6">
-                <DailyEarningsTable
-                  results={displayResults}
-                  sheetNames={displaySelectedSheets}
-                  cycle={selectedCycle}
-                  isLoading={isLoading}
-                  getTransferInfo={getTransferInfoForDate}
-                  currentUserId={userId}
-                  subsidyData={null}
-                  subsidyOptedIn={false}
-                  subsidyKId={null}
-                />
-                {/* Adjustments info — collapsed inside the daily view */}
-                {adjustmentNotes.length > 0 && (
-                  <AdjustmentsPanel
-                    notes={adjustmentNotes}
-                    netAdjustment={netAdjustment}
-                    isLoading={adjustmentsLoading}
+            <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,1fr)]">
+              <div className="min-w-0 space-y-5">
+                <section aria-label="Earnings overview" className="rounded-2xl border border-border/60 bg-card p-5 sm:p-7">
+                  <CycleSummaryCard
+                    cycle={selectedCycle}
+                    totalEarnings={cycleStats.totalEarnings}
+                    daysActive={cycleStats.daysActive}
+                    isLoading={isLoading}
+                    displayMode={earningsDisplay}
+                    onDisplayModeChange={setEarningsDisplay}
+                    tooltipDismissed={tooltipDismissed}
+                    onDismissTooltip={dismissTooltip}
+                    includesRankingBonus={rankingBonusContributesToTotal}
                   />
+                </section>
+
+                <nav aria-label="Dashboard sections" className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <a href="#daily-earnings" className="group flex min-h-[76px] flex-col items-center justify-center gap-2 rounded-2xl bg-card px-2 py-3 text-center text-xs font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><List className="h-4 w-4 text-primary" />Daily earnings</a>
+                  <a href="#leaderboard" className="group flex min-h-[76px] flex-col items-center justify-center gap-2 rounded-2xl bg-card px-2 py-3 text-center text-xs font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trophy className="h-4 w-4 text-primary" />Leaderboard</a>
+                  <a href="#cycle-goal" className="group flex min-h-[76px] flex-col items-center justify-center gap-2 rounded-2xl bg-card px-2 py-3 text-center text-xs font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Target className="h-4 w-4 text-primary" />Cycle goal</a>
+                </nav>
+
+                {(isLoading || displaySelectedSheets.length > 0) && (
+                  <section aria-label="Earnings by source">
+                    <div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-base font-semibold tracking-tight">Earnings by source</h2><span className="text-xs text-muted-foreground">Selected sheets</span></div>
+                    <SheetBreakdownCards
+                      results={displayResults}
+                      sheetNames={displaySelectedSheets}
+                      cycle={selectedCycle}
+                      isLoading={isLoading}
+                      displayMode={earningsDisplay}
+                      subsidyData={null}
+                      subsidyOptedIn={false}
+                      formerWorkerId={formerWorkerId}
+                    />
+                  </section>
                 )}
-              </div>
-            </div>
 
-            <LastWeekRankAlert
-              enabled={identityConfirmed && !!userId}
-              weekKey={lastWeekStart !== null ? String(lastWeekStart) : null}
-              weekLabel={lastWeekInfo ? lastWeekInfo.week.label : ''}
-              hasData={lastWeekHasData}
-              onOpen={openLastWeekLeaderboard}
-            />
+                <section id="daily-earnings" className="scroll-mt-20 space-y-5 rounded-2xl border border-border/60 bg-card p-5 sm:p-7">
+                  <div><h2 className="text-base font-semibold tracking-tight">Daily earnings</h2><p className="mt-1 text-xs text-muted-foreground">Your sheet breakdown for this cycle</p></div>
+                  <DailyEarningsTable
+                    results={displayResults}
+                    sheetNames={displaySelectedSheets}
+                    cycle={selectedCycle}
+                    isLoading={isLoading}
+                    getTransferInfo={getTransferInfoForDate}
+                    currentUserId={userId}
+                    subsidyData={null}
+                    subsidyOptedIn={false}
+                    subsidyKId={null}
+                  />
+                  {adjustmentNotes.length > 0 && <AdjustmentsPanel notes={adjustmentNotes} netAdjustment={netAdjustment} isLoading={adjustmentsLoading} />}
+                </section>
 
-            {/* Leaderboard */}
-            <div className="mb-8 scroll-mt-20" ref={leaderboardRef}>
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
-                <LeaderboardPanel
-                  sheetData={leaderboardSheetData}
-                  currentUserId={userId}
-                  currentUserName={userName}
-                  userStage={userStage}
-                  cycle={selectedCycle}
-                  focusWeekRequest={leaderboardFocus}
-                />
-              </div>
-            </div>
-
-            {/* Secondary Panels Grid - Goals, Streaks, Projection at the end */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {/* Goals Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
-                <GoalsPanel
-                  results={adjustedResults}
-                  cycle={selectedCycle}
-                  cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
-                  onUpdateCycleTarget={setCycleTarget}
-                />
+                <LastWeekRankAlert enabled={identityConfirmed && !!userId} weekKey={lastWeekStart !== null ? String(lastWeekStart) : null} weekLabel={lastWeekInfo ? lastWeekInfo.week.label : ''} hasData={lastWeekHasData} onOpen={openLastWeekLeaderboard} />
+                <section id="leaderboard" className="scroll-mt-20 rounded-2xl border border-border/60 bg-card p-5 sm:p-7" ref={leaderboardRef}>
+                  <LeaderboardPanel sheetData={leaderboardSheetData} currentUserId={userId} currentUserName={userName} userStage={userStage} cycle={selectedCycle} focusWeekRequest={leaderboardFocus} />
+                </section>
               </div>
 
-              {/* Streaks Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
-                <StreaksPanel
-                  streakData={streakData}
-                  achievements={achievements}
-                  totalUnlocked={totalUnlocked}
-                  isLoading={isLoading}
-                />
-              </div>
-
-              {/* Earnings Projection */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
-                <EarningsProjection
-                  results={adjustedResults}
-                  cycle={selectedCycle}
-                  cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
-                  isLoading={isLoading}
-                />
-              </div>
-
-              {/* Activity Feed */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
-                <ActivityFeed
-                  sheetData={leaderboardSheetData}
-                  currentUserId={userId}
-                  cycle={selectedCycle}
-                />
-              </div>
+              <aside aria-label="Cycle insights" className="grid min-w-0 content-start gap-5 sm:grid-cols-2 lg:grid-cols-1">
+                <section className="min-w-0 rounded-2xl border border-border/60 bg-card p-5 sm:col-span-2 sm:p-6 lg:col-span-1">
+                  <WeeklyBreakdown results={displayResults} cycle={selectedCycle} isLoading={isLoading} displayMode={earningsDisplay} />
+                </section>
+                <section id="cycle-goal" className="scroll-mt-20 rounded-2xl border border-border/60 bg-card p-5 sm:p-6">
+                  <GoalsPanel results={adjustedResults} cycle={selectedCycle} cycleTarget={getCycleTarget(getCycleKey(selectedCycle))} onUpdateCycleTarget={setCycleTarget} />
+                </section>
+                <section className="rounded-2xl border border-border/60 bg-card p-5 sm:p-6">
+                  <StreaksPanel streakData={streakData} achievements={achievements} totalUnlocked={totalUnlocked} isLoading={isLoading} />
+                </section>
+                <section className="rounded-2xl border border-border/60 bg-card p-5 sm:p-6">
+                  <EarningsProjection results={adjustedResults} cycle={selectedCycle} cycleTarget={getCycleTarget(getCycleKey(selectedCycle))} isLoading={isLoading} />
+                </section>
+                <section className="rounded-2xl border border-border/60 bg-card p-5 sm:p-6">
+                  <ActivityFeed sheetData={leaderboardSheetData} currentUserId={userId} cycle={selectedCycle} />
+                </section>
+              </aside>
             </div>
           </div>
         </main>
