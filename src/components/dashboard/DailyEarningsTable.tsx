@@ -212,8 +212,6 @@ export function DailyEarningsTable({
 
   const displayedDays = showAll ? sheetData : sheetData.slice(0, 6);
 
-  const tabLabel = (name: string) => (name.split(' ')[0] || name).toUpperCase();
-
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -226,16 +224,17 @@ export function DailyEarningsTable({
   return (
     <div className="space-y-3">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between gap-2">
-          <TabsList className="h-9 p-0.5 bg-muted/40">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <div className="min-w-0 flex-1 overflow-x-auto pb-1">
+          <TabsList className="h-9 w-max p-0.5 bg-muted/40">
             {sheetNames.map((name) => (
               <TabsTrigger 
                 key={name} 
                 value={name}
                 title={name}
-                className="text-sm h-8 px-3 text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                className="h-8 max-w-[min(12rem,55vw)] shrink-0 px-3 text-sm text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
               >
-                {tabLabel(name)}
+                <span className="min-w-0 truncate">{name}</span>
               </TabsTrigger>
             ))}
             {subsidyOptedIn && (
@@ -248,11 +247,12 @@ export function DailyEarningsTable({
               </TabsTrigger>
             )}
           </TabsList>
+          </div>
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-            className="h-8 text-sm gap-1 text-muted-foreground"
+            className="h-8 shrink-0 text-sm gap-1 text-muted-foreground"
           >
             {sortOrder === 'desc' ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
             {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
@@ -263,42 +263,42 @@ export function DailyEarningsTable({
           <TabsContent key={name} value={name} className="mt-3">
             {name === activeTab && (
               <>
-                <p className="text-sm font-medium text-foreground truncate mb-2" title={activeTab}>
+                <p className="mb-2 break-words text-sm font-medium text-foreground" title={activeTab}>
                   {activeTab}
                 </p>
 
                 {stats.hasSplit && !isPercent ? (
-                  <div className="grid grid-cols-4 gap-2 mb-3 p-3 bg-muted/20 rounded-lg text-center">
+                  <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg bg-muted/20 p-3 text-center sm:grid-cols-4">
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Bonus</p>
-                      <p className="text-base font-semibold">{formatCurrency(stats.bonusTotal)}</p>
+                      <p className="break-words text-base font-semibold tabular-nums">{formatCurrency(stats.bonusTotal)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Ranking</p>
-                      <p className="text-base font-semibold">{formatCurrency(stats.rankingBonusTotal)}</p>
+                      <p className="break-words text-base font-semibold tabular-nums">{formatCurrency(stats.rankingBonusTotal)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>
-                      <p className="text-base font-semibold">{formatCurrency(stats.total)}</p>
+                      <p className="break-words text-base font-semibold tabular-nums">{formatCurrency(stats.total)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Entries</p>
-                      <p className="text-base font-semibold">{stats.count}</p>
+                      <p className="break-words text-base font-semibold tabular-nums">{stats.count}</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-2 mb-3 p-3 bg-muted/20 rounded-lg text-center">
+                  <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg bg-muted/20 p-3 text-center sm:grid-cols-3">
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>
-                      <p className="text-base font-semibold">{formatValue(stats.total)}</p>
+                      <p className="break-words text-base font-semibold tabular-nums">{formatValue(stats.total)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Average</p>
-                      <p className="text-base font-semibold">{formatValue(stats.avg)}</p>
+                      <p className="break-words text-base font-semibold tabular-nums">{formatValue(stats.avg)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Entries</p>
-                      <p className="text-base font-semibold">{stats.count}</p>
+                      <p className="break-words text-base font-semibold tabular-nums">{stats.count}</p>
                     </div>
                   </div>
                 )}

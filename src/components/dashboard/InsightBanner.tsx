@@ -51,7 +51,7 @@ export function InsightBanner({ insight, loading, signature }: InsightBannerProp
       ? 'border-primary/30 bg-primary/5 text-foreground'
       : tone === 'concern'
       ? 'border-destructive/30 bg-destructive/5 text-foreground'
-      : 'border-border bg-card text-foreground';
+      : 'border-primary/20 bg-primary/5 text-foreground';
 
   const iconTone =
     tone === 'positive' ? 'text-primary' : tone === 'concern' ? 'text-destructive' : 'text-muted-foreground';
@@ -67,6 +67,7 @@ export function InsightBanner({ insight, loading, signature }: InsightBannerProp
 
   return (
     <motion.div
+      className="mb-4"
       initial={{ opacity: 0, y: -12 }}
       animate={mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: -12 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -82,7 +83,10 @@ export function InsightBanner({ insight, loading, signature }: InsightBannerProp
           const Icon = TONE_ICON[tone] || Activity;
           return <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', iconTone)} />;
         })()}
-        <p className="text-xs sm:text-sm leading-snug flex-1">{insight.insight}</p>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-xs font-semibold">Earnings insight</p>
+          <p className="text-xs leading-snug sm:text-sm">{insight.insight}</p>
+        </div>
         <button
           onClick={handleDismiss}
           aria-label="Dismiss insight"

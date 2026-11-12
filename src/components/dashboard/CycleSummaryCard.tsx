@@ -39,15 +39,15 @@ export function CycleSummaryCard({
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        <Skeleton className="h-5 w-24" />
-        <Skeleton className="h-10 w-40" />
-        <Skeleton className="h-2 w-full" />
+      <div role="status" aria-label="Loading earnings" className="flex flex-col items-start gap-4 py-6">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-12 w-48 sm:h-14" />
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="mt-8 h-2 w-full max-w-md" />
       </div>
     );
   }
 
-  // Dot count matches the number of characters in the formatted amount (e.g. "3,900" → 5 dots)
   const formattedAmount = `₦${totalEarnings.toLocaleString()}`;
   const isHidden = displayMode === 'dots';
 
@@ -62,89 +62,37 @@ export function CycleSummaryCard({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Header with toggle */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <p className="text-sm text-muted-foreground">Total Earnings</p>
-          {includesRankingBonus && (
-            <span className="text-[11px] font-medium text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
-              + ranking bonus
-            </span>
-          )}
-        </div>
-        <div className="relative">
-          {showTooltip && (
-            <div className="absolute bottom-full right-0 mb-3 z-10 animate-in fade-in slide-in-from-bottom-1 duration-200">
-              <div className="bg-foreground text-background rounded-lg px-3 py-2 w-44 shadow-md">
-                <p className="text-xs leading-relaxed">
-                  {displayMode === 'dots' 
-                    ? 'Tap the eye to reveal your earnings' 
-                    : 'Tap to hide your earnings'}
-                </p>
-                <button
-                  onClick={handleDismissTooltip}
-                  className="text-xs text-background/70 hover:text-background font-medium mt-1.5 transition-colors"
-                >
-                  Got it
-                </button>
-              </div>
-              {/* Arrow pointing down to the eye icon */}
-              <div className="flex justify-end pr-3">
-                <div className="w-2.5 h-2.5 bg-foreground rotate-45 -mt-[5px]" />
-              </div>
-            </div>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleToggle}
-            className="h-8 w-8"
-            title={displayMode === 'dots' ? 'Show amount' : 'Show dots'}
-          >
-            {displayMode === 'dots' ? (
-              <Eye className="h-4 w-4" />
-            ) : (
-              <EyeOff className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      </div>
-
-      {/* Main earnings display */}
-      <div>
-        {isHidden ? (
-          <div className="h-9 w-40 rounded-lg bg-muted animate-pulse" />
-        ) : (
-          <p className="text-3xl font-extrabold tracking-tight text-foreground">
-            {formattedAmount}
-          </p>
-        )}
-      </div>
-
-      {/* Progress bar */}
-      <div className="space-y-2">
-        <Progress value={progressPercent} className="h-1.5" />
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Day {daysElapsed}/{totalDays}</span>
-          <span>{daysRemaining} days left</span>
-        </div>
-      </div>
-
-      {/* Stats row */}
-      <div className="flex gap-8 pt-1">
-        <div>
-          <p className="text-xs text-muted-foreground">Days with Earnings</p>
-          <p className="text-lg font-semibold">{daysActive}</p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Daily Avg</p>
+    <div className="w-full">
+      <div className="flex flex-col items-start text-left">
+        <p className="text-sm font-medium text-muted-foreground">Total earnings</p>
+        <div className="mt-3 flex w-full min-w-0 items-center gap-2">
           {isHidden ? (
-            <div className="h-7 w-20 rounded-md bg-muted animate-pulse mt-0.5" />
+            <div aria-label="Earnings hidden" className="h-12 w-44 rounded-lg bg-muted dark:border dark:border-white/15 dark:bg-white/10 sm:h-14" />
           ) : (
-            <p className="text-lg font-semibold">₦{Math.round(avgDaily).toLocaleString()}</p>
+            <p className="min-w-0 break-words text-5xl font-extrabold tracking-tight tabular-nums text-foreground [overflow-wrap:anywhere] sm:text-6xl">{formattedAmount}</p>
           )}
+          <div className="relative shrink-0">
+            <Button variant="ghost" size="icon" onClick={handleToggle} className="h-10 w-10 rounded-full text-muted-foreground" aria-label={isHidden ? 'Show earnings' : 'Hide earnings'} title={isHidden ? 'Show earnings' : 'Hide earnings'}>
+              {isHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            </Button>
+            {showTooltip && (
+              <div className="absolute right-0 top-full z-20 mt-2 w-44 rounded-xl bg-foreground p-3 text-left text-xs text-background shadow-lg">
+                <p>{isHidden ? 'Tap the eye to reveal your earnings' : 'Tap the eye to hide your earnings'}</p>
+                <button onClick={handleDismissTooltip} className="mt-2 font-semibold underline">Got it</button>
+              </div>
+            )}
+          </div>
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">{cycle.label}</p>
+        {includesRankingBonus && <p className="mt-2 text-xs font-medium text-primary">Includes ranking bonus</p>}
+      </div>
+      <div className="mt-9 space-y-2">
+        <div className="flex justify-between gap-2 text-xs text-muted-foreground"><span>Day {daysElapsed} of {totalDays}</span><span>{daysRemaining} days left</span></div>
+        <Progress value={progressPercent} className="h-1.5" />
+      </div>
+      <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border/60 pt-5 text-left">
+        <div><p className="text-xs text-muted-foreground">Days with earnings</p><p className="mt-1 text-lg font-semibold tabular-nums">{daysActive}</p></div>
+        <div><p className="text-xs text-muted-foreground">Daily average</p>{isHidden ? <div aria-label="Daily average hidden" className="mt-2 h-5 w-20 rounded-md bg-muted dark:border dark:border-white/15 dark:bg-white/10" /> : <p className="mt-1 break-words text-lg font-semibold tabular-nums [overflow-wrap:anywhere]">₦{Math.round(avgDaily).toLocaleString()}</p>}</div>
       </div>
     </div>
   );

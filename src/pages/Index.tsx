@@ -16,7 +16,6 @@ import { SheetBreakdownCards } from '@/components/dashboard/SheetBreakdownCards'
 import { DailyEarningsTable } from '@/components/dashboard/DailyEarningsTable';
 import { WeeklyBreakdown } from '@/components/dashboard/WeeklyBreakdown';
 import { GoalsPanel } from '@/components/dashboard/GoalsPanel';
-import { SheetSelector } from '@/components/dashboard/SheetSelector';
 import { ErrorAlert } from '@/components/dashboard/ErrorAlert';
 import { LoadingState } from '@/components/dashboard/LoadingState';
 import { StreaksPanel } from '@/components/dashboard/StreaksPanel';
@@ -28,7 +27,6 @@ import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { ClaimedDayAlerts } from '@/components/dashboard/ClaimedDayAlerts';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { DownloadAppModal } from '@/components/DownloadAppModal';
-import { LogoutButton } from '@/components/dashboard/LogoutButton';
 import { LastWeekRankAlert } from '@/components/dashboard/LastWeekRankAlert';
 import { getLastCompletedWeek, sheetHasDataForWeek } from '@/hooks/useLeaderboard';
 import { TransportSubsidyModal } from '@/components/TransportSubsidyModal';
@@ -68,7 +66,6 @@ import type { BonusResult, SheetData } from '@/types/bonus';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSessionLock } from '@/hooks/useSessionLock';
-import { Settings, CalendarDays } from 'lucide-react';
 
 
 
@@ -1144,70 +1141,6 @@ const Index = () => {
     toast.info('Logged out. Please log in with your new Worker ID.');
   }, [clearIdentity, releaseSession, userId, ID_MIGRATION_ACK_KEY]);
 
-  const handleSheetSelectionChange = useCallback(async (newSelection: string[]) => {
-    const previousSelection = selectedSheets;
-    setSelectedSheets(newSelection);
-
-    const newSheets = newSelection.filter(
-      s => !previousSelection.includes(s) && !sheetDataCache[s]
-    );
-
-    if (newSheets.length > 0 && userId) {
-      setIsFetchingData(true);
-      const newCache = { ...sheetDataCache };
-      
-      for (const sheetName of newSheets) {
-        const data = await fetchSheetData(sheetName);
-        if (data) newCache[sheetName] = data;
-      }
-      
-      setSheetDataCache(newCache);
-      
-      const allTimeStart = new Date(2020, 0, 1);
-      const endDate = new Date();
-      const newResults: BonusResult[] = [];
-
-      for (const sheetName of newSelection) {
-        const data = newCache[sheetName];
-        if (data) {
-          const workerIdsToFetch = getWorkerIdsToFetch();
-          const idsToSearch = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
-          for (const workerId of idsToSearch) {
-            const worker = searchWorker(data, workerId);
-            if (worker) {
-              const result = calculateBonus(worker, allTimeStart, endDate);
-              newResults.push({ ...result, sheetName: sheetName });
-            }
-          }
-        }
-      }
-      
-      setResults(newResults);
-      setIsFetchingData(false);
-    } else if (userId) {
-      const allTimeStart = new Date(2020, 0, 1);
-      const endDate = new Date();
-      const newResults: BonusResult[] = [];
-
-      for (const sheetName of newSelection) {
-        const data = sheetDataCache[sheetName];
-        if (data) {
-          const workerIdsToFetch = getWorkerIdsToFetch();
-          const idsToSearch = workerIdsToFetch.length > 0 ? workerIdsToFetch : [userId];
-          for (const workerId of idsToSearch) {
-            const worker = searchWorker(data, workerId);
-            if (worker) {
-              const result = calculateBonus(worker, allTimeStart, endDate);
-              newResults.push({ ...result, sheetName: sheetName });
-            }
-          }
-        }
-      }
-      
-      setResults(newResults);
-    }
-  }, [selectedSheets, sheetDataCache, userId, fetchSheetData, searchWorker, calculateBonus, getWorkerIdsToFetch]);
-
   const cycleStats = useMemo(() => {
     let totalEarnings = 0;
     const activeDays = new Set<number>();
@@ -1597,7 +1530,11 @@ const Index = () => {
         className={`flex flex-1 flex-col ${isIdentityLocked ? 'pointer-events-none select-none blur-sm' : ''}`}
         aria-hidden={isIdentityLocked}
       >
-        <Header 
+        <Header
+          compact
+          onOpenSheetSettings={() => setShowSheetSettingsModal(true)}
+          onOpenCycleSummary={cycleSummaryData ? handleOpenCycleSummaryStatic : undefined}
+          onLogout={identityConfirmed ? handlePinGateSwitchUser : undefined}
           onRefresh={handleRefresh} 
           isLoading={isLoading}
           userId={userId}
@@ -1614,8 +1551,8 @@ const Index = () => {
           onDisableNotifications={disableNotifications}
         />
 
-        <main className="flex-1 w-full overflow-x-hidden px-4 sm:px-6 py-6">
-          <div className="w-full max-w-7xl mx-auto">
+        <main className="flex-1 w-full overflow-x-hidden px-4 pb-10 pt-4 sm:px-6 sm:pt-8">
+          <div className="mx-auto w-full max-w-5xl">
             {/* Error */}
             {(error || dataError) && (
               <div className="mb-6">
@@ -1626,202 +1563,50 @@ const Index = () => {
               </div>
             )}
 
-            {/* Top Controls Section */}
-            <div className="flex flex-col gap-3 mb-8">
-              <div className="flex items-center justify-between gap-3 min-w-0">
-                <div ref={cycleSelectorRef}>
-                  <CycleSelector
-                    cycles={cycleOptions}
-                    selectedCycle={selectedCycle}
-                    onCycleChange={setSelectedCycle}
-                    isLoading={isLoading}
-                  />
-                </div>
-                {identityConfirmed && (
-                  <LogoutButton onLogout={handlePinGateSwitchUser} />
-                )}
+            {/* Total first: the cycle selector stays visible and accessible. */}
+            {aiInsight && <InsightBanner insight={aiInsight} loading={aiInsightLoading} signature={aiInsightSignature} />}
+            <section aria-label="Earnings overview" className="rounded-3xl border border-primary/20 bg-card bg-gradient-to-br from-primary/[0.08] to-primary/[0.04] px-5 py-7 dark:border-primary/30 dark:from-primary/[0.14] dark:to-primary/[0.07] sm:px-8 sm:py-10">
+              <div ref={cycleSelectorRef} className="mb-6 flex justify-start">
+                <CycleSelector cycles={cycleOptions} selectedCycle={selectedCycle} onCycleChange={setSelectedCycle} isLoading={isLoading} />
               </div>
-              <div className="min-w-0 flex items-center gap-2">
-                <SheetSelector
-                  sheets={sheets.filter(s => !isTransportSubsidySheet(s.name))}
-                  selectedSheets={selectedSheets}
-                  onSelectionChange={handleSheetSelectionChange}
-                  isLoading={isLoading}
-                />
-                <button
-                  onClick={() => setShowSheetSettingsModal(true)}
-                  className="h-8 w-8 rounded-md border border-border bg-background/90 hover:bg-muted/60 transition-colors flex items-center justify-center"
-                  aria-label="Open sheet settings"
-                  title="Open sheet settings"
-                >
-                  <Settings className="h-4 w-4 text-muted-foreground" />
-                </button>
-                {cycleSummaryData && (
-                  <button
-                    onClick={handleOpenCycleSummaryStatic}
-                    className="h-8 px-3 rounded-md border border-border bg-background/90 hover:bg-muted/60 transition-colors flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-                    aria-label="View last cycle summary"
-                    title="View last cycle summary"
-                  >
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Last Cycle</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <RankingBonusMomentumBanner
-              userId={userId}
-              userName={userName}
-              isLoggedIn={identityConfirmed && pinVerifiedThisSession}
-              totalRankingBonusEarnings={totalRankingBonusEarnings}
-            />
-
-            {/* AI personal-assistant insight banner (Daily/Performance only) */}
-            {aiInsight && (
-              <div className="mb-4">
-                <InsightBanner
-                  insight={aiInsight}
-                  loading={aiInsightLoading}
-                  signature={aiInsightSignature}
-                />
-              </div>
-            )}
-
-            {/* Hero Summary Section - Main Focus */}
-            <div className="mb-8">
-              <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6 sm:p-8">
-                <CycleSummaryCard
-                  cycle={selectedCycle}
-                  totalEarnings={cycleStats.totalEarnings}
-                  daysActive={cycleStats.daysActive}
-                  isLoading={isLoading}
-                  displayMode={earningsDisplay}
-                  onDisplayModeChange={setEarningsDisplay}
-                  tooltipDismissed={tooltipDismissed}
-                  onDismissTooltip={dismissTooltip}
-                  includesRankingBonus={rankingBonusContributesToTotal}
-                />
-              </div>
-            </div>
-
-            {/* Sheet Breakdown Cards - Details by Sheet (Directly after total earnings) */}
-            <div className="mb-8">
-              <SheetBreakdownCards
-                results={displayResults}
-                sheetNames={displaySelectedSheets}
+              <CycleSummaryCard
                 cycle={selectedCycle}
+                totalEarnings={cycleStats.totalEarnings}
+                daysActive={cycleStats.daysActive}
                 isLoading={isLoading}
                 displayMode={earningsDisplay}
-                subsidyData={null}
-                subsidyOptedIn={false}
-                formerWorkerId={formerWorkerId}
+                onDisplayModeChange={setEarningsDisplay}
+                tooltipDismissed={tooltipDismissed}
+                onDismissTooltip={dismissTooltip}
+                includesRankingBonus={rankingBonusContributesToTotal}
               />
+            </section>
+
+            <div className="my-6">
+              <SheetBreakdownCards results={displayResults} sheetNames={displaySelectedSheets} cycle={selectedCycle} isLoading={isLoading} displayMode={earningsDisplay} subsidyData={null} subsidyOptedIn={false} formerWorkerId={formerWorkerId} />
             </div>
 
-            {/* Transport Subsidy Card — temporarily hidden */}
-
-            {/* Removed standalone AdjustmentsPanel — now shown inside Daily Earnings section */}
-
-            {/* Weekly Breakdown */}
-            <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
-                <WeeklyBreakdown 
-                  results={displayResults} 
-                  cycle={selectedCycle}
-                  isLoading={isLoading}
-                  displayMode={earningsDisplay}
-                />
+            <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,1fr)]">
+              <div className="min-w-0 space-y-5">
+                <section className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-8">
+                  <WeeklyBreakdown results={displayResults} cycle={selectedCycle} isLoading={isLoading} displayMode={earningsDisplay} />
+                </section>
+                <section aria-label="Daily earnings" className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-8">
+                  <DailyEarningsTable results={displayResults} sheetNames={displaySelectedSheets} cycle={selectedCycle} isLoading={isLoading} getTransferInfo={getTransferInfoForDate} currentUserId={userId} subsidyData={null} subsidyOptedIn={false} subsidyKId={null} />
+                  {adjustmentNotes.length > 0 && <div className="mt-5"><AdjustmentsPanel notes={adjustmentNotes} netAdjustment={netAdjustment} isLoading={adjustmentsLoading} /></div>}
+                </section>
+                <LastWeekRankAlert enabled={identityConfirmed && !!userId} weekKey={lastWeekStart !== null ? String(lastWeekStart) : null} weekLabel={lastWeekInfo ? lastWeekInfo.week.label : ''} hasData={lastWeekHasData} onOpen={openLastWeekLeaderboard} />
+                <section className="scroll-mt-20 rounded-2xl bg-card p-5 sm:p-7" ref={leaderboardRef}>
+                  <RankingBonusMomentumBanner userId={userId} userName={userName} isLoggedIn={identityConfirmed && pinVerifiedThisSession} totalRankingBonusEarnings={totalRankingBonusEarnings} />
+                  <LeaderboardPanel sheetData={leaderboardSheetData} currentUserId={userId} currentUserName={userName} userStage={userStage} cycle={selectedCycle} focusWeekRequest={leaderboardFocus} />
+                </section>
               </div>
-            </div>
-
-            {/* Daily Earnings Table - Detailed breakdown */}
-            <div className="mb-8">
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-x-auto space-y-6">
-                <DailyEarningsTable
-                  results={displayResults}
-                  sheetNames={displaySelectedSheets}
-                  cycle={selectedCycle}
-                  isLoading={isLoading}
-                  getTransferInfo={getTransferInfoForDate}
-                  currentUserId={userId}
-                  subsidyData={null}
-                  subsidyOptedIn={false}
-                  subsidyKId={null}
-                />
-                {/* Adjustments info — collapsed inside the daily view */}
-                {adjustmentNotes.length > 0 && (
-                  <AdjustmentsPanel
-                    notes={adjustmentNotes}
-                    netAdjustment={netAdjustment}
-                    isLoading={adjustmentsLoading}
-                  />
-                )}
-              </div>
-            </div>
-
-            <LastWeekRankAlert
-              enabled={identityConfirmed && !!userId}
-              weekKey={lastWeekStart !== null ? String(lastWeekStart) : null}
-              weekLabel={lastWeekInfo ? lastWeekInfo.week.label : ''}
-              hasData={lastWeekHasData}
-              onOpen={openLastWeekLeaderboard}
-            />
-
-            {/* Leaderboard */}
-            <div className="mb-8 scroll-mt-20" ref={leaderboardRef}>
-              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden">
-                <LeaderboardPanel
-                  sheetData={leaderboardSheetData}
-                  currentUserId={userId}
-                  currentUserName={userName}
-                  userStage={userStage}
-                  cycle={selectedCycle}
-                  focusWeekRequest={leaderboardFocus}
-                />
-              </div>
-            </div>
-
-            {/* Secondary Panels Grid - Goals, Streaks, Projection at the end */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {/* Goals Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
-                <GoalsPanel
-                  results={adjustedResults}
-                  cycle={selectedCycle}
-                  cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
-                  onUpdateCycleTarget={setCycleTarget}
-                />
-              </div>
-
-              {/* Streaks Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
-                <StreaksPanel
-                  streakData={streakData}
-                  achievements={achievements}
-                  totalUnlocked={totalUnlocked}
-                  isLoading={isLoading}
-                />
-              </div>
-
-              {/* Earnings Projection */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
-                <EarningsProjection
-                  results={adjustedResults}
-                  cycle={selectedCycle}
-                  cycleTarget={getCycleTarget(getCycleKey(selectedCycle))}
-                  isLoading={isLoading}
-                />
-              </div>
-
-              {/* Activity Feed */}
-              <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden">
-                <ActivityFeed
-                  sheetData={leaderboardSheetData}
-                  currentUserId={userId}
-                  cycle={selectedCycle}
-                />
-              </div>
+              <aside aria-label="Cycle insights" className="grid min-w-0 content-start gap-5 sm:grid-cols-2 lg:grid-cols-1">
+                <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><GoalsPanel results={adjustedResults} cycle={selectedCycle} cycleTarget={getCycleTarget(getCycleKey(selectedCycle))} onUpdateCycleTarget={setCycleTarget} /></section>
+                <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><StreaksPanel streakData={streakData} achievements={achievements} totalUnlocked={totalUnlocked} isLoading={isLoading} /></section>
+                <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><EarningsProjection results={adjustedResults} cycle={selectedCycle} cycleTarget={getCycleTarget(getCycleKey(selectedCycle))} isLoading={isLoading} /></section>
+                <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><ActivityFeed sheetData={leaderboardSheetData} currentUserId={userId} cycle={selectedCycle} /></section>
+              </aside>
             </div>
           </div>
         </main>
