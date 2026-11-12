@@ -1,6 +1,7 @@
 import { findSwapAwayFrom } from '@/lib/idSwaps';
 import { resolveStageSheet } from '@/lib/stageSheetResolver';
 import { setActiveSpreadsheetId } from '@/lib/spreadsheetConfig';
+import { isExcludedT0Copy } from '@/lib/defaultSheetSelection';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
@@ -401,12 +402,12 @@ const Index = () => {
   }, []);
 
   // Helper to check if a sheet should be unchecked by default.
-  // ONLY weekly-bonus sheets should auto-uncheck. Ranking bonus sheets must
-  // always start checked (user request).
+  // Weekly bonuses and the specific copied October tab for T0 users start unchecked.
+  // Ranking bonus sheets continue to start checked.
   const isDefaultUncheckedSheet = (name: string): boolean => {
     const n = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
     const isWeekly = n.includes('WEEKLY') && n.includes('BONUS');
-    return isWeekly;
+    return isWeekly || isExcludedT0Copy(name, userId);
   };
 
   // Keep these for totals exclusion (always exclude bonus sheets from cumulative totals)
@@ -573,6 +574,7 @@ const Index = () => {
       for (const cacheId of idsForCache) {
         const rows = await loadWorkerResults(cacheId, currentCycleKey);
         for (const row of rows) {
+          if (row.sheetName && isExcludedT0Copy(row.sheetName, userId)) continue;
           const key = `${cacheId}:${row.sheetName}`;
           if (seen.has(key)) continue;
           seen.add(key);
@@ -595,7 +597,7 @@ const Index = () => {
       const cachedSheets = await loadAllSheetSnapshots(currentCycleKey);
       cachedCycleSnapshots = cachedSheets;
       cachedSheetNamesFromSnapshots = Object.keys(cachedSheets).filter((name) =>
-        sheetMatchesCycle(name, selectedCycle, cachedSheets[name])
+        !isExcludedT0Copy(name, userId) && sheetMatchesCycle(name, selectedCycle, cachedSheets[name])
       );
       for (const [name, data] of Object.entries(cachedSheets)) {
         if (!newCache[name]) newCache[name] = data;
@@ -614,7 +616,7 @@ const Index = () => {
     // Past cycles should be rebuilt from the currently configured spreadsheet,
     // not just whichever tab names happened to exist in an older snapshot.
     const effectiveSelectedSheets = isPastCycle
-      ? Array.from(new Set([...historicalSheetNames, ...selectedSheets]))
+      ? Array.from(new Set([...historicalSheetNames, ...selectedSheets])).filter((name) => !isExcludedT0Copy(name, userId))
       : selectedSheets;
     const resolvedHistoricalSheetNames = new Set(historicalSheetNames);
     const liveCycleSheetNames = new Set<string>();
