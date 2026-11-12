@@ -26,7 +26,7 @@ export function CycleSelector({
       <DropdownMenuTrigger asChild>
         <Button 
           variant="secondary"
-          className="h-9 gap-1.5 rounded-full px-4 text-xs font-medium"
+          className="h-9 gap-1.5 rounded-full px-4 text-xs font-medium dark:border dark:border-white/15 dark:bg-white/10 dark:hover:bg-white/15"
           disabled={isLoading}
         >
           {selectedCycle.label}
