@@ -67,7 +67,7 @@ export function CycleSummaryCard({
         <p className="text-sm font-medium text-muted-foreground">Total earnings</p>
         <div className="mt-3 flex w-full min-w-0 items-center gap-2">
           {isHidden ? (
-            <div aria-label="Earnings hidden" className="h-12 w-44 rounded-lg bg-muted dark:border dark:border-white/15 dark:bg-white/10 sm:h-14" />
+            <div aria-label="Earnings hidden" className="h-12 w-44 rounded-lg bg-primary/15 dark:border dark:border-white/15 dark:bg-white/10 sm:h-14" />
           ) : (
             <p className="min-w-0 break-words text-5xl font-extrabold tracking-tight tabular-nums text-foreground [overflow-wrap:anywhere] sm:text-6xl">{formattedAmount}</p>
           )}
@@ -84,7 +84,7 @@ export function CycleSummaryCard({
           </div>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">{cycle.label}</p>
-        {includesRankingBonus && <p className="mt-2 text-xs font-medium text-primary">Includes ranking bonus</p>}
+        {includesRankingBonus && <p className="mt-2 text-xs text-muted-foreground">Includes ranking bonus</p>}
       </div>
       <div className="mt-9 space-y-2">
         <div className="flex justify-between gap-2 text-xs text-muted-foreground"><span>Day {daysElapsed} of {totalDays}</span><span>{daysRemaining} days left</span></div>
@@ -92,7 +92,7 @@ export function CycleSummaryCard({
       </div>
       <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border/60 pt-5 text-left">
         <div><p className="text-xs text-muted-foreground">Days with earnings</p><p className="mt-1 text-lg font-semibold tabular-nums">{daysActive}</p></div>
-        <div><p className="text-xs text-muted-foreground">Daily average</p>{isHidden ? <div aria-label="Daily average hidden" className="mt-2 h-5 w-20 rounded-md bg-muted dark:border dark:border-white/15 dark:bg-white/10" /> : <p className="mt-1 break-words text-lg font-semibold tabular-nums [overflow-wrap:anywhere]">₦{Math.round(avgDaily).toLocaleString()}</p>}</div>
+        <div><p className="text-xs text-muted-foreground">Daily average</p>{isHidden ? <div aria-label="Daily average hidden" className="mt-2 h-5 w-20 rounded-md bg-primary/15 dark:border dark:border-white/15 dark:bg-white/10" /> : <p className="mt-1 break-words text-lg font-semibold tabular-nums [overflow-wrap:anywhere]">₦{Math.round(avgDaily).toLocaleString()}</p>}</div>
       </div>
     </div>
   );
