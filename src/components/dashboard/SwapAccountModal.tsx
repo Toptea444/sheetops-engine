@@ -17,7 +17,7 @@ interface SwapAccountModalProps {
   currentId: string | null;
   /** Checks that the ID exists on the sheets; returns the name found there. */
   onValidateId: (id: string) => Promise<{ valid: boolean; userName?: string }>;
-  onSwapped: (args: { newId: string; userName?: string; swapId: string }) => void;
+  onSwapped: (args: { newId: string; userName?: string; swapId: string; effectiveDate: string }) => void;
 }
 
 const toLocal = (d: Date) =>
@@ -85,7 +85,7 @@ export function SwapAccountModal({ open, onClose, currentId, onValidateId, onSwa
         return;
       }
       toast.success(`Done! You're now on ${cleanNew}. Your PIN stays the same.`);
-      onSwapped({ newId: cleanNew, userName: foundName, swapId: data.swap.id });
+      onSwapped({ newId: cleanNew, userName: foundName, swapId: data.swap.id, effectiveDate: data.swap.effective_date });
       onClose();
     } finally {
       setSubmitting(false);

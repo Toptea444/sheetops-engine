@@ -8,6 +8,7 @@ import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
 import { IdentityConfirmationModal } from '@/components/dashboard/IdentityConfirmationModal';
 import { SessionPinGate } from '@/components/dashboard/SessionPinGate';
 import { SwapDetectionModal } from '@/components/dashboard/SwapDetectionModal';
+import { SwapCompleteModal, type CompletedSwap } from '@/components/dashboard/SwapCompleteModal';
 import { PinResetModal } from '@/components/dashboard/PinResetModal';
 import { IdMigrationModal } from '@/components/dashboard/IdMigrationModal';
 
@@ -70,6 +71,18 @@ import { useSessionLock } from '@/hooks/useSessionLock';
 
 
 
+const PENDING_SWAP_CONFIRMATION_KEY = 'performanceTracker_pendingSwapConfirmation';
+
+function readPendingSwapConfirmation(): CompletedSwap | null {
+  try {
+    const stored = sessionStorage.getItem(PENDING_SWAP_CONFIRMATION_KEY);
+    if (!stored) return null;
+    const value = JSON.parse(stored);
+    if (typeof value.oldId === 'string' && typeof value.newId === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.effectiveDate)) return value;
+  } catch { /* Storage may be unavailable. */ }
+  return null;
+}
+
 const Index = () => {
   const toLocalDateStr = (ts: number) => {
     const d = new Date(ts);
@@ -123,7 +136,15 @@ const Index = () => {
   const [sheetDataCache, setSheetDataCache] = useState<Record<string, SheetData>>({});
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
-  const [swapDetected, setSwapDetected] = useState<{ currentUserId: string; swappedWithId: string; swapId: string } | null>(null);
+  const [swapDetected, setSwapDetected] = useState<{ currentUserId: string; swappedWithId: string; swapId: string; effectiveDate: string } | null>(null);
+  const [pendingSwapConfirmation, setPendingSwapConfirmation] = useState<CompletedSwap | null>(readPendingSwapConfirmation);
+  const updatePendingSwapConfirmation = useCallback((swap: CompletedSwap | null) => {
+    setPendingSwapConfirmation(swap);
+    try {
+      if (swap) sessionStorage.setItem(PENDING_SWAP_CONFIRMATION_KEY, JSON.stringify(swap));
+      else sessionStorage.removeItem(PENDING_SWAP_CONFIRMATION_KEY);
+    } catch { /* Confirmation still works in memory. */ }
+  }, []);
   const [swapCheckedFor, setSwapCheckedFor] = useState<string | null>(null);
   const [swapCheckError, setSwapCheckError] = useState<string | null>(null);
   const [pinResetDetected, setPinResetDetected] = useState<{ workerId: string; message: string } | null>(null);
@@ -161,6 +182,8 @@ const Index = () => {
   const [pinVerifiedThisSession, setPinVerifiedThisSession] = useState(() => {
     return localStorage.getItem(PIN_VERIFIED_KEY) === 'true';
   });
+
+  const showSwapConfirmation = !!pendingSwapConfirmation && !!userId && pendingSwapConfirmation.newId.toUpperCase() === userId.toUpperCase() && identityConfirmed && pinVerifiedThisSession && introDone && !isInitializing && !identityLoading && !showWelcome && !swapDetected;
 
   // Session release on logout
   const { releaseSession } = useSessionLock();
@@ -760,6 +783,7 @@ const Index = () => {
     
     if (
       cycleSummaryShouldShowAnimated &&
+      !showSwapConfirmation &&
       !cycleSummaryShownThisSession &&
       identityConfirmed &&
       pinVerifiedThisSession &&
@@ -774,7 +798,8 @@ const Index = () => {
       return () => clearTimeout(timer);
     }
   }, [
-    cycleSummaryShouldShowAnimated, 
+    cycleSummaryShouldShowAnimated,
+    showSwapConfirmation,
     cycleSummaryShownThisSession, 
     identityConfirmed, 
     pinVerifiedThisSession,
@@ -812,7 +837,7 @@ const Index = () => {
         if (!localStorage.getItem(ackKey)) {
           setPinResetDetected(null);
           setShowPinGate(false);
-          setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId });
+          setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId, effectiveDate: swap.effective_date });
         }
       }
     };
@@ -855,7 +880,7 @@ const Index = () => {
           const swapId = pendingSwap.exchange_group || pendingSwap.id;
           const ackKey = `performanceTracker_swapAck_${swapId}_${userId.toUpperCase()}`;
           if (!localStorage.getItem(ackKey)) {
-            setSwapDetected({ currentUserId: userId.toUpperCase(), swappedWithId: pendingSwap.new_worker_id, swapId });
+            setSwapDetected({ currentUserId: userId.toUpperCase(), swappedWithId: pendingSwap.new_worker_id, swapId, effectiveDate: pendingSwap.effective_date });
             return;
           }
         }
@@ -960,12 +985,13 @@ const Index = () => {
       // must not be mistaken for the previous holder's still-open session.
       if (swap.exchange_group) localStorage.setItem(ackKey, 'true');
       if (!localStorage.getItem(ackKey)) {
-        setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId });
+        setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId, effectiveDate: swap.effective_date });
         setShowWelcome(false);
         return; // Don't grant access
       }
     }
 
+      if (pendingSwapConfirmation && pendingSwapConfirmation.newId.toUpperCase() !== uid) updatePendingSwapConfirmation(null);
       setUserId(newUserId, newUserName || undefined);
       setWelcomePrefilledId(null);
       localStorage.setItem(PIN_VERIFIED_KEY, 'true');
@@ -987,7 +1013,7 @@ const Index = () => {
         const swapId = swap.exchange_group || swap.id;
         const ackKey = `performanceTracker_swapAck_${swapId}_${uid}`;
         if (!localStorage.getItem(ackKey)) {
-          setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId });
+          setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId, effectiveDate: swap.effective_date });
           return; // Don't grant access
         }
       }
@@ -1012,8 +1038,9 @@ const Index = () => {
 
   // After a user swaps their own ID: move them straight onto the new ID.
   // PIN was carried over server-side, so they stay logged in.
-  const handleSelfSwap = useCallback(async ({ newId, userName: newName, swapId }: { newId: string; userName?: string; swapId: string }) => {
+  const handleSelfSwap = useCallback(async ({ newId, userName: newName, swapId, effectiveDate }: { newId: string; userName?: string; swapId: string; effectiveDate: string }) => {
     const oldId = (userId || '').toUpperCase();
+    updatePendingSwapConfirmation({ oldId, newId, effectiveDate });
     localStorage.setItem(`performanceTracker_swapAck_${swapId}_${oldId}`, 'true');
     localStorage.setItem(`performanceTracker_swapAck_${swapId}_${newId}`, 'true');
     if (oldId) await releaseSession(oldId);
@@ -1023,7 +1050,7 @@ const Index = () => {
     localStorage.setItem(PIN_VERIFIED_KEY, 'true');
     setPinVerifiedThisSession(true);
     confirmIdentity(newId);
-  }, [userId, releaseSession, setUserId, confirmIdentity]);
+  }, [userId, releaseSession, setUserId, confirmIdentity, updatePendingSwapConfirmation]);
 
   const handlePinGateSwitchUser = useCallback(async () => {
     if (userId) await releaseSession(userId);
@@ -1056,6 +1083,7 @@ const Index = () => {
     // the swap is already acknowledged and won't trigger another logout loop
     if (swapDetected) {
       setWelcomePrefilledId(swapDetected.swappedWithId);
+      updatePendingSwapConfirmation({ oldId: swapDetected.currentUserId, newId: swapDetected.swappedWithId, effectiveDate: swapDetected.effectiveDate });
       const ackKeyOld = `performanceTracker_swapAck_${swapDetected.swapId}_${swapDetected.currentUserId}`;
       const ackKeyNew = `performanceTracker_swapAck_${swapDetected.swapId}_${swapDetected.swappedWithId}`;
       localStorage.setItem(ackKeyOld, 'true');
@@ -1071,7 +1099,7 @@ const Index = () => {
     setPinResetDetected(null);
     setShowPinGate(false);
     setShowWelcome(true);
-  }, [clearIdentity, releaseSession, userId, swapDetected]);
+  }, [clearIdentity, releaseSession, userId, swapDetected, updatePendingSwapConfirmation]);
 
   const handlePinResetAcknowledge = useCallback(async () => {
     if (userId) await releaseSession(userId);
@@ -1448,7 +1476,7 @@ const Index = () => {
         onChanged={reloadAdjustments}
       />
 
-      <FeatureUpdateModal identityConfirmed={identityConfirmed && pinVerifiedThisSession} />
+      <FeatureUpdateModal identityConfirmed={identityConfirmed && pinVerifiedThisSession && !showSwapConfirmation} />
 
       {/* Admin Alerts Display */}
       <AlertsDisplay />
@@ -1499,6 +1527,8 @@ const Index = () => {
         onLogout={handleSwapLogout}
       />
 
+      <SwapCompleteModal swap={pendingSwapConfirmation} open={showSwapConfirmation} onClose={() => updatePendingSwapConfirmation(null)} />
+
       <PinResetModal
         open={!!pinResetDetected}
         workerId={pinResetDetected?.workerId || ''}
@@ -1522,7 +1552,7 @@ const Index = () => {
       {identityConfirmed && pinVerifiedThisSession && (
         <>
           <SupportFAB workerId={userId || null} />
-          <SupportUpdateModal identityConfirmed={introDone} />
+          <SupportUpdateModal identityConfirmed={introDone && !showSwapConfirmation} />
         </>
       )}
 
@@ -1531,7 +1561,7 @@ const Index = () => {
         daysActive={cycleStats.daysActive}
         userName={userName}
         previousDayEarnings={previousDayEarnings}
-        isDataReady={introDone && !isLoading && identityConfirmed && adjustedResults.length > 0}
+        isDataReady={introDone && !isLoading && identityConfirmed && !showSwapConfirmation && adjustedResults.length > 0}
       />
 
       {/* Cycle Summary Modals */}
