@@ -465,7 +465,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_delete_id_change: { Args: { p_id: string }; Returns: undefined }
+      admin_record_id_change: {
+        Args: {
+          p_cycle: string
+          p_date: string
+          p_exchange: boolean
+          p_new_id: string
+          p_notes: string
+          p_old_id: string
+        }
+        Returns: Json
+      }
+      user_record_id_move: {
+        Args: {
+          p_cycle: string
+          p_date: string
+          p_new_hash: string
+          p_new_id: string
+          p_notes: string
+          p_old_hash: string
+          p_old_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
