@@ -15,6 +15,7 @@ interface SwapAccountModalProps {
   open: boolean;
   onClose: () => void;
   currentId: string | null;
+  campaignEffectiveDate?: string;
   /** Checks that the ID exists on the sheets; returns the name found there. */
   onValidateId: (id: string) => Promise<{ valid: boolean; userName?: string }>;
   onSwapped: (args: { newId: string; userName?: string; swapId: string; effectiveDate: string }) => void;
@@ -26,7 +27,7 @@ const toLocal = (d: Date) =>
 const prettyDate = (s: string) =>
   new Date(s + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-export function SwapAccountModal({ open, onClose, currentId, onValidateId, onSwapped }: SwapAccountModalProps) {
+export function SwapAccountModal({ open, onClose, currentId, campaignEffectiveDate, onValidateId, onSwapped }: SwapAccountModalProps) {
   const today = toLocal(new Date());
   const minDate = toLocal(new Date(Date.now() - 60 * 86400_000));
 
@@ -39,13 +40,14 @@ export function SwapAccountModal({ open, onClose, currentId, onValidateId, onSwa
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reviewed, setReviewed] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setStep('form'); setNewId(''); setDate(today); setPin(''); setNote('');
+      setStep('form'); setNewId(''); setDate(campaignEffectiveDate || today); setPin(''); setNote(''); setReviewed(false);
       setFoundName(undefined); setError(null);
     }
-  }, [open, today]);
+  }, [open, today, campaignEffectiveDate]);
 
   const cleanNew = newId.trim().toUpperCase();
   const fromId = (currentId || '').toUpperCase();
@@ -55,7 +57,7 @@ export function SwapAccountModal({ open, onClose, currentId, onValidateId, onSwa
     if (!cleanNew) return setError('Type your new ID.');
     if (cleanNew === fromId) return setError("That's the ID you're already using.");
     if (!date || date > today) return setError('Pick a date that is today or before.');
-    if (date < minDate) return setError('That date is too far back. Please message admin for older changes.');
+    if (!campaignEffectiveDate && date < minDate) return setError('That date is too far back. Please message admin for older changes.');
     if (!/^\d{4,6}$/.test(pin)) return setError('Type your PIN.');
     setChecking(true);
     try {
@@ -65,7 +67,10 @@ export function SwapAccountModal({ open, onClose, currentId, onValidateId, onSwa
         return;
       }
       setFoundName(res.userName && res.userName !== cleanNew ? res.userName : undefined);
+      setReviewed(false);
       setStep('confirm');
+    } catch {
+      setError('Could not check the new ID. Please check your connection and try again.');
     } finally {
       setChecking(false);
     }
@@ -87,6 +92,9 @@ export function SwapAccountModal({ open, onClose, currentId, onValidateId, onSwa
       toast.success(`Done! You're now on ${cleanNew}. Your PIN stays the same.`);
       onSwapped({ newId: cleanNew, userName: foundName, swapId: data.swap.id, effectiveDate: data.swap.effective_date });
       onClose();
+    } catch {
+      setError('Could not complete the move. Please try again or contact Support.');
+      setStep('form');
     } finally {
       setSubmitting(false);
     }
@@ -94,11 +102,11 @@ export function SwapAccountModal({ open, onClose, currentId, onValidateId, onSwa
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && !submitting && onClose()}>
-      <DialogContent className="max-w-[92vw] sm:max-w-md z-[110]">
+      <DialogContent className="z-[110] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-sm overflow-y-auto rounded-2xl sm:rounded-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowLeftRight className="h-4 w-4 text-primary" />
-            Swap your account
+            Update your worker ID
           </DialogTitle>
           <DialogDescription>
             Did your TL give you a new ID? Move your account to it here. Your earnings from your old ID stay with you.
@@ -118,7 +126,7 @@ export function SwapAccountModal({ open, onClose, currentId, onValidateId, onSwa
               <Label htmlFor="swap-new-id">Your new ID</Label>
               <Input
                 id="swap-new-id"
-                placeholder="NGDS"
+                placeholder="Enter your new worker ID"
                 value={newId}
                 autoCapitalize="characters"
                 autoComplete="off"
@@ -126,13 +134,18 @@ export function SwapAccountModal({ open, onClose, currentId, onValidateId, onSwa
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="swap-date">When did you start using the new ID?</Label>
-              <Input id="swap-date" type="date" min={minDate} max={today} value={date} onChange={(e) => setDate(e.target.value)} />
-              <p className="text-xs text-muted-foreground">
-                Days before this date will come from {fromId || 'your old ID'}. From this date, they come from your new ID.
-              </p>
-            </div>
+            {campaignEffectiveDate ? (
+              <div className="rounded-lg bg-muted/50 p-3 text-sm">
+                <p className="font-medium">ID change date: November 10, 2026</p>
+                <p className="mt-1 text-xs text-muted-foreground">Earnings before this date use your old ID; earnings from this date use your new ID.</p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor="swap-date">When did you start using the new ID?</Label>
+                <Input id="swap-date" type="date" min={minDate} max={today} value={date} onChange={(e) => setDate(e.target.value)} />
+                <p className="text-xs text-muted-foreground">Days before this date will come from {fromId || 'your old ID'}. From this date, they come from your new ID.</p>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="swap-pin">Your PIN</Label>
@@ -184,9 +197,13 @@ export function SwapAccountModal({ open, onClose, currentId, onValidateId, onSwa
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
+            <label className="flex items-start gap-2 text-sm text-muted-foreground">
+              <input type="checkbox" className="mt-1" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)} />
+              <span>I checked that the new ID{foundName ? ' and name' : ''} belong to me and the change date is correct.</span>
+            </label>
             <div className="flex gap-2 justify-end">
               <Button variant="ghost" onClick={() => setStep('form')} disabled={submitting}>Go back</Button>
-              <Button onClick={handleSubmit} disabled={submitting}>
+              <Button onClick={handleSubmit} disabled={submitting || !reviewed}>
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 Yes, swap my account
               </Button>

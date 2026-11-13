@@ -2,6 +2,7 @@
 // Verifies their current PIN, records a directional swap (old → new) in
 // `id_swaps`, and carries the same PIN over to the new ID.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { isValidWorkerId } from '../_shared/workerId.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,14 +34,15 @@ Deno.serve(async (req) => {
 
   if (!oldId || !newId || !pin || !effectiveDate || !cycleKey) return bad('Please fill in everything.');
   if (oldId === newId) return bad('Your new ID is the same as your current ID.');
-  if (!/^NGDS-?[A-Z0-9-]{2,20}$/.test(newId)) return bad('That new ID does not look right. It should start with NGDS.');
+  if (!isValidWorkerId(newId)) return bad('That new ID does not look right. Please check the ID supplied by your TL.');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) return bad('Please pick a valid date.');
 
   // Date must be within the last ~70 days and not in the future (allow +1 day for timezones)
   const eff = new Date(effectiveDate + 'T12:00:00Z').getTime();
   const now = Date.now();
   if (eff > now + 36 * 3600_000) return bad('The date cannot be in the future.');
-  if (eff < now - 70 * 86400_000) return bad('That date is too far back. Please contact admin for older changes.');
+  // The organization-wide ID change remains valid even if workers respond later.
+  if (eff < now - 70 * 86400_000 && effectiveDate !== '2026-11-10') return bad('That date is too far back. Please contact admin for older changes.');
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
