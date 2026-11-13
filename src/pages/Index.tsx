@@ -10,7 +10,8 @@ import { SessionPinGate } from '@/components/dashboard/SessionPinGate';
 import { SwapDetectionModal } from '@/components/dashboard/SwapDetectionModal';
 import { SwapCompleteModal, type CompletedSwap } from '@/components/dashboard/SwapCompleteModal';
 import { PinResetModal } from '@/components/dashboard/PinResetModal';
-import { IdMigrationModal } from '@/components/dashboard/IdMigrationModal';
+import { IdChangePrompt } from '@/components/dashboard/IdChangePrompt';
+import { ID_CHANGE_EFFECTIVE_DATE, campaignResponseKey, campaignDeferredKey, campaignIntentKey, shouldPromptForIdChange } from '@/lib/idChangeCampaign';
 
 import { CycleSelector } from '@/components/dashboard/CycleSelector';
 import { CycleSummaryCard } from '@/components/dashboard/CycleSummaryCard';
@@ -148,10 +149,8 @@ const Index = () => {
   const [swapCheckedFor, setSwapCheckedFor] = useState<string | null>(null);
   const [swapCheckError, setSwapCheckError] = useState<string | null>(null);
   const [pinResetDetected, setPinResetDetected] = useState<{ workerId: string; message: string } | null>(null);
-  // Forced ID migration (Worker ID format change). Bump the version to re-trigger for everyone.
-  const ID_MIGRATION_VERSION = 'v1_2026_new_ids';
-  const ID_MIGRATION_ACK_KEY = `performanceTracker_idMigrationAck_${ID_MIGRATION_VERSION}`;
-  const [showIdMigration, setShowIdMigration] = useState(false);
+  const [showIdChangePrompt, setShowIdChangePrompt] = useState(false);
+  const [useCampaignDate, setUseCampaignDate] = useState(false);
   const RANKING_BONUS_TOTAL_PREF_KEY = 'performanceTracker_includeRankingBonusInTotal';
   const RANKING_BONUS_TOTAL_DEFAULT_UPDATE_KEY = 'performanceTracker_rankingBonusDefaultUpdateSeen_v1';
   const [includeRankingBonusInTotal, setIncludeRankingBonusInTotal] = useState(() => {
@@ -258,6 +257,43 @@ const Index = () => {
   } = useEarningsAdjustments(userId, selectedCycle, formerWorkerId ? [formerWorkerId] : undefined);
   const [showUserAdjustModal, setShowUserAdjustModal] = useState(false);
   const [showSwapAccountModal, setShowSwapAccountModal] = useState(false);
+
+  // Ask once per worker/device, after login and the initial ID-change check.
+  // "Later" is deferred only for this browser session; Settings remains available.
+  useEffect(() => {
+    if (!userId || !identityConfirmed || !pinVerifiedThisSession || !introDone || isInitializing || identityLoading || adjustmentsLoading || adjustmentsError || showSwapConfirmation || swapDetected || pinResetDetected || showWelcome || showPinGate || showSwapAccountModal || showSheetSettingsModal || showUserAdjustModal || showRankingPreferenceModal || showRankingDefaultUpdateModal || showCycleSummaryAnimated || showCycleSummaryStatic) return;
+    if (swapCheckedFor !== userId.toUpperCase()) return;
+    let response: string | null = null;
+    let deferred: string | null = null;
+    try {
+      response = localStorage.getItem(campaignResponseKey(userId));
+      deferred = sessionStorage.getItem(campaignDeferredKey(userId));
+    } catch { /* Continue with the prompt if storage is unavailable. */ }
+    if (shouldPromptForIdChange(response, deferred)) setShowIdChangePrompt(true);
+  }, [userId, identityConfirmed, pinVerifiedThisSession, introDone, isInitializing, identityLoading, adjustmentsLoading, adjustmentsError, showSwapConfirmation, swapDetected, pinResetDetected, showWelcome, showPinGate, showSwapAccountModal, showSheetSettingsModal, showUserAdjustModal, showRankingPreferenceModal, showRankingDefaultUpdateModal, showCycleSummaryAnimated, showCycleSummaryStatic, swapCheckedFor]);
+
+  const deferIdChangePrompt = useCallback((intent: boolean) => {
+    if (userId) {
+      try {
+        sessionStorage.setItem(campaignDeferredKey(userId), 'true');
+        if (intent) sessionStorage.setItem(campaignIntentKey(userId), 'true');
+      } catch { /* The prompt is still dismissed for this render. */ }
+    }
+    setShowIdChangePrompt(false);
+  }, [userId]);
+
+  const declineIdChangePrompt = useCallback(() => {
+    if (userId) {
+      try { localStorage.setItem(campaignResponseKey(userId), 'no'); } catch { /* Ignore storage errors. */ }
+    }
+    deferIdChangePrompt(false);
+  }, [userId, deferIdChangePrompt]);
+
+  const startIdChange = useCallback(() => {
+    deferIdChangePrompt(true);
+    setUseCampaignDate(true);
+    setShowSwapAccountModal(true);
+  }, [deferIdChangePrompt]);
 
   // Apply adjustments to results
   const { adjustedResults, netAdjustment } = useMemo(() => {
@@ -784,6 +820,7 @@ const Index = () => {
     if (
       cycleSummaryShouldShowAnimated &&
       !showSwapConfirmation &&
+      !showIdChangePrompt && !showSwapAccountModal &&
       !cycleSummaryShownThisSession &&
       identityConfirmed &&
       pinVerifiedThisSession &&
@@ -800,6 +837,8 @@ const Index = () => {
   }, [
     cycleSummaryShouldShowAnimated,
     showSwapConfirmation,
+    showIdChangePrompt,
+    showSwapAccountModal,
     cycleSummaryShownThisSession, 
     identityConfirmed, 
     pinVerifiedThisSession,
@@ -1028,18 +1067,24 @@ const Index = () => {
   // Side-effect-free lookup used by the self-swap modal
   const checkIdOnSheets = useCallback(async (id: string): Promise<{ valid: boolean; userName?: string }> => {
     for (const sheet of sheets.filter(s => !s.disabled)) {
-      const data = sheetDataCache[sheet.name] ?? await fetchSheetData(sheet.name);
-      if (!data) continue;
+      // Validate against current sheet data, not a potentially stale cached snapshot.
+      const data = await fetchSheetData(sheet.name);
+      if (!data) throw new Error('Could not load a sheet to validate the new ID.');
       const worker = searchWorker(data, id);
       if (worker) return { valid: true, userName: worker.userName || undefined };
     }
     return { valid: false };
-  }, [sheets, sheetDataCache, fetchSheetData, searchWorker]);
+  }, [sheets, fetchSheetData, searchWorker]);
 
   // After a user swaps their own ID: move them straight onto the new ID.
   // PIN was carried over server-side, so they stay logged in.
   const handleSelfSwap = useCallback(async ({ newId, userName: newName, swapId, effectiveDate }: { newId: string; userName?: string; swapId: string; effectiveDate: string }) => {
     const oldId = (userId || '').toUpperCase();
+    try {
+      if (oldId) localStorage.setItem(campaignResponseKey(oldId), 'complete');
+      localStorage.setItem(campaignResponseKey(newId), 'complete');
+      if (oldId) sessionStorage.removeItem(campaignIntentKey(oldId));
+    } catch { /* Account move is already complete. */ }
     updatePendingSwapConfirmation({ oldId, newId, effectiveDate });
     localStorage.setItem(`performanceTracker_swapAck_${swapId}_${oldId}`, 'true');
     localStorage.setItem(`performanceTracker_swapAck_${swapId}_${newId}`, 'true');
@@ -1171,37 +1216,6 @@ const Index = () => {
     setPinResetDetected(null);
     setShowWelcome(true);
   };
-
-  // ID migration: show forced logout modal once per user until acknowledged.
-  // Only target users that already have a session (new sign-ups don't need this).
-  useEffect(() => {
-    if (isInitializing) return;
-    const acked = localStorage.getItem(ID_MIGRATION_ACK_KEY) === 'true';
-    if (acked) return;
-    // Only show to users who were already logged in before the change.
-    if (userId) {
-      setShowIdMigration(true);
-    } else {
-      // Fresh device — mark as acked so we don't ever show it to new users.
-      localStorage.setItem(ID_MIGRATION_ACK_KEY, 'true');
-    }
-  }, [isInitializing, userId, ID_MIGRATION_ACK_KEY]);
-
-  const handleIdMigrationLogout = useCallback(async () => {
-    localStorage.setItem(ID_MIGRATION_ACK_KEY, 'true');
-    if (userId) await releaseSession(userId);
-    localStorage.removeItem(PIN_VERIFIED_KEY);
-    setPinVerifiedThisSession(false);
-    clearIdentity();
-    setResults([]);
-    setDataError(null);
-    setSwapDetected(null);
-    setPinResetDetected(null);
-    setShowPinGate(false);
-    setShowIdMigration(false);
-    setShowWelcome(true);
-    toast.info('Logged out. Please log in with your new Worker ID.');
-  }, [clearIdentity, releaseSession, userId, ID_MIGRATION_ACK_KEY]);
 
   const cycleStats = useMemo(() => {
     let totalEarnings = 0;
@@ -1453,7 +1467,13 @@ const Index = () => {
         open={showSheetSettingsModal}
         onClose={() => setShowSheetSettingsModal(false)}
         onOpenRankingBonus={openRankingPreferenceFromSettings}
-        onOpenSwapAccount={() => { setShowSheetSettingsModal(false); setShowSwapAccountModal(true); }}
+        onOpenSwapAccount={() => {
+          let campaign = false;
+          try { campaign = !!userId && sessionStorage.getItem(campaignIntentKey(userId)) === 'true'; } catch { /* Use the normal flow. */ }
+          setUseCampaignDate(campaign);
+          setShowSheetSettingsModal(false);
+          setShowSwapAccountModal(true);
+        }}
         onOpenEarningsAdjust={() => { setShowSheetSettingsModal(false); setShowUserAdjustModal(true); }}
         rankingIncludedInTotal={includeRankingBonusInTotal}
         currentId={userId}
@@ -1463,6 +1483,7 @@ const Index = () => {
         open={showSwapAccountModal}
         onClose={() => setShowSwapAccountModal(false)}
         currentId={userId}
+        campaignEffectiveDate={useCampaignDate ? ID_CHANGE_EFFECTIVE_DATE : undefined}
         onValidateId={checkIdOnSheets}
         onSwapped={handleSelfSwap}
       />
@@ -1476,7 +1497,9 @@ const Index = () => {
         onChanged={reloadAdjustments}
       />
 
-      <FeatureUpdateModal identityConfirmed={identityConfirmed && pinVerifiedThisSession && !showSwapConfirmation} />
+      <IdChangePrompt open={showIdChangePrompt} currentId={userId || ''} onStart={startIdChange} onNo={declineIdChangePrompt} onLater={() => deferIdChangePrompt(true)} />
+
+      <FeatureUpdateModal identityConfirmed={identityConfirmed && pinVerifiedThisSession && !showSwapConfirmation && !showIdChangePrompt && !showSwapAccountModal} />
 
       {/* Admin Alerts Display */}
       <AlertsDisplay />
@@ -1536,23 +1559,13 @@ const Index = () => {
         onAcknowledge={handlePinResetAcknowledge}
       />
 
-      <IdMigrationModal
-        open={showIdMigration}
-        currentUserId={userId || ''}
-        onLogout={handleIdMigrationLogout}
-      />
-
-
-
-
-
       <AdelajaIntro onComplete={() => setIntroDone(true)} />
 
       {/* Live Support chat (FAB bottom-right) + one-time announcement modal */}
       {identityConfirmed && pinVerifiedThisSession && (
         <>
           <SupportFAB workerId={userId || null} />
-          <SupportUpdateModal identityConfirmed={introDone && !showSwapConfirmation} />
+          <SupportUpdateModal identityConfirmed={introDone && !showSwapConfirmation && !showIdChangePrompt && !showSwapAccountModal} />
         </>
       )}
 
@@ -1561,7 +1574,7 @@ const Index = () => {
         daysActive={cycleStats.daysActive}
         userName={userName}
         previousDayEarnings={previousDayEarnings}
-        isDataReady={introDone && !isLoading && identityConfirmed && !showSwapConfirmation && adjustedResults.length > 0}
+        isDataReady={introDone && !isLoading && identityConfirmed && !showSwapConfirmation && !showIdChangePrompt && !showSwapAccountModal && adjustedResults.length > 0}
       />
 
       {/* Cycle Summary Modals */}
