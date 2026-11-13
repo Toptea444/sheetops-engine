@@ -44,47 +44,22 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-  // 1. Verify current PIN
-  const { data: pinRow } = await supabase.from('worker_pins').select('pin_hash').eq('worker_id', oldId).maybeSingle();
-  if (!pinRow) return bad('We could not verify your account. Please log in again.');
-  if ((await hashPin(pin, oldId)) !== pinRow.pin_hash) return bad('Wrong PIN. Please try again.');
-
-  // 2. New ID must not be actively used by someone else
-  const { data: newPin } = await supabase.from('worker_pins').select('id').eq('worker_id', newId).maybeSingle();
-  if (newPin) {
-    const { data: movedAway } = await supabase
-      .from('id_swaps').select('id').eq('old_worker_id', newId).limit(1);
-    if (!movedAway || movedAway.length === 0) {
-      return bad(`Someone is already using ${newId} on this app. If it is truly yours, please message admin through Support.`);
-    }
+  // Record the move and carry the PIN in one database transaction. Occupied
+  // destinations must be handled as admin-approved two-person exchanges.
+  const { data: swap, error } = await supabase.rpc('user_record_id_move', {
+    p_old_id: oldId,
+    p_new_id: newId,
+    p_old_hash: await hashPin(pin, oldId),
+    p_new_hash: await hashPin(pin, newId),
+    p_date: effectiveDate,
+    p_cycle: cycleKey,
+    p_notes: note || '',
+  });
+  if (error || !swap) {
+    const known = error?.message || '';
+    if (known.includes('already has an account') || known.includes('Could not verify') || known.includes('An ID change already involves')) return bad(known);
+    return bad('Could not complete the ID move. Nothing was changed; please try again or contact Support.');
   }
-
-  // 3. Block duplicates
-  const { data: dup } = await supabase
-    .from('id_swaps').select('id').eq('old_worker_id', oldId).eq('new_worker_id', newId).limit(1);
-  if (dup && dup.length > 0) return bad(`You already moved from ${oldId} to ${newId}.`);
-
-  // 4. Record the swap
-  const { data: swap, error } = await supabase.from('id_swaps').insert({
-    worker_name: oldId,
-    old_worker_id: oldId,
-    new_worker_id: newId,
-    effective_date: effectiveDate,
-    cycle_key: cycleKey,
-    notes: note,
-    created_by: `user:${oldId}`,
-  }).select().single();
-  if (error) return bad(error.message);
-
-  // 5. Carry the PIN over to the new ID, retire the old one
-  await supabase.from('worker_pins').delete().eq('worker_id', newId);
-  const { error: pinErr } = await supabase.from('worker_pins').insert({ worker_id: newId, pin_hash: await hashPin(pin, newId) });
-  if (pinErr) {
-    await supabase.from('id_swaps').delete().eq('id', swap.id);
-    return bad('Could not move your PIN. Nothing was changed, please try again.');
-  }
-  await supabase.from('worker_pins').delete().eq('worker_id', oldId);
-  await supabase.from('worker_sessions').delete().eq('worker_id', oldId);
 
   await supabase.from('audit_logs').insert({
     action: 'user_swap_id',

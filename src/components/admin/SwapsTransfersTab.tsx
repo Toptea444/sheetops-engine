@@ -50,6 +50,7 @@ function SwapsSection({ adminSecret }: Props) {
   const [form, setForm] = useState({ old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
   const [bulkRows, setBulkRows] = useState([{ old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' }]);
   const [creating, setCreating] = useState(false);
+  const [changeType, setChangeType] = useState<'move' | 'exchange' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -79,6 +80,7 @@ function SwapsSection({ adminSecret }: Props) {
   useEffect(() => { load(); }, [load]);
 
   const handleCreate = async () => {
+    if (!changeType) { toast.error('Choose a one-person move or a two-person exchange'); return; }
     if (!form.old_worker_id.trim() || !form.new_worker_id.trim() || !form.effective_date) {
       toast.error('Old ID, new ID, and effective date are required');
       return;
@@ -88,10 +90,12 @@ function SwapsSection({ adminSecret }: Props) {
       ...form,
       worker_name: `${form.old_worker_id.trim().toUpperCase()} → ${form.new_worker_id.trim().toUpperCase()}`,
       cycle_key: selectedCycleKey,
+      exchange: changeType === 'exchange',
     });
     if (res?.success) {
-      toast.success('ID Swap recorded — PINs cleared for both workers');
+      toast.success(changeType === 'exchange' ? 'Exchange recorded — both PINs cleared' : 'ID move recorded — old PIN cleared');
       setForm({ old_worker_id: '', new_worker_id: '', effective_date: '', notes: '' });
+      setChangeType(null);
       setShowForm(false);
       load();
     } else {
@@ -200,9 +204,14 @@ function SwapsSection({ adminSecret }: Props) {
               <span>Record ID Swap</span>
               <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
             </CardTitle>
-            <CardDescription className="text-xs">Record when a worker is permanently moved to a different ID</CardDescription>
+            <CardDescription className="text-xs">Choose whether one worker moves or two workers exchange IDs.</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-3">
+            <fieldset className="space-y-2 text-sm">
+              <legend className="mb-2 text-xs font-medium">Type of ID change</legend>
+              <label className="flex items-start gap-2"><input type="radio" name="id-change-type" checked={changeType === 'move'} onChange={() => setChangeType('move')} /> <span>One-person move <span className="block text-xs text-muted-foreground">One worker moves to an unused ID.</span></span></label>
+              <label className="flex items-start gap-2"><input type="radio" name="id-change-type" checked={changeType === 'exchange'} onChange={() => setChangeType('exchange')} /> <span>Two-person exchange <span className="block text-xs text-muted-foreground">Both workers switch IDs on the same date and must set new PINs.</span></span></label>
+            </fieldset>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Old Worker ID</Label>
@@ -238,7 +247,7 @@ function SwapsSection({ adminSecret }: Props) {
               <span>Bulk ID Swaps</span>
               <button onClick={() => setShowBulkForm(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
             </CardTitle>
-            <CardDescription className="text-xs">Record multiple ID swaps at once for team restructuring</CardDescription>
+            <CardDescription className="text-xs">Each row is a one-person move to an unused ID. Use the single form for a two-person exchange.</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-3">
             {bulkRows.map((row, idx) => (
@@ -302,6 +311,7 @@ function SwapsSection({ adminSecret }: Props) {
                     <Badge variant="secondary" className="text-[10px] font-mono">{s.old_worker_id}</Badge>
                     <ArrowRight className="h-3 w-3 text-muted-foreground" />
                     <Badge variant="secondary" className="text-[10px] font-mono">{s.new_worker_id}</Badge>
+                    {s.exchange_group && <Badge variant="outline" className="text-[10px]">Linked exchange</Badge>}
                   </div>
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />Effective: {new Date(s.effective_date).toLocaleDateString()}</span>
@@ -329,9 +339,9 @@ function SwapsSection({ adminSecret }: Props) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this swap?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The swap record will be permanently removed.
+              This action cannot be undone. For a two-person exchange, both linked directions will be removed.
               <br /><br />
-              <strong>Note:</strong> Both workers' PINs were already cleared when this swap was created. They will need to set new PINs on their next login regardless.
+              <strong>Note:</strong> Deleting a record does not restore any PINs that were cleared.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

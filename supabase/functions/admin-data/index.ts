@@ -733,29 +733,21 @@ Deno.serve(async (req) => {
       }
 
       case 'create_swap': {
-        const { worker_name, old_worker_id, new_worker_id, effective_date, cycle_key, notes } = params || {};
-        if (!worker_name || !old_worker_id || !new_worker_id || !effective_date || !cycle_key) {
-          result = { success: false, error: 'worker_name, old_worker_id, new_worker_id, effective_date, and cycle_key are required' };
+        const { old_worker_id, new_worker_id, effective_date, cycle_key, notes, exchange } = params || {};
+        if (!old_worker_id || !new_worker_id || !effective_date || !cycle_key || typeof exchange !== 'boolean') {
+          result = { success: false, error: 'Choose a move or exchange and provide both IDs, an effective date and cycle.' };
           break;
         }
         const oldId = old_worker_id.trim().toUpperCase();
         const newId = new_worker_id.trim().toUpperCase();
-
-        const { data, error } = await supabase.from('id_swaps').insert({
-          worker_name: worker_name.trim(),
-          old_worker_id: oldId,
-          new_worker_id: newId,
-          effective_date,
-          cycle_key,
-          notes: notes || null,
-        }).select().maybeSingle();
-        if (error) {
-          result = { success: false, error: error.message };
-        } else {
-          await supabase.from('worker_pins').delete().eq('worker_id', oldId);
-          await supabase.from('worker_pins').delete().eq('worker_id', newId);
-          await logAudit(supabase, 'create_swap', { old_worker_id: oldId, new_worker_id: newId, effective_date, cycle_key }, 'swap', data?.id);
-          result = { success: true, swap: data, pins_cleared: [oldId, newId] };
+        const { data, error } = await supabase.rpc('admin_record_id_change', {
+          p_old_id: oldId, p_new_id: newId, p_date: effective_date,
+          p_cycle: cycle_key, p_notes: notes || '', p_exchange: exchange,
+        });
+        if (error) result = { success: false, error: error.message };
+        else {
+          await logAudit(supabase, 'create_swap', { old_worker_id: oldId, new_worker_id: newId, effective_date, cycle_key, exchange }, 'swap', data?.swap?.id);
+          result = { success: true, ...data };
         }
         break;
       }
@@ -780,23 +772,14 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          const workerName = `${oldId} → ${newId}`;
-          const { data, error } = await supabase.from('id_swaps').insert({
-            worker_name: workerName,
-            old_worker_id: oldId,
-            new_worker_id: newId,
-            effective_date: swap.effective_date,
-            cycle_key: bulkCycleKey,
-            notes: swap.notes || null,
-          }).select().maybeSingle();
-
-          if (error) {
-            errors.push(`${oldId} → ${newId}: ${error.message}`);
-          } else {
-            await supabase.from('worker_pins').delete().eq('worker_id', oldId);
-            await supabase.from('worker_pins').delete().eq('worker_id', newId);
-            created.push(data);
-            await logAudit(supabase, 'create_swap', { old_worker_id: oldId, new_worker_id: newId, effective_date: swap.effective_date, bulk: true }, 'swap', data?.id);
+          const { data, error } = await supabase.rpc('admin_record_id_change', {
+            p_old_id: oldId, p_new_id: newId, p_date: swap.effective_date,
+            p_cycle: bulkCycleKey, p_notes: swap.notes || '', p_exchange: false,
+          });
+          if (error) errors.push(`${oldId} → ${newId}: ${error.message}`);
+          else {
+            created.push(data.swap);
+            await logAudit(supabase, 'create_swap', { old_worker_id: oldId, new_worker_id: newId, effective_date: swap.effective_date, bulk: true }, 'swap', data.swap?.id);
           }
         }
 
@@ -807,7 +790,7 @@ Deno.serve(async (req) => {
       case 'delete_swap': {
         const swapId = params?.swap_id;
         if (!swapId) { result = { success: false, error: 'swap_id required' }; break; }
-        const { error } = await supabase.from('id_swaps').delete().eq('id', swapId);
+        const { error } = await supabase.rpc('admin_delete_id_change', { p_id: swapId });
         if (error) {
           result = { success: false, error: error.message };
         } else {
