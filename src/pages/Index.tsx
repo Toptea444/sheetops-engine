@@ -109,6 +109,7 @@ const Index = () => {
   } = useUserIdentity();
 
   const [showWelcome, setShowWelcome] = useState(false);
+  const [welcomePrefilledId, setWelcomePrefilledId] = useState<string | null>(null);
   const [introDone, setIntroDone] = useState(false);
   const [showIdentityConfirmation, setShowIdentityConfirmation] = useState(false);
   const [showPinGate, setShowPinGate] = useState(false);
@@ -966,6 +967,7 @@ const Index = () => {
     }
 
       setUserId(newUserId, newUserName || undefined);
+      setWelcomePrefilledId(null);
       localStorage.setItem(PIN_VERIFIED_KEY, 'true');
       setPinVerifiedThisSession(true);
       setShowWelcome(false);
@@ -1053,6 +1055,7 @@ const Index = () => {
     // Set ack keys for BOTH IDs (old and new) so when the user logs in with their new ID,
     // the swap is already acknowledged and won't trigger another logout loop
     if (swapDetected) {
+      setWelcomePrefilledId(swapDetected.swappedWithId);
       const ackKeyOld = `performanceTracker_swapAck_${swapDetected.swapId}_${swapDetected.currentUserId}`;
       const ackKeyNew = `performanceTracker_swapAck_${swapDetected.swapId}_${swapDetected.swappedWithId}`;
       localStorage.setItem(ackKeyOld, 'true');
@@ -1462,6 +1465,7 @@ const Index = () => {
       
       <WelcomeModal
         open={showWelcome}
+        prefilledWorkerId={welcomePrefilledId}
         onComplete={handleWelcomeComplete}
         isValidating={isValidating}
         validationError={validationError}

@@ -29,6 +29,7 @@ type ModalStep = 'id-entry' | 'identity-confirm' | 'pin-setup' | 'pin-entry';
 
 interface WelcomeModalProps {
   open: boolean;
+  prefilledWorkerId?: string | null;
   onComplete: (userId: string, userName: string | null, pinVerified: boolean) => void;
   isValidating?: boolean;
   validationError?: string | null;
@@ -38,7 +39,8 @@ interface WelcomeModalProps {
 }
 
 export function WelcomeModal({ 
-  open, 
+  open,
+  prefilledWorkerId,
   onComplete, 
   isValidating = false,
   validationError = null,
@@ -58,7 +60,10 @@ export function WelcomeModal({
 
   // Reset state when modal closes
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      setUserId(prefilledWorkerId || '');
+    } else {
+      setUserId('');
       setStep('id-entry');
       setValidatedUserId('');
       setValidatedUserName(null);
@@ -66,7 +71,7 @@ export function WelcomeModal({
       setShowFinalWarning(false);
       setNeedsPinSetup(false);
     }
-  }, [open]);
+  }, [open, prefilledWorkerId]);
   
   const displayError = error || validationError;
 
@@ -201,6 +206,9 @@ export function WelcomeModal({
                     disabled={isLoading}
                   />
                 </div>
+                {prefilledWorkerId && userId === prefilledWorkerId && (
+                  <p className="text-xs text-muted-foreground">Your new ID is filled in. Check it before continuing.</p>
+                )}
                 {displayError && (
                   <p className="text-sm text-destructive">{displayError}</p>
                 )}
