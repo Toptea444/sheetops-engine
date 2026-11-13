@@ -1,19 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { BonusResult } from '@/types/bonus';
 import type { CyclePeriod } from '@/lib/cycleUtils';
 import { getCycleKey } from '@/lib/cycleUtils';
 
-export interface IdSwap {
-  id: string;
-  worker_name: string;
-  old_worker_id: string;
-  new_worker_id: string;
-  effective_date: string;
-  cycle_key: string;
-  notes: string | null;
-  created_at: string;
-}
+import { computeOwnership, type IdSwap } from '@/lib/swapOwnership';
+export type { IdSwap } from '@/lib/swapOwnership';
 
 export interface DayTransfer {
   id: string;
@@ -87,51 +79,6 @@ function transferAppliesToSheet(t: DayTransfer, sheetName: string): boolean {
   return t.sheet_name === sheetName;
 }
 
-export type OwnershipMap = Record<string, Array<{ from: string | null; to: string | null }>>;
-
-/**
- * Directional ID-change model: a swap record `old → new` on `effective_date`
- * means the person who held `old` uses `new` from that date onward.
- *
- * Starting from the ID the user is logged in with today, walk backwards:
- * find the latest change that moved someone INTO the tracked ID (on/before the
- * current window start). That ID is owned from that date; before it the user
- * held `old`. Repeat until no earlier change exists.
- *
- * Returns half-open [from, to) windows per ID (null = open-ended) plus the
- * swaps that form the user's chain (newest first).
- */
-export function computeOwnership(uid: string, allSwaps: IdSwap[], todayLocal: string): { map: OwnershipMap; chain: IdSwap[] } {
-  const map: OwnershipMap = {};
-  const chain: IdSwap[] = [];
-  const effective = allSwaps.filter(s => s.effective_date <= todayLocal);
-  const used = new Set<string>();
-  let tracked = uid.toUpperCase();
-  let end: string | null = null;
-
-  for (let guard = 0; guard < 50; guard++) {
-    let best: IdSwap | null = null;
-    for (const s of effective) {
-      if (used.has(s.id)) continue;
-      if (s.new_worker_id.toUpperCase() !== tracked) continue;
-      if (end !== null && s.effective_date > end) continue;
-      if (!best || s.effective_date > best.effective_date ||
-        (s.effective_date === best.effective_date && s.created_at > best.created_at)) {
-        best = s;
-      }
-    }
-    if (!best) break;
-    used.add(best.id);
-    chain.push(best);
-    (map[tracked] ||= []).push({ from: best.effective_date, to: end });
-    end = best.effective_date;
-    tracked = best.old_worker_id.toUpperCase();
-  }
-
-  if (chain.length > 0) (map[tracked] ||= []).push({ from: null, to: end });
-  return { map, chain };
-}
-
 /**
  * Fetches swaps & transfers from the DB and provides a function
  * to apply them as corrections to raw sheet-based BonusResults.
@@ -142,13 +89,20 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
   const [transfers, setTransfers] = useState<DayTransfer[]>([]);
   const [adjustmentNotes, setAdjustmentNotes] = useState<AdjustmentNote[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const loadSequence = useRef(0);
 
   const cycleKey = getCycleKey(cycle);
   const todayLocal = toLocalDateStr(Date.now());
 
   const load = useCallback(async () => {
-    if (!userId) return;
+    const sequence = ++loadSequence.current;
+    if (!userId) {
+      setSwaps([]); setTransfers([]); setAdjustmentNotes([]); setLoadError(null); setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
+    setLoadError(null);
     try {
       const [swapRes, transferRes] = await Promise.all([
         // Fetch ALL swaps: ID changes can chain (A→B, later B→C), and the
@@ -160,6 +114,8 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
         supabase.from('day_transfers').select('*').eq('cycle_key', cycleKey),
       ]);
 
+      if (sequence !== loadSequence.current) return;
+      if (swapRes.error || transferRes.error) throw swapRes.error || transferRes.error;
       const allSwaps = (swapRes.data || []) as unknown as IdSwap[];
       const allTransfers = (transferRes.data || []) as unknown as DayTransfer[];
 
@@ -248,13 +204,15 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
       notes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setAdjustmentNotes(notes);
     } catch (e) {
+      if (sequence !== loadSequence.current) return;
       console.error('Failed to load adjustments', e);
+      setLoadError('Could not load ID changes and adjustments. Refresh to try again; earnings are hidden to avoid showing incorrect amounts.');
     } finally {
-      setIsLoading(false);
+      if (sequence === loadSequence.current) setIsLoading(false);
     }
   }, [userId, cycleKey, todayLocal]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); return () => { loadSequence.current++; }; }, [load]);
 
 
 
@@ -443,6 +401,7 @@ export function useEarningsAdjustments(userId: string | null, cycle: CyclePeriod
     transfers,
     adjustmentNotes,
     isLoading,
+    error: loadError,
     applyAdjustments,
     getWorkerIdsToFetch,
     getTransferInfoForDate,

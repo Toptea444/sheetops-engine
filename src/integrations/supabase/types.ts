@@ -239,6 +239,7 @@ export type Database = {
           created_by: string | null
           cycle_key: string
           effective_date: string
+          exchange_group: string | null
           id: string
           new_worker_id: string
           notes: string | null
@@ -250,6 +251,7 @@ export type Database = {
           created_by?: string | null
           cycle_key: string
           effective_date: string
+          exchange_group?: string | null
           id?: string
           new_worker_id: string
           notes?: string | null
@@ -261,6 +263,7 @@ export type Database = {
           created_by?: string | null
           cycle_key?: string
           effective_date?: string
+          exchange_group?: string | null
           id?: string
           new_worker_id?: string
           notes?: string | null

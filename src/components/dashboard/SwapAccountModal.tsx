@@ -8,7 +8,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { getCycleKey, getCycleOptions } from '@/lib/cycleUtils';
+import { getCycleKey, getCycleForDate } from '@/lib/cycleUtils';
 import { toast } from 'sonner';
 
 interface SwapAccountModalProps {
@@ -75,7 +75,7 @@ export function SwapAccountModal({ open, onClose, currentId, onValidateId, onSwa
     setSubmitting(true);
     setError(null);
     try {
-      const cycleKey = getCycleKey(getCycleOptions(0)[0]);
+      const cycleKey = getCycleKey(getCycleForDate(new Date(date + 'T12:00:00')));
       const { data, error: fnError } = await supabase.functions.invoke('user-swap-id', {
         body: { worker_id: fromId, new_worker_id: cleanNew, pin, effective_date: date, cycle_key: cycleKey, note },
       });

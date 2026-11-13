@@ -123,6 +123,8 @@ const Index = () => {
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [forgotPinSubmitted, setForgotPinSubmitted] = useState(false);
   const [swapDetected, setSwapDetected] = useState<{ currentUserId: string; swappedWithId: string; swapId: string } | null>(null);
+  const [swapCheckedFor, setSwapCheckedFor] = useState<string | null>(null);
+  const [swapCheckError, setSwapCheckError] = useState<string | null>(null);
   const [pinResetDetected, setPinResetDetected] = useState<{ workerId: string; message: string } | null>(null);
   // Forced ID migration (Worker ID format change). Bump the version to re-trigger for everyone.
   const ID_MIGRATION_VERSION = 'v1_2026_new_ids';
@@ -151,6 +153,7 @@ const Index = () => {
   // wipes results to [] on the live cycle.
   const lastHandledCycleKeyRef = useRef<string | null>(null);
   const dataLoadGenerationRef = useRef(0);
+  const dataFetchSequenceRef = useRef(0);
 
   // Persistent PIN verification (survives browser close)
   const PIN_VERIFIED_KEY = 'performanceTracker_pinVerified';
@@ -226,6 +229,7 @@ const Index = () => {
     getWorkerIdsToFetch,
     getTransferInfoForDate,
     isLoading: adjustmentsLoading,
+    error: adjustmentsError,
     reload: reloadAdjustments,
   } = useEarningsAdjustments(userId, selectedCycle, formerWorkerId ? [formerWorkerId] : undefined);
   const [showUserAdjustModal, setShowUserAdjustModal] = useState(false);
@@ -543,6 +547,7 @@ const Index = () => {
   const fetchUserData = useCallback(async (forceRefetch = false) => {
     if (!userId || !resolvedSpreadsheetId || selectedSheets.length === 0 || !identityConfirmed) return;
     const loadGeneration = dataLoadGenerationRef.current;
+    const fetchSequence = ++dataFetchSequenceRef.current;
 
     setDataError(null);
     setIsFetchingData(true);
@@ -691,7 +696,7 @@ const Index = () => {
       }
     }
 
-    if (loadGeneration !== dataLoadGenerationRef.current) return;
+    if (loadGeneration !== dataLoadGenerationRef.current || fetchSequence !== dataFetchSequenceRef.current) return;
     setSheetDataCache(newCache);
 
     // Merge cached results in (cache wins for sheets we couldn't reproduce live).
@@ -733,20 +738,16 @@ const Index = () => {
     }
   }, [userId, resolvedSpreadsheetId, selectedSheets, selectedCycle, isInitializing, identityConfirmed]);
 
-  // Re-fetch when swap data loads asynchronously — ensures old-ID earnings are included.
-  // Fixes race condition: fetchUserData() can run before useEarningsAdjustments finishes
-  // loading swaps from Supabase, so swaps was [] and only the current ID was searched.
-  const lastFetchedSwapCount = useRef(0);
+  // Re-fetch when the user's swap history changes, not merely its row count.
+  const lastFetchedSwapKey = useRef('');
   useEffect(() => {
-    if (!userId || !resolvedSpreadsheetId || !identityConfirmed || isInitializing || selectedSheets.length === 0) return;
-    if (adjustmentsLoading) return;
-
-    const currentSwapCount = earningsSwaps.length;
-    if (currentSwapCount > 0 && lastFetchedSwapCount.current !== currentSwapCount) {
-      lastFetchedSwapCount.current = currentSwapCount;
+    if (!userId || !resolvedSpreadsheetId || !identityConfirmed || isInitializing || selectedSheets.length === 0 || adjustmentsLoading || adjustmentsError) return;
+    const key = `${userId}|${getCycleKey(selectedCycle)}|${earningsSwaps.map(s => `${s.id}:${s.effective_date}:${s.old_worker_id}:${s.new_worker_id}`).sort().join(',')}`;
+    if (lastFetchedSwapKey.current !== key) {
+      lastFetchedSwapKey.current = key;
       fetchUserData(true);
     }
-  }, [earningsSwaps, adjustmentsLoading, userId, resolvedSpreadsheetId, identityConfirmed, isInitializing, selectedSheets, fetchUserData]);
+  }, [earningsSwaps, adjustmentsLoading, adjustmentsError, userId, resolvedSpreadsheetId, identityConfirmed, isInitializing, selectedSheets, selectedCycle, fetchUserData]);
 
   // Prompt the user to enter their former Worker ID (for their June 16–21
 
@@ -795,23 +796,31 @@ const Index = () => {
 
   // Background swap detection: check every 30s if logged-in user has been swapped
   useEffect(() => {
-    if (!userId || !identityConfirmed || !pinVerifiedThisSession) return;
+    if (!userId) return;
 
+    let cancelled = false;
     const checkSwap = async () => {
       const uid = userId.toUpperCase();
       const swap = await findSwapAwayFrom(uid);
+      if (cancelled) return;
+      setSwapCheckError(null);
+      setSwapCheckedFor(uid);
       if (swap) {
-        const ackKey = `performanceTracker_swapAck_${swap.id}_${uid}`;
+        const swapId = swap.exchange_group || swap.id;
+        const ackKey = `performanceTracker_swapAck_${swapId}_${uid}`;
         if (!localStorage.getItem(ackKey)) {
-          setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId: swap.id });
+          setPinResetDetected(null);
+          setShowPinGate(false);
+          setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId });
         }
       }
     };
 
-    checkSwap();
-    const interval = setInterval(checkSwap, 30_000);
-    return () => clearInterval(interval);
-  }, [userId, identityConfirmed, pinVerifiedThisSession]);
+    const safeCheckSwap = () => { void checkSwap().catch(error => { if (!cancelled) { console.error('Could not check ID changes', error); setSwapCheckError('Could not check your ID changes. Please check your connection; the app will retry.'); } }); };
+    safeCheckSwap();
+    const interval = setInterval(safeCheckSwap, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [userId]);
 
   // Background PIN reset detection: check every 30s if admin removed this worker's PIN.
   // Suppressed when a swap is already detected — the swap modal takes priority, and an
@@ -834,10 +843,20 @@ const Index = () => {
 
       if (!data) {
         // Only show pin reset if this ID wasn't moved to a new one
-        const hasPendingSwap = !!(await findSwapAwayFrom(userId));
-        if (hasPendingSwap) {
-          // Swap detection loop will handle this — don't show pin reset modal
+        let pendingSwap;
+        try {
+          pendingSwap = await findSwapAwayFrom(userId);
+        } catch {
+          // Do not misreport a swap as a PIN reset when the swap lookup fails.
           return;
+        }
+        if (pendingSwap) {
+          const swapId = pendingSwap.exchange_group || pendingSwap.id;
+          const ackKey = `performanceTracker_swapAck_${swapId}_${userId.toUpperCase()}`;
+          if (!localStorage.getItem(ackKey)) {
+            setSwapDetected({ currentUserId: userId.toUpperCase(), swappedWithId: pendingSwap.new_worker_id, swapId });
+            return;
+          }
         }
 
         setPinResetDetected({
@@ -930,11 +949,17 @@ const Index = () => {
     if (pinVerified) {
     // Check for ID swap before granting access
     const uid = newUserId.toUpperCase();
-    const swap = await findSwapAwayFrom(uid);
+    let swap;
+    try { swap = await findSwapAwayFrom(uid); }
+    catch { toast.error('Could not check ID changes. Please try again.'); return; }
     if (swap) {
-      const ackKey = `performanceTracker_swapAck_${swap.id}_${uid}`;
+      const swapId = swap.exchange_group || swap.id;
+      const ackKey = `performanceTracker_swapAck_${swapId}_${uid}`;
+      // An ID in an exchange is also the other worker's new ID. A fresh login
+      // must not be mistaken for the previous holder's still-open session.
+      if (swap.exchange_group) localStorage.setItem(ackKey, 'true');
       if (!localStorage.getItem(ackKey)) {
-        setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId: swap.id });
+        setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId });
         setShowWelcome(false);
         return; // Don't grant access
       }
@@ -953,11 +978,14 @@ const Index = () => {
     // Check for ID swap before granting access
     if (userId) {
       const uid = userId.toUpperCase();
-      const swap = await findSwapAwayFrom(uid);
+      let swap;
+      try { swap = await findSwapAwayFrom(uid); }
+      catch { toast.error('Could not check ID changes. Please try again.'); return; }
       if (swap) {
-        const ackKey = `performanceTracker_swapAck_${swap.id}_${uid}`;
+        const swapId = swap.exchange_group || swap.id;
+        const ackKey = `performanceTracker_swapAck_${swapId}_${uid}`;
         if (!localStorage.getItem(ackKey)) {
-          setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId: swap.id });
+          setSwapDetected({ currentUserId: uid, swappedWithId: swap.new_worker_id, swapId });
           return; // Don't grant access
         }
       }
@@ -1075,12 +1103,13 @@ const Index = () => {
   const handleRefresh = useCallback(async () => {
     setDataError(null);
     setSheetDataCache({});
+    await reloadAdjustments();
     await fetchSheets();
     if (userId) {
       await fetchUserData(true);
     }
     toast.success('Refreshed');
-  }, [fetchSheets, fetchUserData, userId]);
+  }, [fetchSheets, fetchUserData, reloadAdjustments, userId]);
 
   // Handle identity confirmation - bind device permanently and start heartbeat
   const handleIdentityConfirm = useCallback(async () => {
@@ -1336,7 +1365,7 @@ const Index = () => {
     return Math.max(0, summaryCycleParticipants - summaryCycleRank);
   }, [summaryCycleParticipants, summaryCycleRank]);
 
-  const isLoading = sheetsLoading || identityLoading || isFetchingData;
+  const isLoading = sheetsLoading || identityLoading || isFetchingData || adjustmentsLoading || !!adjustmentsError;
   
   if (isInitializing || identityLoading) {
     return (
@@ -1442,7 +1471,7 @@ const Index = () => {
       />
 
       <SessionPinGate
-        open={showPinGate}
+        open={showPinGate && (!userId || swapCheckedFor === userId.toUpperCase()) && !swapDetected}
         workerId={userId || ''}
         userName={userName}
         onVerified={handlePinGateVerified}
@@ -1538,7 +1567,7 @@ const Index = () => {
           onOpenCycleSummary={cycleSummaryData ? handleOpenCycleSummaryStatic : undefined}
           onLogout={identityConfirmed ? handlePinGateSwitchUser : undefined}
           onRefresh={handleRefresh} 
-          isLoading={isLoading}
+          isLoading={isLoading && !adjustmentsError}
           userId={userId}
           userName={userName}
           onSwitchUser={identityConfirmed ? undefined : handleSwitchUser}
@@ -1556,10 +1585,10 @@ const Index = () => {
         <main className="flex-1 w-full overflow-x-hidden px-4 pb-10 pt-4 sm:px-6 sm:pt-8">
           <div className="mx-auto w-full max-w-5xl">
             {/* Error */}
-            {(error || dataError) && (
+            {(error || dataError || adjustmentsError || swapCheckError) && (
               <div className="mb-6">
                 <ErrorAlert 
-                  message={error || dataError || ''} 
+                  message={error || dataError || adjustmentsError || swapCheckError || ''}
                   onDismiss={() => setDataError(null)} 
                 />
               </div>
