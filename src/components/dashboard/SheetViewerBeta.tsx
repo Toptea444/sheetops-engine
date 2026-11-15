@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, RefreshCw, Sheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -54,6 +54,7 @@ export function SheetViewerBeta({ spreadsheetId, sheets, workerId }: Props) {
   const tileCache = useRef(new Map<string, Tile>());
   const gridRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<number | null>(null);
+  const positionedFlashRef = useRef(0);
 
   useEffect(() => { if (!available.some(s => s.name === selected)) setSelected(available[0]?.name || ''); }, [available, selected]);
   useEffect(() => {
@@ -157,6 +158,20 @@ export function SheetViewerBeta({ spreadsheetId, sheets, workerId }: Props) {
     el.scrollTo({ top: Math.max(0, match.row * ROW_HEIGHT - el.clientHeight / 3), left: Math.max(0, match.start * COL_WIDTH - ROW_HEADER_WIDTH), behavior: 'auto' });
     setPosition({ top: el.scrollTop, left: el.scrollLeft, height: el.clientHeight, width: el.clientWidth });
   };
+  // Position against the actual rendered cell after virtual rows mount. This
+  // corrects accumulated row-height rounding and keeps the flash in view.
+  useLayoutEffect(() => {
+    if (matchIndex < 0 || !gridRef.current || positionedFlashRef.current === flash) return;
+    const root = gridRef.current;
+    const target = root.querySelector<HTMLElement>(`[data-match-start="${matchIndex}"]`);
+    if (!target) return;
+    positionedFlashRef.current = flash;
+    const bounds = root.getBoundingClientRect(), cell = target.getBoundingClientRect();
+    if (cell.top < bounds.top || cell.bottom > bounds.bottom || cell.left < bounds.left || cell.right > bounds.right) {
+      root.scrollBy({ top: cell.top - bounds.top - root.clientHeight / 3, left: cell.left - bounds.left - ROW_HEADER_WIDTH, behavior: 'auto' });
+      setPosition({ top: root.scrollTop, left: root.scrollLeft, height: root.clientHeight, width: root.clientWidth });
+    }
+  }, [matchIndex, flash, firstRow, lastRow]);
   const active = matches[matchIndex];
   const resetFormatting = (newKey: string) => { tileCache.current.clear(); setTiles(new Map()); setFormatError(''); setFormatKey(newKey); setRefresh(n => n + 1); };
 
@@ -182,7 +197,7 @@ export function SheetViewerBeta({ spreadsheetId, sheets, workerId }: Props) {
             const f = tile?.formats[r - tile.startRow]?.[c - tile.startCol];
             const matching = matchRows.get(r) || [], found = matching.find(h => c >= h.start && c < h.end);
             const selectedMatch = found?.index === matchIndex;
-            return <td key={c} colSpan={merge?.colSpan} rowSpan={merge?.rowSpan} className={`border p-0 ${found ? 'ring-2 ring-inset ring-amber-400' : ''} ${selectedMatch ? 'sheet-match-flash' : ''}`} style={{ backgroundColor: color(f?.backgroundColorStyle?.rgbColor ?? f?.backgroundColor), color: color(f?.textFormat?.foregroundColorStyle?.rgbColor ?? f?.textFormat?.foregroundColor), fontWeight: f?.textFormat?.bold ? 'bold' : undefined, fontStyle: f?.textFormat?.italic ? 'italic' : undefined, fontSize: f?.textFormat?.fontSize ? `${Math.min(f.textFormat.fontSize, 22)}px` : undefined, textAlign: f?.horizontalAlignment?.toLowerCase() as 'left' | 'center' | 'right' | undefined, animationName: selectedMatch && flash ? 'sheet-match-flash' : undefined }}><div className="h-8 overflow-hidden whitespace-nowrap px-2 leading-8" title={row[c] ?? ''}>{row[c] ?? ''}</div></td>;
+            return <td key={c} data-match-start={found && c === found.start ? found.index : undefined} colSpan={merge?.colSpan} rowSpan={merge?.rowSpan} className={`border p-0 ${found ? 'ring-2 ring-inset ring-amber-400' : ''}`} style={{ backgroundColor: color(f?.backgroundColorStyle?.rgbColor ?? f?.backgroundColor), color: color(f?.textFormat?.foregroundColorStyle?.rgbColor ?? f?.textFormat?.foregroundColor), fontWeight: f?.textFormat?.bold ? 'bold' : undefined, fontStyle: f?.textFormat?.italic ? 'italic' : undefined, fontSize: f?.textFormat?.fontSize ? `${Math.min(f.textFormat.fontSize, 22)}px` : undefined, textAlign: f?.horizontalAlignment?.toLowerCase() as 'left' | 'center' | 'right' | undefined }}><div key={selectedMatch ? `flash-${flash}` : 'normal'} className={`h-8 overflow-hidden whitespace-nowrap px-2 leading-8 ${selectedMatch ? 'sheet-match-flash' : ''}`} title={row[c] ?? ''}>{row[c] ?? ''}</div></td>;
           })}</tr>; })}
           {lastRow < rows.length && <tr aria-hidden="true"><td colSpan={width + 1} style={{ height: (rows.length - lastRow) * ROW_HEIGHT, padding: 0, border: 0 }} /></tr>}
         </tbody></table></div>}

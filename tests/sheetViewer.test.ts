@@ -57,3 +57,25 @@ test('keeps date context when a lower section repeats headings without repeating
   const [match] = findSheetMatches(rows, 'NGDS0-O-A-04');
   expect([match.date, match.total, match.end]).toEqual(['2026-11-10', '25', 3]);
 });
+
+describe('distant date headers and inferred blocks', () => {
+  test('finds dates across a long standards section and highlights to total', () => {
+    const rows: string[][] = [['Day: 10/16/2026', '', '', '', 'Day: 10/17/2026']];
+    for (let i = 0; i < 20; i++) rows.push(['COLLECTOR BONUS STANDARDS']);
+    rows.push(['STAGES', 'USER NAMES', 'BONUS', 'TOTAL', 'STAGES', 'USER NAMES', 'BONUS', 'TOTAL']);
+    rows.push(['OLD', 'NGDS0-O-A-04', '50', '100', 'OLD', 'NGDS0-O-A-04', '75', '150']);
+    expect(findSheetMatches(rows, 'NGDS0-O-A-04').map(m => [m.date, m.start, m.end, m.total])).toEqual([
+      ['Day: 10/16/2026', 1, 4, '100'], ['Day: 10/17/2026', 5, 8, '150'],
+    ]);
+  });
+  test('recognises ordinal dates and bounds missing headers by repeated date blocks', () => {
+    const rows = [['16THOCT 2026', '', '', '', '17th Oct 2026'], ['x', 'NGDS0-O-A-04', '50', '100', 'x', 'NGDS0-O-A-04', '75', '150']];
+    expect(findSheetMatches(rows, 'NGDS0-O-A-04').map(m => [m.date, m.start, m.end])).toEqual([
+      ['16THOCT 2026', 1, 4], ['17th Oct 2026', 5, 8],
+    ]);
+  });
+  test('a new date section is not assigned the previous section date', () => {
+    const rows = [['10/16/2026', '', '', '10/17/2026'], ['STAGES', 'NAMES', 'TOTAL', 'STAGES', 'NAMES', 'TOTAL'], ['x', 'NGDS1-A-01', '5'], ['10/18/2026', '', '', '10/19/2026'], ['x', 'NGDS1-A-01', '7']];
+    expect(findSheetMatches(rows, 'NGDS1-A-01').map(m => m.date)).toEqual(['10/16/2026', '10/18/2026']);
+  });
+});
