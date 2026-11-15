@@ -30,7 +30,7 @@ async function fetchFormatted(spreadsheetId: string, sheetName: string, key: str
   return { rows: rows.map(row => row.map(c => c?.formattedValue ?? '')), formats: rows.map(row => row.map(c => c?.effectiveFormat)), merges: sheet.merges || [] };
 }
 
-interface Props { spreadsheetId: string; sheets: SheetInfo[]; workerId: string }
+interface Props { spreadsheetId: string | null; sheets: SheetInfo[]; workerId: string }
 export function SheetViewerBeta({ spreadsheetId, sheets, workerId }: Props) {
   const available = useMemo(() => sheets.filter(s => !s.disabled), [sheets]);
   const [open, setOpen] = useState(false);
@@ -83,7 +83,7 @@ export function SheetViewerBeta({ spreadsheetId, sheets, workerId }: Props) {
 
   return <>
     <section className="mt-8 rounded-2xl border border-dashed border-border bg-card p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium">Sheet viewer <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">Beta</span></p><p className="mt-1 text-xs text-muted-foreground">Preview the spreadsheet and find your ID.</p></div><Button variant="outline" size="sm" onClick={() => setOpen(true)}><Sheet className="mr-2 h-4 w-4" />Open viewer</Button></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium">Sheet viewer <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">Beta</span></p><p className="mt-1 text-xs text-muted-foreground">{!spreadsheetId ? 'Your spreadsheet could not be resolved. Check the error above and try again.' : available.length === 0 ? 'No sheet tabs are currently available. Try refreshing your data.' : 'Preview the spreadsheet and find your ID.'}</p></div><Button variant="outline" size="sm" disabled={!spreadsheetId || available.length === 0} onClick={() => setOpen(true)}><Sheet className="mr-2 h-4 w-4" />Open viewer</Button></div>
     </section>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="flex max-h-[90dvh] w-[96vw] max-w-6xl flex-col gap-3 overflow-hidden rounded-2xl p-4 sm:p-6">
