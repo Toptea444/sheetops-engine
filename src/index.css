@@ -180,3 +180,11 @@
                 0 4px 6px -4px hsl(215 30% 15% / 0.1);
   }
 }
+
+@keyframes sheet-match-flash {
+  0%, 100% { box-shadow: inset 0 0 0 2px #fbbf24; }
+  40% { box-shadow: inset 0 0 0 4px #f59e0b, inset 0 0 0 999px rgb(251 191 36 / 0.30); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sheet-match-flash { animation: sheet-match-flash 0.9s ease-out 2; }
+}

@@ -5,12 +5,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-type Action = "getSheets" | "getSheetData" | "getSheetFormatting";
+type Action = "getSheets" | "getSheetData" | "getSheetFormatting" | "getSheetFormattingRange";
 
 interface RequestBody {
   action: Action;
   spreadsheetId: string;
   sheetName?: string;
+  startRow?: number;
+  startCol?: number;
+  endRow?: number;
+  endCol?: number;
 }
 
 function jsonResponse(body: unknown, status = 200) {
@@ -71,7 +75,7 @@ serve(async (req) => {
     const spreadsheetId = body.spreadsheetId;
     const sheetName = body.sheetName;
 
-    if (action !== "getSheets" && action !== "getSheetData" && action !== "getSheetFormatting") {
+    if (action !== "getSheets" && action !== "getSheetData" && action !== "getSheetFormatting" && action !== "getSheetFormattingRange") {
       return jsonResponse({ error: "Invalid action" }, 400);
     }
 
@@ -79,7 +83,7 @@ serve(async (req) => {
       return jsonResponse({ error: "Invalid spreadsheetId" }, 400);
     }
 
-    if ((action === "getSheetData" || action === "getSheetFormatting") && !isValidSheetName(sheetName)) {
+    if ((action === "getSheetData" || action === "getSheetFormatting" || action === "getSheetFormattingRange") && !isValidSheetName(sheetName)) {
       return jsonResponse({ error: "Missing or invalid sheetName" }, 400);
     }
 
@@ -116,6 +120,27 @@ serve(async (req) => {
         }) || [];
 
       return jsonResponse({ sheets });
+    }
+
+    if (action === "getSheetFormattingRange") {
+      const { startRow, startCol, endRow, endCol } = body;
+      if (!Number.isInteger(startRow) || !Number.isInteger(startCol) || !Number.isInteger(endRow) || !Number.isInteger(endCol) || startRow! < 0 || startCol! < 0 || startRow! > 100000 || startCol! > 18000 || endRow! <= startRow! || endRow! > startRow! + 50 || endCol! <= startCol! || endCol! > startCol! + 40) {
+        return jsonResponse({ error: "Invalid sheet range" }, 400);
+      }
+      const column = (index: number) => {
+        let n = index + 1, label = "";
+        while (n > 0) { n--; label = String.fromCharCode(65 + n % 26) + label; n = Math.floor(n / 26); }
+        return label;
+      };
+      const range = `'${sheetName!.replace(/'/g, "''")}'!${column(startCol!)}${startRow! + 1}:${column(endCol! - 1)}${endRow!}`;
+      const params = new URLSearchParams({ key: apiKey, ranges: range, fields: "sheets(properties(title),merges,data(startRow,startColumn,rowData(values(effectiveFormat(backgroundColor,backgroundColorStyle,textFormat(bold,italic,fontSize,foregroundColor,foregroundColorStyle),horizontalAlignment)))))" });
+      const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?${params}`);
+      if (!response.ok) {
+        const parsed = safeJsonParse(await response.text());
+        return jsonResponse({ error: friendlyError(response.status, `${parsed?.error?.status || ""} ${parsed?.error?.message || ""}`, `sheet "${sheetName}"`) }, response.status);
+      }
+      const data = await response.json();
+      return jsonResponse({ sheets: data.sheets || [] });
     }
 
     // Only return display metadata; the server-side Google key never leaves this function.
