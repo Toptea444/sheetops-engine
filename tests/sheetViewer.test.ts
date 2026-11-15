@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { findSheetHighlights, sheetColumnName } from '../src/lib/sheetViewer';
+import { findSheetHighlights, findSheetMatches, sheetColumnName } from '../src/lib/sheetViewer';
 
 describe('sheet viewer highlighting', () => {
   test('highlights each weekly block separately, not other workers', () => {
@@ -29,4 +29,31 @@ describe('stacked blocks', () => {
   test('unknown layout highlights only the ID, not neighbouring cells', () => {
     expect(findSheetHighlights([['NGDS0-O-A-04', 'another cell']], 'NGDS0-O-A-04')).toEqual([{ row: 0, start: 0, end: 1 }]);
   });
+});
+
+
+describe('sheet search order and context', () => {
+  test('navigates blocks left to right even when the worker changes rows', () => {
+    const rows = [
+      ['2026-11-10', '', '', '2026-11-11', '', '', '2026-11-12'],
+      ['STAGES', 'NAMES', 'TOTAL', 'STAGES', 'NAMES', 'TOTAL', 'STAGES', 'NAMES', 'TOTAL'],
+      ['T0', 'other', '0', 'T0', 'NGDS0-O-A-04', '20', 'T0', 'other', '0'],
+      ['T0', 'NGDS0-O-A-04', '10', 'T0', 'other', '0', 'T0', 'NGDS0-O-A-04', '30'],
+    ];
+    const found = findSheetMatches(rows, 'ngds0-o-a-04');
+    expect(found.map(m => [m.date, m.total, m.row, m.start, m.end])).toEqual([
+      ['2026-11-10', '10', 3, 1, 3], ['2026-11-11', '20', 2, 4, 6], ['2026-11-12', '30', 3, 7, 9],
+    ]);
+  });
+  test('does not treat a stage data cell as a header', () => {
+    const rows = [['2026-10-18'], ['STAGES', 'USERNAMES', 'BONUS', 'TOTAL'], ['T0', 'other', '20', '30'], ['T0', 'NGDS0-O-A-04', '40', '50']];
+    const [match] = findSheetMatches(rows, 'NGDS0-O-A-04');
+    expect([match.date, match.start, match.end, match.total]).toEqual(['2026-10-18', 1, 4, '50']);
+  });
+});
+
+test('keeps date context when a lower section repeats headings without repeating the date', () => {
+  const rows = [['2026-11-10'], ['STAGES', 'USERNAMES', 'TOTAL'], ['NEW', 'another', '5'], [], ['STAGES', 'USERNAMES', 'TOTAL'], ['OLD', 'NGDS0-O-A-04', '25']];
+  const [match] = findSheetMatches(rows, 'NGDS0-O-A-04');
+  expect([match.date, match.total, match.end]).toEqual(['2026-11-10', '25', 3]);
 });
