@@ -128,6 +128,11 @@ export function DailyEarningsTable({
     }
   }, [sheetNames, activeTab, subsidyOptedIn]);
 
+  // Each tab mounts a new scroll container at its starting position.
+  useEffect(() => {
+    setScrollPosition(0);
+  }, [activeTab]);
+
   // Handle scroll position for sticky column animation
   const handleTableScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
@@ -328,10 +333,10 @@ export function DailyEarningsTable({
                         <TableHeader>
                           <TableRow className="hover:bg-transparent bg-muted/20">
                             <TableHead 
-                              className={`sticky left-0 z-20 bg-background text-sm font-medium h-10 whitespace-nowrap px-4 min-w-max ${
+                              className={`sticky left-0 z-20 text-sm font-medium h-10 whitespace-nowrap px-4 min-w-max ${
                                 scrollPosition > 0
-                                  ? 'border-r shadow-[2px_0_6px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_6px_rgba(0,0,0,0.4)]'
-                                  : ''
+                                  ? 'bg-background border-r shadow-[2px_0_6px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_6px_rgba(0,0,0,0.4)]'
+                                  : 'bg-transparent'
                               }`}
                               style={{
                                 transition: 'background-color 0.2s ease-out',
@@ -361,10 +366,10 @@ export function DailyEarningsTable({
                             return (
                               <TableRow key={day.fullDate}>
                                 <TableCell 
-                                  className={`sticky left-0 z-10 bg-background text-sm py-3 px-4 whitespace-nowrap min-w-max ${
+                                  className={`sticky left-0 z-10 text-sm py-3 px-4 whitespace-nowrap min-w-max ${
                                     scrollPosition > 0
-                                      ? 'border-r shadow-[2px_0_6px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_6px_rgba(0,0,0,0.4)]'
-                                      : ''
+                                      ? 'bg-background border-r shadow-[2px_0_6px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_6px_rgba(0,0,0,0.4)]'
+                                      : 'bg-transparent'
                                   }`}
                                   style={{
                                     transition: 'background-color 0.2s ease-out',
