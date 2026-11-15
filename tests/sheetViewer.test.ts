@@ -12,3 +12,21 @@ describe('sheet viewer highlighting', () => {
   });
   test('formats spreadsheet columns', () => { expect([0, 25, 26, 701, 702].map(sheetColumnName)).toEqual(['A', 'Z', 'AA', 'ZZ', 'AAA']); });
 });
+
+describe('stacked blocks', () => {
+  test('uses the nearest section header for an old stage below another layout', () => {
+    const rows = [
+      ['2026-11-10', '', '', '2026-11-11'],
+      ['STAGES', 'USERNAMES', 'TOTAL', 'STAGES', 'USERNAMES', 'TOTAL'],
+      ['NEW', 'NGDS0-N-A-01', '100', 'NEW', 'NGDS0-N-A-01', '200'],
+      [],
+      ['2026-11-10', '', '', '', '2026-11-11'],
+      ['STAGES', 'USERNAMES', 'BONUS', 'TOTAL', 'STAGES', 'USERNAMES', 'BONUS', 'TOTAL'],
+      ['OLD', 'NGDS0-O-A-04', '100', '200', 'OLD', 'NGDS0-O-A-04', '50', '150'],
+    ];
+    expect(findSheetHighlights(rows, 'ngds0-o-a-04')).toEqual([{ row: 6, start: 1, end: 4 }, { row: 6, start: 5, end: 8 }]);
+  });
+  test('unknown layout highlights only the ID, not neighbouring cells', () => {
+    expect(findSheetHighlights([['NGDS0-O-A-04', 'another cell']], 'NGDS0-O-A-04')).toEqual([{ row: 0, start: 0, end: 1 }]);
+  });
+});
