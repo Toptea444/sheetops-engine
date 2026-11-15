@@ -26,6 +26,7 @@ import { EarningsProjection } from '@/components/dashboard/EarningsProjection';
 import { LeaderboardPanel } from '@/components/dashboard/LeaderboardPanel';
 import { LeaderboardWelcome } from '@/components/dashboard/LeaderboardWelcome';
 import { WeeklyBonusAlert } from '@/components/dashboard/WeeklyBonusAlert';
+import { SheetViewerBeta } from '@/components/dashboard/SheetViewerBeta';
 import { AlertsDisplay } from '@/components/AlertsDisplay';
 import { ClaimedDayAlerts } from '@/components/dashboard/ClaimedDayAlerts';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -1686,6 +1687,9 @@ const Index = () => {
                 <section className="min-w-0 rounded-2xl bg-card p-5 sm:p-6"><ActivityFeed sheetData={leaderboardSheetData} currentUserId={userId} cycle={selectedCycle} /></section>
               </aside>
             </div>
+            {new URLSearchParams(window.location.search).get('sheetViewerBeta') === '1' && identityConfirmed && pinVerifiedThisSession && !isIdentityLocked && resolvedSpreadsheetId && userId && (
+              <SheetViewerBeta key={`${resolvedSpreadsheetId}:${userId}`} spreadsheetId={resolvedSpreadsheetId} sheets={sheets} workerId={userId} />
+            )}
           </div>
         </main>
 
