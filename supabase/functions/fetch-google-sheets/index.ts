@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-type Action = "getSheets" | "getSheetData";
+type Action = "getSheets" | "getSheetData" | "getSheetFormatting";
 
 interface RequestBody {
   action: Action;
@@ -71,7 +71,7 @@ serve(async (req) => {
     const spreadsheetId = body.spreadsheetId;
     const sheetName = body.sheetName;
 
-    if (action !== "getSheets" && action !== "getSheetData") {
+    if (action !== "getSheets" && action !== "getSheetData" && action !== "getSheetFormatting") {
       return jsonResponse({ error: "Invalid action" }, 400);
     }
 
@@ -79,7 +79,7 @@ serve(async (req) => {
       return jsonResponse({ error: "Invalid spreadsheetId" }, 400);
     }
 
-    if (action === "getSheetData" && !isValidSheetName(sheetName)) {
+    if ((action === "getSheetData" || action === "getSheetFormatting") && !isValidSheetName(sheetName)) {
       return jsonResponse({ error: "Missing or invalid sheetName" }, 400);
     }
 
@@ -116,6 +116,23 @@ serve(async (req) => {
         }) || [];
 
       return jsonResponse({ sheets });
+    }
+
+    // Only return display metadata; the server-side Google key never leaves this function.
+    if (action === "getSheetFormatting") {
+      const params = new URLSearchParams({
+        key: apiKey,
+        ranges: `'${sheetName!.replace(/'/g, "''")}'`,
+        fields: "sheets(properties(title),merges,data(rowData(values(formattedValue,effectiveFormat))))",
+      });
+      const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?${params}`);
+      if (!response.ok) {
+        const parsed = safeJsonParse(await response.text());
+        const reason = `${parsed?.error?.status || ""} ${parsed?.error?.message || ""}`;
+        return jsonResponse({ error: friendlyError(response.status, reason, `sheet "${sheetName}"`) }, response.status);
+      }
+      const data = await response.json();
+      return jsonResponse({ sheets: data.sheets || [] });
     }
 
     // action === "getSheetData"

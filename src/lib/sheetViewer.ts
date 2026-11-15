@@ -1,37 +1,46 @@
 /** Utilities for the read-only sheet-viewer beta. */
 export type HighlightRange = { row: number; start: number; end: number };
-
 const normalized = (v: unknown) => String(v ?? '').trim().toUpperCase();
-const isDateHeader = (s: string) => /^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})(?:\s|$)/.test(s.trim());
-const isBlockHeader = (s: string) => /^WEEK\s*\d+\b/i.test(s.trim()) || isDateHeader(s);
+const isWeek = (s: string) => /^WEEK\s*\d+\b/i.test(s.trim());
+const isDate = (s: string) => /^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}(?:[-/]\d{2,4})?|\d{1,2}(?:ST|ND|RD|TH)?\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))/i.test(s.trim());
+const isIdLabel = (s: string) => /^(?:USER\s*NAME|USER_NAME|USERNAME|USERNAMES|WORKER\s*ID|COLLECTOR\s*ID|S\d+\s*(?:NEW|OLD)?|T-?\d+\s*(?:NEW|OLD)?)$/i.test(s.trim());
 
-/** Highlight exact current-ID matches only. Bound the highlight to the next
- * horizontal block header, falling back to the next detected ID column. */
+/** Match the current ID exactly and use nearby section headers, not global
+ * column guesses: a sheet can contain several vertically stacked layouts. */
 export function findSheetHighlights(rows: string[][], workerId: string): HighlightRange[] {
   const id = normalized(workerId);
   if (!id) return [];
-  const headers = new Set<number>();
-  for (const row of rows.slice(0, 3)) row.forEach((v, col) => { if (isBlockHeader(v)) headers.add(col); });
-  const idColumns = new Set<number>();
-  for (const row of rows) row.forEach((v, col) => {
-    const value = normalized(v);
-    if (value === id || /^[A-Z]{4}[A-Z0-9-]{2,20}$/.test(value) && /\d/.test(value)) idColumns.add(col);
-  });
-  const starts = [...headers].sort((a, b) => a - b);
-  const columns = [...idColumns].sort((a, b) => a - b);
-  const width = rows.reduce((n, row) => Math.max(n, row.length), 0);
   const result: HighlightRange[] = [];
-  const weekStarts = rows.slice(0, 3).flatMap(header => header.map((v, i) => /^WEEK\s*\d+\b/i.test(v.trim()) ? i : -1)).filter(n => n >= 0).sort((a, b) => a - b);
-  rows.forEach((row, r) => row.forEach((value, col) => {
-    if (normalized(value) !== id) return;
-    const nextHeader = starts.find(n => n > col);
-    const nextId = columns.find(n => n > col);
-    // Weekly date headers occur within a block, so only use week labels when
-    // present; otherwise date headers describe the daily horizontal blocks.
-    const nextWeek = weekStarts.find(n => n > col);
-    const boundary = weekStarts.length ? nextWeek : nextHeader;
-    result.push({ row: r, start: col, end: Math.min(boundary ?? width, nextId ?? width) });
-  }));
+  // Track the latest relevant header for each column while walking downward.
+  const headerByColumn = new Map<number, { row: number; end: number }>();
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const labels = row.map((v, i) => isIdLabel(v) ? i : -1).filter(i => i >= 0);
+    if (labels.length) {
+      const prior = rows[r - 1] || [];
+      const weekStarts = prior.map((v, i) => isWeek(v) ? i : -1).filter(i => i >= 0);
+      const dateStarts = prior.map((v, i) => isDate(v) ? i : -1).filter(i => i >= 0);
+      for (const col of labels) {
+        // Prefer a TOTAL/AMOUNT end in the current block, then next block start.
+        const nextLabel = labels.find(c => c > col);
+        const starts = weekStarts.length ? weekStarts : dateStarts;
+        const nextBlock = starts.find(c => c > col);
+        const limit = Math.min(nextBlock ?? Infinity, nextLabel ?? Infinity, row.length);
+        let end = col + 1;
+        for (let c = col + 1; c < limit; c++) {
+          if (/^(?:TOTAL|AMOUNT|RANKING BONUS)$/i.test(String(row[c] || '').trim())) end = c + 1;
+        }
+        if (end === col + 1 && nextBlock !== undefined) end = nextBlock;
+        headerByColumn.set(col, { row: r, end });
+      }
+    }
+    row.forEach((cell, col) => {
+      if (normalized(cell) !== id) return;
+      const header = headerByColumn.get(col);
+      // Unknown structures: highlight only the exact ID rather than another block.
+      result.push({ row: r, start: col, end: header && header.row < r ? Math.max(col + 1, header.end) : col + 1 });
+    });
+  }
   return result;
 }
 
