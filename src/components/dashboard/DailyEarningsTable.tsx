@@ -324,13 +324,13 @@ export function DailyEarningsTable({
                       ref={scrollContainerRef}
                       onScroll={handleTableScroll}
                     >
-                      <Table className="w-full">
+                      <table className="w-full caption-bottom text-sm">
                         <TableHeader>
                           <TableRow className="hover:bg-transparent bg-muted/20">
                             <TableHead 
-                              className={`text-sm font-medium h-10 whitespace-nowrap px-4 min-w-max ${
-                                scrollPosition > 0 
-                                  ? 'sticky left-0 z-50 bg-background border-r shadow-[2px_0_6px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_6px_rgba(0,0,0,0.4)]' 
+                              className={`sticky left-0 z-20 bg-background text-sm font-medium h-10 whitespace-nowrap px-4 min-w-max ${
+                                scrollPosition > 0
+                                  ? 'border-r shadow-[2px_0_6px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_6px_rgba(0,0,0,0.4)]'
                                   : ''
                               }`}
                               style={{
@@ -361,9 +361,9 @@ export function DailyEarningsTable({
                             return (
                               <TableRow key={day.fullDate}>
                                 <TableCell 
-                                  className={`text-sm py-3 px-4 whitespace-nowrap min-w-max ${
-                                    scrollPosition > 0 
-                                      ? 'sticky left-0 z-40 bg-background border-r shadow-[2px_0_6px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_6px_rgba(0,0,0,0.4)]' 
+                                  className={`sticky left-0 z-10 bg-background text-sm py-3 px-4 whitespace-nowrap min-w-max ${
+                                    scrollPosition > 0
+                                      ? 'border-r shadow-[2px_0_6px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_6px_rgba(0,0,0,0.4)]'
                                       : ''
                                   }`}
                                   style={{
@@ -436,7 +436,7 @@ export function DailyEarningsTable({
                             );
                           })}
                         </TableBody>
-                      </Table>
+                      </table>
                     </motion.div>
                     
                     {sheetData.length > 6 && (
