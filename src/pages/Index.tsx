@@ -1,5 +1,5 @@
 import { findSwapAwayFrom } from '@/lib/idSwaps';
-import { resolveStageSheet } from '@/lib/stageSheetResolver';
+import { findStageSheet, resolveStageSheet, sheetContainsWorker } from '@/lib/stageSheetResolver';
 import { setActiveSpreadsheetId } from '@/lib/spreadsheetConfig';
 import { isExcludedT0Copy } from '@/lib/defaultSheetSelection';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
@@ -982,33 +982,27 @@ const Index = () => {
     setIsValidating(true);
     setValidationError(null);
 
-    // Don't block login based on swaps — in bidirectional swaps both IDs are valid
-    // for different people. Swap detection happens after PIN verification instead.
-
-    let foundUser = false;
-    let foundUserName = '';
-
-    for (const sheet of sheets.filter(s => !s.disabled)) {
-      const data = await fetchSheetData(sheet.name);
-      if (data) {
-        const worker = searchWorker(data, newUserId);
-        if (worker) {
-          foundUser = true;
-          foundUserName = worker.userName || newUserId;
-          break;
-        }
+    try {
+      // Resolve against the entered ID, not the default or a previous user's
+      // active source. Do not change the active sheet until login completes.
+      const spreadsheetId = await findStageSheet(newUserId);
+      if (!spreadsheetId) {
+        setValidationError('Your ID was not found on an active stage sheet. Please ask your admin to check the Stage Sheets settings.');
+        return { valid: false };
       }
-    }
-
-    setIsValidating(false);
-
-    if (!foundUser) {
-      setValidationError(`ID "${newUserId}" not found. Please check and try again.`);
+      const found = await sheetContainsWorker(spreadsheetId, newUserId);
+      if (!found) {
+        setValidationError(`ID "${newUserId}" not found. Please check and try again.`);
+        return { valid: false };
+      }
+      return { valid: true, userName: newUserId };
+    } catch (error) {
+      console.error('Could not validate ID against sheets:', error);
+      setValidationError('Could not check the sheets right now. Please check your connection and try again, or contact your admin.');
       return { valid: false };
+    } finally {
+      setIsValidating(false);
     }
-
-    // DON'T set userId here - it causes a race condition with SessionPinGate
-    return { valid: true, userName: foundUserName };
   };
 
   const handleWelcomeComplete = async (newUserId: string, newUserName: string | null, pinVerified: boolean) => {
