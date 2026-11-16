@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { ChevronLeft, ChevronRight, RefreshCw, Sheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -12,6 +13,8 @@ type Merge = { startRowIndex?: number; endRowIndex?: number; startColumnIndex?: 
 type Tile = { startRow: number; startCol: number; formats: Format[][]; merges: Merge[] };
 type Position = { top: number; left: number; height: number; width: number };
 const ROW_HEIGHT = 32, COL_WIDTH = 105, ROW_HEADER_WIDTH = 48, TILE_ROWS = 50, TILE_COLS = 40;
+const ROW_OVERSCAN = 45, COL_OVERSCAN = 8, TILE_CACHE_LIMIT = 32;
+const readPosition = (el: HTMLDivElement): Position => ({ top: el.scrollTop, left: el.scrollLeft, height: el.clientHeight, width: el.clientWidth });
 const color = (c?: Color) => c ? `rgba(${Math.round((c.red ?? 0) * 255)}, ${Math.round((c.green ?? 0) * 255)}, ${Math.round((c.blue ?? 0) * 255)}, ${c.alpha ?? 1})` : undefined;
 
 async function fetchValues(spreadsheetId: string, sheetName: string): Promise<string[][]> {
@@ -47,21 +50,22 @@ export function SheetViewerBeta({ spreadsheetId, sheets, workerId }: Props) {
   const [rows, setRows] = useState<string[][] | null>(null), [loading, setLoading] = useState(false), [error, setError] = useState('');
   const [formatError, setFormatError] = useState(''), [formatLoading, setFormatLoading] = useState(false);
   const [key, setKey] = useState(''), [formatKey, setFormatKey] = useState('');
-  const [refresh, setRefresh] = useState(0), [matchIndex, setMatchIndex] = useState(-1), [flash, setFlash] = useState(0);
+  const [refresh, setRefresh] = useState(0), [matchIndex, setMatchIndex] = useState(-1), [navigation, setNavigation] = useState(0), [flash, setFlash] = useState(0);
   const [position, setPosition] = useState<Position>({ top: 0, left: 0, height: 600, width: 400 });
-  const [tiles, setTiles] = useState<Map<string, Tile>>(new Map());
+  const [tileVersion, setTileVersion] = useState(0);
   const valuesCache = useRef(new Map<string, string[][]>());
   const tileCache = useRef(new Map<string, Tile>());
   const gridRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<number | null>(null);
   const positionedFlashRef = useRef(0);
+  const navigationRef = useRef(0);
 
   useEffect(() => { if (!available.some(s => s.name === selected)) setSelected(available[0]?.name || ''); }, [available, selected]);
   useEffect(() => {
     if (!open || !selected || !spreadsheetId) return;
     let cancelled = false;
     const cacheKey = `${spreadsheetId}:${selected}`;
-    setError(''); setFormatError(''); setMatchIndex(-1); setPosition(p => ({ ...p, top: 0, left: 0 })); setTiles(new Map());
+    setError(''); setFormatError(''); setMatchIndex(-1); setPosition(p => ({ ...p, top: 0, left: 0 })); setFlash(0);
     const cached = valuesCache.current.get(cacheKey);
     if (cached) { setRows(cached); setLoading(false); return; }
     setRows(null); setLoading(true);
@@ -74,10 +78,10 @@ export function SheetViewerBeta({ spreadsheetId, sheets, workerId }: Props) {
 
   const matches = useMemo(() => findSheetMatches(rows || [], workerId), [rows, workerId]);
   const width = useMemo(() => (rows || []).reduce((max, row) => Math.max(max, row.length), 0), [rows]);
-  const firstRow = Math.max(0, Math.floor(Math.max(0, position.top - ROW_HEIGHT) / ROW_HEIGHT) - 12);
-  const lastRow = Math.min(rows?.length || 0, Math.ceil((position.top + position.height) / ROW_HEIGHT) + 12);
-  const firstCol = Math.max(0, Math.floor(Math.max(0, position.left - ROW_HEADER_WIDTH) / COL_WIDTH) - 2);
-  const lastCol = Math.min(width, Math.ceil((position.left + position.width) / COL_WIDTH) + 2);
+  const firstRow = Math.max(0, Math.floor(Math.max(0, position.top - ROW_HEIGHT) / ROW_HEIGHT) - ROW_OVERSCAN);
+  const lastRow = Math.min(rows?.length || 0, Math.ceil((position.top + position.height) / ROW_HEIGHT) + ROW_OVERSCAN);
+  const firstCol = Math.max(0, Math.floor(Math.max(0, position.left - ROW_HEADER_WIDTH) / COL_WIDTH) - COL_OVERSCAN);
+  const lastCol = Math.min(width, Math.ceil((position.left + position.width) / COL_WIDTH) + COL_OVERSCAN);
   const visibleTileKeys = useMemo(() => {
     const keys: string[] = [];
     for (let r = Math.floor(firstRow / TILE_ROWS) * TILE_ROWS; r < lastRow; r += TILE_ROWS)
@@ -86,18 +90,27 @@ export function SheetViewerBeta({ spreadsheetId, sheets, workerId }: Props) {
   }, [firstRow, lastRow, firstCol, lastCol]);
   const tileSignature = visibleTileKeys.join(',');
   const sourceKey = `${spreadsheetId}:${selected}:${formatKey ? 'browser' : 'server'}`;
+  // Read already cached formatting during render, not in a later effect.
+  const tiles = useMemo(() => {
+    void tileVersion; // Cache mutations increment this version to refresh visible tiles.
+    const visible = new Map<string, Tile>();
+    if (tileSignature) tileSignature.split(',').forEach(k => {
+      const tile = tileCache.current.get(`${sourceKey}:${k}`);
+      if (tile) visible.set(k, tile);
+    });
+    return visible;
+  }, [sourceKey, tileSignature, tileVersion]);
   useEffect(() => {
     if (!open || !rows || !spreadsheetId || !selected || !tileSignature) return;
     const controller = new AbortController();
     let cancelled = false;
     const keys = tileSignature.split(',');
     const missing = keys.filter(k => !tileCache.current.has(`${sourceKey}:${k}`));
-    const display = () => {
-      const next = new Map<string, Tile>();
-      keys.forEach(k => { const tile = tileCache.current.get(`${sourceKey}:${k}`); if (tile) next.set(k, tile); });
-      if (!cancelled) setTiles(next);
-    };
-    display();
+    // Refresh recently visited tiles in the bounded LRU cache.
+    keys.forEach(k => {
+      const fullKey = `${sourceKey}:${k}`, tile = tileCache.current.get(fullKey);
+      if (tile) { tileCache.current.delete(fullKey); tileCache.current.set(fullKey, tile); }
+    });
     if (!missing.length || formatError) { setFormatLoading(false); return; }
     setFormatLoading(true);
     // Sequential bounded requests avoid downloading an entire formatted sheet or
@@ -111,8 +124,8 @@ export function SheetViewerBeta({ spreadsheetId, sheets, workerId }: Props) {
           if (cancelled) break;
           tileCache.current.set(`${sourceKey}:${k}`, tile);
           // Avoid retaining all formatting for huge workbooks in mobile memory.
-          while (tileCache.current.size > 16) tileCache.current.delete(tileCache.current.keys().next().value!);
-          display();
+          while (tileCache.current.size > TILE_CACHE_LIMIT) tileCache.current.delete(tileCache.current.keys().next().value!);
+          setTileVersion(n => n + 1);
         } catch (e) {
           if (!cancelled) setFormatError(e instanceof Error ? e.message : 'Could not load formatting.');
           break;
@@ -138,11 +151,33 @@ export function SheetViewerBeta({ spreadsheetId, sheets, workerId }: Props) {
     }
     return cells;
   }, [tiles, firstRow, lastRow, width]);
-  const updatePosition = () => {
+  const [renderFirstCol, renderLastCol] = useMemo(() => {
+    let start = firstCol, end = lastCol;
+    // Include complete merged cells that intersect the rendered viewport.
+    for (const tile of tiles.values()) for (const m of tile.merges) {
+      const row = m.startRowIndex ?? 0, endRow = m.endRowIndex ?? row + 1;
+      const col = m.startColumnIndex ?? 0, endCol = m.endColumnIndex ?? col + 1;
+      if (row >= lastRow || endRow <= firstRow || endCol <= firstCol || col >= lastCol || endCol - col > 80) continue;
+      start = Math.min(start, col); end = Math.max(end, Math.min(width, endCol));
+    }
+    return [start, end];
+  }, [tiles, firstCol, lastCol, firstRow, lastRow, width]);
+  const handleGridScroll = () => {
+    const el = gridRef.current;
+    if (!el) return;
+    const next = readPosition(el);
+    // If a fling has overtaken the buffer, render its new window before paint.
+    if (next.top < firstRow * ROW_HEIGHT || next.top + next.height > (lastRow + 1) * ROW_HEIGHT ||
+        next.left < firstCol * COL_WIDTH || next.left + next.width > (lastCol + 1) * COL_WIDTH) {
+      if (frameRef.current !== null) { cancelAnimationFrame(frameRef.current); frameRef.current = null; }
+      flushSync(() => setPosition(next));
+    } else updatePosition();
+  };
+  const updatePosition = useCallback(() => {
     const el = gridRef.current;
     if (!el || frameRef.current !== null) return;
-    frameRef.current = requestAnimationFrame(() => { frameRef.current = null; setPosition({ top: el.scrollTop, left: el.scrollLeft, height: el.clientHeight, width: el.clientWidth }); });
-  };
+    frameRef.current = requestAnimationFrame(() => { frameRef.current = null; setPosition(readPosition(el)); });
+  }, []);
   useEffect(() => {
     if (!open || !rows || !gridRef.current) return;
     updatePosition();
@@ -150,30 +185,35 @@ export function SheetViewerBeta({ spreadsheetId, sheets, workerId }: Props) {
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updatePosition);
     observer?.observe(el);
     return () => { observer?.disconnect(); if (frameRef.current !== null) { cancelAnimationFrame(frameRef.current); frameRef.current = null; } };
-  }, [open, rows]);
+  }, [open, rows, updatePosition]);
   const goToMatch = (index: number) => {
     const match = matches[index], el = gridRef.current;
     if (!match || !el) return;
-    setMatchIndex(index); setFlash(n => n + 1);
+    navigationRef.current += 1;
+    setMatchIndex(index); setFlash(0); setNavigation(navigationRef.current);
     el.scrollTo({ top: Math.max(0, match.row * ROW_HEIGHT - el.clientHeight / 3), left: Math.max(0, match.start * COL_WIDTH - ROW_HEADER_WIDTH), behavior: 'auto' });
-    setPosition({ top: el.scrollTop, left: el.scrollLeft, height: el.clientHeight, width: el.clientWidth });
+    setPosition(readPosition(el));
   };
   // Position against the actual rendered cell after virtual rows mount. This
   // corrects accumulated row-height rounding and keeps the flash in view.
   useLayoutEffect(() => {
-    if (matchIndex < 0 || !gridRef.current || positionedFlashRef.current === flash) return;
+    if (matchIndex < 0 || !gridRef.current || positionedFlashRef.current === navigation) return;
     const root = gridRef.current;
     const target = root.querySelector<HTMLElement>(`[data-match-start="${matchIndex}"]`);
     if (!target) return;
-    positionedFlashRef.current = flash;
+    positionedFlashRef.current = navigation;
     const bounds = root.getBoundingClientRect(), cell = target.getBoundingClientRect();
     if (cell.top < bounds.top || cell.bottom > bounds.bottom || cell.left < bounds.left || cell.right > bounds.right) {
       root.scrollBy({ top: cell.top - bounds.top - root.clientHeight / 3, left: cell.left - bounds.left - ROW_HEADER_WIDTH, behavior: 'auto' });
       setPosition({ top: root.scrollTop, left: root.scrollLeft, height: root.clientHeight, width: root.clientWidth });
     }
-  }, [matchIndex, flash, firstRow, lastRow]);
+    // Start the pulse only after the target is mounted, positioned and painted.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (root.isConnected && navigationRef.current === navigation) setFlash(navigation);
+    }));
+  }, [matchIndex, navigation, firstRow, lastRow, renderFirstCol, renderLastCol]);
   const active = matches[matchIndex];
-  const resetFormatting = (newKey: string) => { tileCache.current.clear(); setTiles(new Map()); setFormatError(''); setFormatKey(newKey); setRefresh(n => n + 1); };
+  const resetFormatting = (newKey: string) => { tileCache.current.clear(); setTileVersion(n => n + 1); setFormatError(''); setFormatKey(newKey); setRefresh(n => n + 1); };
 
   return <>
     <section className="mt-8 rounded-2xl border border-dashed border-border bg-card p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium">Sheet viewer <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">Beta</span></p><p className="mt-1 text-xs text-muted-foreground">{!spreadsheetId ? 'Your spreadsheet could not be resolved. Check the error above and try again.' : available.length === 0 ? 'No sheet tabs are currently available. Try refreshing your data.' : 'Preview the spreadsheet and find your ID.'}</p></div><Button variant="outline" size="sm" disabled={!spreadsheetId || available.length === 0} onClick={() => setOpen(true)}><Sheet className="mr-2 h-4 w-4" />Open viewer</Button></div></section>
@@ -188,17 +228,18 @@ export function SheetViewerBeta({ spreadsheetId, sheets, workerId }: Props) {
       {formatError && <p role="status" className="text-xs text-amber-600">{formatKey ? formatError : 'Automatic formatting is unavailable. Showing sheet values only.'}</p>}
       {formatLoading && <p role="status" className="text-xs text-muted-foreground">Loading formatting for this view…</p>}
       {loading && <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading sheet…</p>}{error && <p role="alert" className="py-8 text-center text-sm text-destructive">{error}</p>}
-      {!loading && rows && <div ref={gridRef} onScroll={updatePosition} className="min-h-0 min-w-0 w-full flex-1 overflow-auto border" tabIndex={0} aria-label="Sheet grid, scroll in both directions">
+      {!loading && rows && <div ref={gridRef} onScroll={handleGridScroll} className="min-h-0 min-w-0 w-full flex-1 overflow-auto border" tabIndex={0} aria-label="Sheet grid, scroll in both directions">
         <table className="border-collapse text-xs" style={{ tableLayout: 'fixed', width: ROW_HEADER_WIDTH + width * COL_WIDTH }}><colgroup><col style={{ width: ROW_HEADER_WIDTH }} />{Array.from({ length: width }, (_, c) => <col key={c} style={{ width: COL_WIDTH }} />)}</colgroup><thead><tr style={{ height: ROW_HEIGHT }}><th className="sticky left-0 z-20 border bg-muted" scope="col">#</th>{Array.from({ length: width }, (_, c) => <th key={c} scope="col" className="border bg-muted font-medium">{sheetColumnName(c)}</th>)}</tr></thead><tbody>
           {firstRow > 0 && <tr aria-hidden="true"><td colSpan={width + 1} style={{ height: firstRow * ROW_HEIGHT, padding: 0, border: 0 }} /></tr>}
-          {rows.slice(firstRow, lastRow).map((row, i) => { const r = firstRow + i; return <tr key={r} style={{ height: ROW_HEIGHT }}><th scope="row" className="sticky left-0 z-10 border bg-muted font-normal">{r + 1}</th>{Array.from({ length: width }, (_, c) => {
+          {rows.slice(firstRow, lastRow).map((row, i) => { const r = firstRow + i; return <tr key={r} style={{ height: ROW_HEIGHT }}><th scope="row" className="sticky left-0 z-10 border bg-muted font-normal">{r + 1}</th>{renderFirstCol > 0 && <td aria-hidden="true" colSpan={renderFirstCol} className="border-0 p-0" />}{Array.from({ length: renderLastCol - renderFirstCol }, (_, i) => {
+            const c = renderFirstCol + i;
             const merge = mergeCells.get(`${r}:${c}`); if (merge && (r !== merge.row || c !== merge.col)) return null;
             const tile = tiles.get(`${Math.floor(r / TILE_ROWS) * TILE_ROWS}:${Math.floor(c / TILE_COLS) * TILE_COLS}`);
             const f = tile?.formats[r - tile.startRow]?.[c - tile.startCol];
             const matching = matchRows.get(r) || [], found = matching.find(h => c >= h.start && c < h.end);
-            const selectedMatch = found?.index === matchIndex;
+            const selectedMatch = found?.index === matchIndex && flash === navigation && flash > 0;
             return <td key={c} data-match-start={found && c === found.start ? found.index : undefined} colSpan={merge?.colSpan} rowSpan={merge?.rowSpan} className={`border p-0 ${found ? 'ring-2 ring-inset ring-amber-400' : ''}`} style={{ backgroundColor: color(f?.backgroundColorStyle?.rgbColor ?? f?.backgroundColor), color: color(f?.textFormat?.foregroundColorStyle?.rgbColor ?? f?.textFormat?.foregroundColor), fontWeight: f?.textFormat?.bold ? 'bold' : undefined, fontStyle: f?.textFormat?.italic ? 'italic' : undefined, fontSize: f?.textFormat?.fontSize ? `${Math.min(f.textFormat.fontSize, 22)}px` : undefined, textAlign: f?.horizontalAlignment?.toLowerCase() as 'left' | 'center' | 'right' | undefined }}><div key={selectedMatch ? `flash-${flash}` : 'normal'} className={`h-8 overflow-hidden whitespace-nowrap px-2 leading-8 ${selectedMatch ? 'sheet-match-flash' : ''}`} title={row[c] ?? ''}>{row[c] ?? ''}</div></td>;
-          })}</tr>; })}
+          })}{renderLastCol < width && <td aria-hidden="true" colSpan={width - renderLastCol} className="border-0 p-0" />}</tr>; })}
           {lastRow < rows.length && <tr aria-hidden="true"><td colSpan={width + 1} style={{ height: (rows.length - lastRow) * ROW_HEIGHT, padding: 0, border: 0 }} /></tr>}
         </tbody></table></div>}
       {!loading && rows && !matches.length && <p className="text-xs text-muted-foreground">Your current ID wasn’t found in this tab.</p>}
