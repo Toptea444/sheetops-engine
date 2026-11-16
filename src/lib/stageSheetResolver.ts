@@ -1,3 +1,4 @@
+import { findWorkerInTabs } from '@/lib/workerSheetLookup';
 import { supabase } from '@/integrations/supabase/client';
 import {
   SPREADSHEET_ID,
@@ -23,8 +24,6 @@ export async function loadStageSheets(): Promise<StageSheet[]> {
   const list = (data?.setting_value as unknown as StageSheet[]) || [];
   return Array.isArray(list) ? list.filter((s) => s?.spreadsheetId) : [];
 }
-
-const norm = (v: string) => v.toUpperCase().replace(/\s+/g, '');
 
 type SheetName = { name: string; disabled?: boolean };
 
@@ -58,25 +57,20 @@ function orderCandidateTabs(names: SheetName[]): string[] {
   return [...daily, ...ranking, ...rest];
 }
 
-/** True when any cell of the searched tabs exactly equals the worker ID. */
-async function sheetContainsWorker(spreadsheetId: string, workerId: string): Promise<boolean> {
+/** Check the selected spreadsheet without requiring a dated earnings record. */
+export async function sheetContainsWorker(spreadsheetId: string, workerId: string): Promise<boolean> {
   const names = await fetchSheetNames(spreadsheetId);
-  const candidates = orderCandidateTabs(names);
-  const target = norm(workerId);
-  for (const name of candidates) {
-    try {
-      const { data, error } = await supabase.functions.invoke('fetch-google-sheets', {
-        body: { action: 'getSheetData', spreadsheetId, sheetName: name },
-      });
-      if (error) throw new Error(error.message || `Could not read the ${name} tab.`);
-      if (typeof data?.error === 'string') throw new Error(data.error);
-      const rows: unknown[][] = [data?.headers || [], ...(data?.rows || [])];
-      if (rows.some((r) => r.some((c) => norm(String(c ?? '')) === target))) return true;
-    } catch (error) {
-      throw error instanceof Error ? error : new Error('Could not read a tab in this stage sheet.');
+  const candidates = orderCandidateTabs(names).map(name => ({ name }));
+  return findWorkerInTabs(candidates, workerId, async (name) => {
+    const { data, error } = await supabase.functions.invoke('fetch-google-sheets', {
+      body: { action: 'getSheetData', spreadsheetId, sheetName: name },
+    });
+    if (error || typeof data?.error === 'string') throw new Error('Could not read this sheet tab.');
+    if (!Array.isArray(data?.headers) || !Array.isArray(data?.rows) || !data.rows.every(Array.isArray)) {
+      throw new Error('The sheet returned an invalid response.');
     }
-  }
-  return false;
+    return [data.headers, ...data.rows];
+  });
 }
 
 /**
@@ -86,8 +80,7 @@ async function sheetContainsWorker(spreadsheetId: string, workerId: string): Pro
  * every other enabled entry is searched afterwards as a safety net. Falls
  * back to the default sheet when enabled, otherwise returns null.
  */
-export async function resolveStageSheet(workerId: string): Promise<string | null> {
-  setActiveSpreadsheetId('__unresolved__', workerId);
+export async function findStageSheet(workerId: string): Promise<string | null> {
   const all = await loadStageSheets();
 
   const defaultEnabled = isDefaultFallbackEnabled(all);
@@ -95,10 +88,8 @@ export async function resolveStageSheet(workerId: string): Promise<string | null
 
   if (registry.length === 0) {
     if (defaultEnabled) {
-      setActiveSpreadsheetId(null);
       return SPREADSHEET_ID;
     }
-    setActiveSpreadsheetId('__unresolved__', workerId);
     return null;
   }
 
@@ -120,25 +111,33 @@ export async function resolveStageSheet(workerId: string): Promise<string | null
       }
     }),
   );
+  const stageSearches = token
+    ? searches.filter((_, index) => normalizeStageToken(ordered[index]?.stage || '') === token)
+    : [];
+  const stageMatch = stageSearches.find(search => search.found)?.spreadsheetId;
+  if (stageMatch) return stageMatch;
+  // Do not silently route to another source if the worker's configured stage
+  // could not be checked, even if the same ID occurs in another spreadsheet.
+  const stageSearchError = stageSearches.find(search => search.error)?.error;
+  if (stageSearchError) throw stageSearchError;
   const match = searches.find((search) => search.found)?.spreadsheetId || null;
-  if (match) {
-    setActiveSpreadsheetId(match, workerId);
-    return match;
-  }
-  const stageSearchError = token
-    ? searches.find((search, index) => normalizeStageToken(ordered[index]?.stage || '') === token && search.error)?.error
-    : undefined;
-  const searchError = stageSearchError || searches.find((search) => search.error)?.error;
+  if (match) return match;
+  const searchError = searches.find((search) => search.error)?.error;
   if (searchError) {
-    setActiveSpreadsheetId('__unresolved__', workerId);
     throw searchError;
   }
   if (defaultEnabled) {
-    setActiveSpreadsheetId(null);
     return SPREADSHEET_ID;
   }
   // No match and the default sheet is disabled: block data loading rather
   // than silently reading the wrong file.
-  setActiveSpreadsheetId('__unresolved__', workerId);
   return null;
+}
+
+/** Resolve and activate only for an established identity, never during login lookup. */
+export async function resolveStageSheet(workerId: string): Promise<string | null> {
+  setActiveSpreadsheetId('__unresolved__', workerId);
+  const id = await findStageSheet(workerId);
+  if (id) setActiveSpreadsheetId(id, workerId);
+  return id;
 }
