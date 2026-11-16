@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { FileSpreadsheet, Layers, Loader2, Users } from 'lucide-react';
 import { Header } from '@/components/dashboard/Header';
 import { SheetTabs } from '@/components/dashboard/SheetTabs';
+import { CollectorDirectory } from '@/components/tl/CollectorDirectory';
+import { Button } from '@/components/ui/button';
 import { BulkSearchPanel } from '@/components/dashboard/BulkSearchPanel';
 import { BulkResultsPanel } from '@/components/dashboard/BulkResultsPanel';
 import { DaysNotWorkedPanel, DeductionSummary, type DeductionResult } from '@/components/dashboard/DaysNotWorkedPanel';
@@ -37,6 +39,7 @@ const TL = () => {
   } = useGoogleSheets();
 
   const [activeSheet, setActiveSheet] = useState('');
+  const [view, setView] = useState<'collectors' | 'bulk'>('collectors');
   const [results, setResults] = useState<BonusResult[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   // True only until the first spreadsheet has loaded. Only this state may
@@ -269,7 +272,7 @@ const TL = () => {
               <h1 className="text-xl font-semibold">TL Dashboard</h1>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Bulk bonus calculator with deductions
+              Browse collectors and their bonuses
             </p>
           </div>
           <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
@@ -351,8 +354,16 @@ const TL = () => {
           </div>
         )}
 
-        {/* Main Content Grid - Improved Desktop Layout */}
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)]">
+        <div className="mb-4 flex flex-wrap gap-2" aria-label="Dashboard view">
+          <Button size="sm" variant={view === 'collectors' ? 'default' : 'outline'} onClick={() => setView('collectors')}>Collectors</Button>
+          <Button size="sm" variant={view === 'bulk' ? 'default' : 'outline'} onClick={() => setView('bulk')}>Bulk search & deductions</Button>
+        </div>
+        {view === 'collectors' && (isSwitchingSpreadsheet || !sheetData || sheetData.sheetName !== activeSheet
+          ? isSwitchingSpreadsheet || isLoading ? <LoadingState message="Loading sheet data..." /> : <p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Sheet data unavailable. Select an available tab or refresh.</p>
+          : <CollectorDirectory key={`${selectedSpreadsheetId}:${activeSheet}`} data={sheetData} sourceLabel={selectedSource ? sourceLabel(selectedSource) : 'Selected spreadsheet'} searchWorker={searchWorker} calculateBonus={calculateBonus} />)}
+
+        {/* Keep manual inputs mounted while switching between views or sources. */}
+        <div className={view === 'bulk' ? 'grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)]' : 'hidden'}>
           {/* Left Panel: Bulk Search - Sticky on desktop */}
           <div className="min-w-0 lg:sticky lg:top-44 lg:self-start space-y-6">
             <BulkSearchPanel

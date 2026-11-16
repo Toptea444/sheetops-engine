@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type {
   SheetInfo,
@@ -56,6 +56,7 @@ export function useGoogleSheets() {
   const [error, setError] = useState<string | null>(null);
   const [sheets, setSheets] = useState<SheetInfo[]>([]);
   const [sheetData, setSheetData] = useState<SheetData | null>(null);
+  const sheetRequestRef = useRef(0);
 
   const fetchSheets = useCallback(async () => {
     const spreadsheetId = getActiveSpreadsheetId();
@@ -91,10 +92,11 @@ export function useGoogleSheets() {
   }, []);
 
   const fetchSheetData = useCallback(async (sheetName: string) => {
+    const request = ++sheetRequestRef.current;
     const spreadsheetId = getActiveSpreadsheetId();
     // If the active spreadsheet changes mid-fetch (e.g. TL source switch),
     // the response belongs to the old source and must not overwrite state.
-    const isCurrent = () => getActiveSpreadsheetId() === spreadsheetId;
+    const isCurrent = () => getActiveSpreadsheetId() === spreadsheetId && sheetRequestRef.current === request;
     setIsLoading(true);
     setError(null);
     try {
@@ -126,6 +128,7 @@ export function useGoogleSheets() {
   }, []);
 
   const clearSheets = useCallback(() => {
+    sheetRequestRef.current++;
     setSheets([]);
     setSheetData(null);
     setError(null);
@@ -133,6 +136,7 @@ export function useGoogleSheets() {
 
   /** Drop only the loaded tab data (keeps the tab list) — e.g. on tab switch. */
   const clearSheetData = useCallback(() => {
+    sheetRequestRef.current++;
     setSheetData(null);
   }, []);
 
