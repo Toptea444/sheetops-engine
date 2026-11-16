@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { FileSpreadsheet, Layers, Loader2, Users } from 'lucide-react';
 import { Header } from '@/components/dashboard/Header';
 import { SheetTabs } from '@/components/dashboard/SheetTabs';
@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { loadStageSheets } from '@/lib/stageSheetResolver';
 import { setActiveSpreadsheetId, SPREADSHEET_ID, type StageSheet } from '@/lib/spreadsheetConfig';
 import { isDefaultStageSheet } from '@/lib/stageSheetRegistry';
+import { getCycleKey, getCycleOptions, type CyclePeriod } from '@/lib/cycleUtils';
+import { cycleFromMonthKey, cycleSuggestedByTab, suggestedStageSources } from '@/lib/tlContext';
 
 function sourceLabel(source: StageSheet): string {
   if (isDefaultStageSheet(source.stage)) return 'Default sheet (fallback)';
@@ -40,6 +42,12 @@ const TL = () => {
 
   const [activeSheet, setActiveSheet] = useState('');
   const [view, setView] = useState<'collectors' | 'bulk'>('collectors');
+  const cycles = useMemo(() => getCycleOptions(24), []);
+  const [cycle, setCycle] = useState<CyclePeriod>(() => getCycleOptions(0)[0]);
+  const [customCycle, setCustomCycle] = useState(false);
+  const [collectorQuery, setCollectorQuery] = useState('');
+  const [focusCollectorId, setFocusCollectorId] = useState<string | null>(null);
+  const [bulkStageHint, setBulkStageHint] = useState<{ id: string; stage: string; sources: StageSheet[] } | null>(null);
   const [results, setResults] = useState<BonusResult[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   // True only until the first spreadsheet has loaded. Only this state may
@@ -61,9 +69,10 @@ const TL = () => {
     setDeductionResult(null);
     setSearchDates(null);
     setSelectedWorkerForDeduction(null);
+    setBulkStageHint(null);
   }, []);
 
-  const loadSelectedSpreadsheet = useCallback(async (spreadsheetId: string) => {
+  const loadSelectedSpreadsheet = useCallback(async (spreadsheetId: string, preferredSheet?: string) => {
     const loadId = ++loadIdRef.current;
     setIsSwitchingSpreadsheet(true);
     setActiveSpreadsheetId(spreadsheetId);
@@ -78,8 +87,10 @@ const TL = () => {
       if (loadId !== loadIdRef.current) return; // superseded by a newer switch
       const usableSheets = sheetsList.filter((sheet) => !sheet.disabled);
       if (usableSheets.length > 0) {
-        setActiveSheet(usableSheets[0].name);
-        await fetchSheetData(usableSheets[0].name);
+        // Preserve the tab only when the same named tab exists in the new file.
+        const tab = usableSheets.find(sheet => sheet.name === preferredSheet) || usableSheets[0];
+        setActiveSheet(tab.name);
+        await fetchSheetData(tab.name);
         if (loadId !== loadIdRef.current) return;
       }
     } finally {
@@ -133,11 +144,11 @@ const TL = () => {
     setSelectedSpreadsheetId(spreadsheetId);
     try {
       // Inline loading only — the page stays mounted (no full-page reload).
-      await loadSelectedSpreadsheet(spreadsheetId);
+      await loadSelectedSpreadsheet(spreadsheetId, activeSheet);
     } catch (error) {
       setSearchError(error instanceof Error ? error.message : 'Could not load the selected spreadsheet.');
     }
-  }, [loadSelectedSpreadsheet, selectedSpreadsheetId]);
+  }, [loadSelectedSpreadsheet, selectedSpreadsheetId, activeSheet]);
 
   // Handle sheet tab change
   const handleSheetChange = useCallback(async (sheetName: string) => {
@@ -147,6 +158,7 @@ const TL = () => {
     setDeductionResult(null);
     setSearchDates(null);
     setSelectedWorkerForDeduction(null);
+    setBulkStageHint(null);
     // Drop the previous tab's data so a failed fetch can't leave stale data
     // searchable under the new tab's name.
     clearSheetData();
@@ -179,6 +191,9 @@ const TL = () => {
     setDeductionResult(null);
     setSelectedWorkerForDeduction(null);
     setSearchDates({ start: startDate, end: endDate });
+    const source = spreadsheetSources.find(s => s.spreadsheetId === selectedSpreadsheetId);
+    const mismatch = workerIds.map(id => ({ id, hint: suggestedStageSources(id, source, spreadsheetSources) })).find(entry => entry.hint);
+    setBulkStageHint(mismatch?.hint ? { id: mismatch.id, ...mismatch.hint } : null);
 
     if (!sheetData) {
       setSearchError('No sheet data loaded. Please select a sheet first.');
@@ -226,7 +241,7 @@ const TL = () => {
     } else {
       toast.success(`Found ${foundResults.length} worker${foundResults.length !== 1 ? 's' : ''}`);
     }
-  }, [sheetData, searchWorker, calculateBonus]);
+  }, [sheetData, searchWorker, calculateBonus, selectedSpreadsheetId, spreadsheetSources]);
 
   // Handle deduction calculation
   const handleDeductionCalculate = useCallback((deduction: DeductionResult) => {
@@ -248,6 +263,14 @@ const TL = () => {
   const selectedSource = spreadsheetSources.find(
     (source) => source.spreadsheetId === selectedSpreadsheetId,
   );
+  const suggestedCycle = cycleSuggestedByTab(activeSheet);
+  const cycleKey = getCycleKey(cycle);
+  const cycleChoices = cycles.some(c => getCycleKey(c) === cycleKey) ? cycles : [cycle, ...cycles];
+  const changeCycle = (next: CyclePeriod) => { setCycle(next); setCustomCycle(false); };
+  const checkSuggestedSource = (source: StageSheet, id: string) => {
+    setCollectorQuery(id); setFocusCollectorId(id);
+    void handleSpreadsheetChange(source.spreadsheetId);
+  };
 
   // Full-page loader only on first open, before any spreadsheet is known.
   // Spreadsheet switches use isSwitchingSpreadsheet and load inline below.
@@ -354,14 +377,30 @@ const TL = () => {
           </div>
         )}
 
+        {view === 'collectors' && <div className="mb-4 rounded-lg border bg-card p-3">
+          <div className="flex flex-wrap items-end gap-3"><label className="min-w-0 flex-1 text-xs text-muted-foreground sm:flex-none">Cycle
+            <select aria-label="Selected cycle" value={customCycle ? 'other' : cycleKey} onChange={e => {
+              if (e.target.value === 'other') { setCustomCycle(true); return; }
+              const choice = cycleChoices.find(c => getCycleKey(c) === e.target.value);
+              if (choice) changeCycle(choice);
+            }} className="mt-1 block h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground sm:min-w-64">
+              {cycleChoices.map(c => <option key={getCycleKey(c)} value={getCycleKey(c)}>{c.label}{getCycleKey(c) === getCycleKey(cycles[0]) ? ' (current)' : ''}</option>)}
+              <option value="other">Choose another cycle…</option>
+            </select>
+          </label>
+          {customCycle && <label className="text-xs text-muted-foreground">Cycle start month<input type="month" defaultValue={cycleKey} onChange={e => { const next = cycleFromMonthKey(e.target.value); if (next) setCycle(next); }} className="mt-1 block h-9 rounded-md border bg-background px-2 text-sm text-foreground" /></label>}
+          <p className="text-xs text-muted-foreground">Showing {cycle.label} · 16th to 15th</p></div>
+          {suggestedCycle && getCycleKey(suggestedCycle.cycle) !== cycleKey && <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md bg-amber-500/10 p-2 text-sm"><span>This tab's name suggests {suggestedCycle.cycle.label}{suggestedCycle.inferredYear ? ' (year inferred; please check)' : ''}.</span><Button variant="outline" size="sm" className="h-auto whitespace-normal" onClick={() => changeCycle(suggestedCycle.cycle)}>View {suggestedCycle.cycle.label}</Button></div>}
+        </div>}
         <div className="mb-4 flex flex-wrap gap-2" aria-label="Dashboard view">
           <Button size="sm" variant={view === 'collectors' ? 'default' : 'outline'} onClick={() => setView('collectors')}>Collectors</Button>
           <Button size="sm" variant={view === 'bulk' ? 'default' : 'outline'} onClick={() => setView('bulk')}>Bulk search & deductions</Button>
         </div>
         {view === 'collectors' && (isSwitchingSpreadsheet || !sheetData || sheetData.sheetName !== activeSheet
           ? isSwitchingSpreadsheet || isLoading ? <LoadingState message="Loading sheet data..." /> : <p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Sheet data unavailable. Select an available tab or refresh.</p>
-          : <CollectorDirectory key={`${selectedSpreadsheetId}:${activeSheet}`} data={sheetData} sourceLabel={selectedSource ? sourceLabel(selectedSource) : 'Selected spreadsheet'} searchWorker={searchWorker} calculateBonus={calculateBonus} />)}
+          : <CollectorDirectory key={`${selectedSpreadsheetId}:${activeSheet}`} data={sheetData} sourceLabel={selectedSource ? sourceLabel(selectedSource) : 'Selected spreadsheet'} source={selectedSource} sources={spreadsheetSources} cycle={cycle} onCycleChange={changeCycle} query={collectorQuery} onQueryChange={value => { setCollectorQuery(value); setFocusCollectorId(null); }} focusId={focusCollectorId} onSuggestSource={checkSuggestedSource} searchWorker={searchWorker} calculateBonus={calculateBonus} />)}
 
+        {view === 'bulk' && bulkStageHint && <div className="mb-4 rounded-lg border bg-amber-500/10 p-3 text-sm"><p>{bulkStageHint.id} looks like {bulkStageHint.stage}, but this source is labelled {selectedSource?.stage}. Results only use the selected spreadsheet.</p>{bulkStageHint.sources.length ? bulkStageHint.sources.map(source => <Button key={`${source.stage}:${source.spreadsheetId}`} variant="outline" size="sm" className="mt-2 mr-2 h-auto whitespace-normal text-left" onClick={() => void handleSpreadsheetChange(source.spreadsheetId)}>Check {source.stage}{source.label ? ` — ${source.label}` : ''} spreadsheet</Button>) : <p className="mt-2 text-xs">No enabled {bulkStageHint.stage} source is configured. Check the spreadsheet settings.</p>}<p className="mt-2 text-xs text-muted-foreground">The ID has not been checked in another spreadsheet yet.</p></div>}
         {/* Keep manual inputs mounted while switching between views or sources. */}
         <div className={view === 'bulk' ? 'grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)]' : 'hidden'}>
           {/* Left Panel: Bulk Search - Sticky on desktop */}
