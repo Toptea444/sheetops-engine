@@ -1,6 +1,7 @@
 import { getCycleForDate, type CyclePeriod } from './cycleUtils';
 import { isDefaultStageSheet } from './stageSheetRegistry';
-import { parseStageFromWorkerId, type WorkerStage } from './workerIdStage';
+import { parseSourceStage, parseStageFromWorkerId, parseWorkerGeneration } from './workerIdStage';
+export { parseSourceStage } from './workerIdStage';
 import type { StageSheet } from './spreadsheetConfig';
 
 /** Only suggest, never switch automatically: titles often omit their year. */
@@ -28,19 +29,6 @@ export function cycleFromMonthKey(key: string): CyclePeriod | null {
   return getCycleForDate(new Date(year, month - 1, 16));
 }
 
-type Generation = 'New' | 'Old';
-type SourceStage = { stage: WorkerStage; generation: Generation | null };
-
-/** Parse only unambiguous stage labels, optionally qualified by New/Old.
- * Unknown/custom labels are not evidence of a mismatch. */
-export function parseSourceStage(value: string): SourceStage | null {
-  const match = /^\s*(T\s*-?\s*1|T\s*0|S\s*[123])(?:[\s_-]*(NEW|OLD))?\s*$/i.exec(value);
-  if (!match) return null;
-  const token = match[1].toUpperCase().replace(/[\s-]/g, '');
-  const stage = (token === 'T1' ? 'T-1' : token) as WorkerStage;
-  return { stage, generation: match[2] ? (match[2].toUpperCase() === 'NEW' ? 'New' : 'Old') : null };
-}
-
 /** Match only enabled, explicitly configured stage sources. Never suggest a
  * switch merely because a source has an unrecognized/custom label. */
 export function suggestedStageSources(id: string, current: StageSheet | undefined, sources: StageSheet[]): { stage: string; sources: StageSheet[] } | null {
@@ -48,8 +36,7 @@ export function suggestedStageSources(id: string, current: StageSheet | undefine
   if (!stage || !current || isDefaultStageSheet(current.stage)) return null;
   const currentStage = parseSourceStage(current.stage);
   if (!currentStage) return null;
-  const marker = id.trim().toUpperCase().match(/^[A-Z]+-?\d+-([ON])-/)?.[1];
-  const generation: Generation | null = marker === 'N' ? 'New' : marker === 'O' ? 'Old' : null;
+  const generation = parseWorkerGeneration(id);
   const differentGeneration = currentStage.stage === stage && !!generation && !!currentStage.generation && currentStage.generation !== generation;
   if (currentStage.stage === stage && !differentGeneration) return null;
   const matches = sources.filter(s => {

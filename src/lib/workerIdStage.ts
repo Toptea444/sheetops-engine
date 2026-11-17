@@ -55,3 +55,19 @@ export function parseStageFromWorkerId(rawId: string): WorkerStage | null {
   }
   return null;
 }
+
+export type IdGeneration = 'New' | 'Old';
+
+/** Interpret only unambiguous configured stage labels. */
+export function parseSourceStage(value: string): { stage: WorkerStage; generation: IdGeneration | null } | null {
+  const match = /^\s*(T[\s_-]*1|T[\s_-]*0|S[\s_-]*[123])(?:[\s_-]*(NEW|OLD))?\s*$/i.exec(value);
+  if (!match) return null;
+  const token = match[1].toUpperCase().replace(/[\s_-]/g, '');
+  const stage = (token === 'T1' ? 'T-1' : token) as WorkerStage;
+  return { stage, generation: match[2] ? (match[2].toUpperCase() === 'NEW' ? 'New' : 'Old') : null };
+}
+
+export function parseWorkerGeneration(id: string): IdGeneration | null {
+  const marker = id.toUpperCase().replace(/\s+/g, '').match(/^[A-Z]+-?\d+-([ON])(?:-|$)/)?.[1];
+  return marker === 'N' ? 'New' : marker === 'O' ? 'Old' : null;
+}
