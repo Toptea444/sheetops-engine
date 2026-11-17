@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { FileSpreadsheet, Layers, Loader2, Users } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Header } from '@/components/dashboard/Header';
 import { SheetTabs } from '@/components/dashboard/SheetTabs';
 import { CollectorDirectory } from '@/components/tl/CollectorDirectory';
@@ -9,7 +9,6 @@ import { BulkResultsPanel } from '@/components/dashboard/BulkResultsPanel';
 import { DaysNotWorkedPanel, DeductionSummary, type DeductionResult } from '@/components/dashboard/DaysNotWorkedPanel';
 import { ErrorAlert } from '@/components/dashboard/ErrorAlert';
 import { LoadingState } from '@/components/dashboard/LoadingState';
-import { Badge } from '@/components/ui/badge';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import type { BonusResult, WorkerData } from '@/types/bonus';
 import { toast } from 'sonner';
@@ -57,6 +56,7 @@ const TL = () => {
   const [isSwitchingSpreadsheet, setIsSwitchingSpreadsheet] = useState(false);
   // Monotonic id so a slow earlier spreadsheet load can't overwrite a newer one.
   const loadIdRef = useRef(0);
+  const bulkResultsRef = useRef<HTMLDivElement>(null);
   const [spreadsheetSources, setSpreadsheetSources] = useState<StageSheet[]>([]);
   const [selectedSpreadsheetId, setSelectedSpreadsheetId] = useState('');
   const [deductionResult, setDeductionResult] = useState<DeductionResult | null>(null);
@@ -227,6 +227,9 @@ const TL = () => {
     }
 
     setResults(foundResults);
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      requestAnimationFrame(() => bulkResultsRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' }));
+    }
     
     // Set the first result for deduction panel
     if (foundResults.length > 0) {
@@ -286,125 +289,62 @@ const TL = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <Header onRefresh={handleRefresh} isLoading={isLoading || isSwitchingSpreadsheet} />
       
-      <main className="flex-1 container mx-auto w-full min-w-0 px-4 py-6 max-w-7xl">
-        {/* Page Header */}
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary" />
-              <h1 className="text-xl font-semibold">TL Dashboard</h1>
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Browse collectors and their bonuses
-            </p>
-          </div>
-          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
-            {selectedSource && (
-              <Badge variant="secondary" className="max-w-full gap-1.5 break-all font-normal">
-                <FileSpreadsheet className="h-3.5 w-3.5" />
-                {sourceLabel(selectedSource)}
-              </Badge>
-            )}
-            {activeSheet && (
-              <Badge variant="outline" className="max-w-full gap-1.5 break-all font-normal">
-                <FileSpreadsheet className="h-3.5 w-3.5" />
-                {activeSheet}
-              </Badge>
-            )}
-            {sheets.length > 0 && (
-              <Badge variant="outline" className="gap-1.5 font-normal">
-                <Layers className="h-3.5 w-3.5" />
-                {sheets.length} tab{sheets.length !== 1 ? 's' : ''}
-              </Badge>
-            )}
-          </div>
+      <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 px-4 pb-12 pt-7 sm:px-6 sm:pt-10">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Collector earnings</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">Browse collectors or compare IDs.</p>
         </div>
 
-        {/* Data Source Toolbar — sticky so source + tabs stay in reach */}
-        <div className="mb-6 rounded-lg border bg-card p-3 corporate-shadow md:sticky md:top-14 md:z-40">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end">
-            <div className="shrink-0 space-y-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Spreadsheet source
-              </p>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={selectedSpreadsheetId}
-                  onValueChange={handleSpreadsheetChange}
-                  disabled={isLoading || isSwitchingSpreadsheet || spreadsheetSources.length === 0}
-                >
-                  <SelectTrigger className="w-full md:w-64">
-                    <SelectValue placeholder="Choose a saved stage sheet" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {spreadsheetSources.map((source) => (
-                      <SelectItem
-                        key={`${source.stage}-${source.spreadsheetId}`}
-                        value={source.spreadsheetId}
-                      >
-                        {sourceLabel(source)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+        <div className="mb-5 flex gap-6 border-b border-border" aria-label="Dashboard view">
+          <button type="button" onClick={() => setView('collectors')} aria-pressed={view === 'collectors'} className={`border-b-2 pb-3 text-sm font-medium transition-colors ${view === 'collectors' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Collectors</button>
+          <button type="button" onClick={() => setView('bulk')} aria-pressed={view === 'bulk'} className={`border-b-2 pb-3 text-sm font-medium transition-colors ${view === 'bulk' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Bulk search &amp; deductions</button>
+        </div>
+
+        <section aria-label="Sheet and cycle selection" className="mb-5 rounded-xl border border-border/70 bg-card px-4 py-4 sm:px-5">
+          <div className={`grid gap-3 ${view === 'collectors' ? 'sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]' : 'sm:grid-cols-2'}`}>
+            <div className="min-w-0 space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="tl-source">Spreadsheet</label>
+              <div className="flex min-w-0 items-center gap-2">
+                <Select value={selectedSpreadsheetId} onValueChange={handleSpreadsheetChange} disabled={isLoading || isSwitchingSpreadsheet || spreadsheetSources.length === 0}>
+                  <SelectTrigger id="tl-source" className="w-full min-w-0 bg-background text-left font-normal"><SelectValue placeholder="Choose a spreadsheet" /></SelectTrigger>
+                  <SelectContent>{spreadsheetSources.map(source => <SelectItem key={`${source.stage}-${source.spreadsheetId}`} value={source.spreadsheetId}>{sourceLabel(source)}</SelectItem>)}</SelectContent>
                 </Select>
-                {isSwitchingSpreadsheet && (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" role="status" aria-label="Loading sheet" />
-                )}
+                {isSwitchingSpreadsheet && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" role="status" aria-label="Loading spreadsheet" />}
               </div>
             </div>
-
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Sheet tab
-              </p>
-              <SheetTabs
-                sheets={sheets}
-                activeSheet={activeSheet}
-                onSheetChange={handleSheetChange}
-                isLoading={isLoading || isSwitchingSpreadsheet}
-              />
+            <div className="min-w-0 space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Sheet tab</p>
+              <SheetTabs sheets={sheets} activeSheet={activeSheet} onSheetChange={handleSheetChange} isLoading={isLoading || isSwitchingSpreadsheet} pickerOnly />
             </div>
+            {view === 'collectors' && <div className="min-w-0 space-y-1.5">
+              <label htmlFor="tl-cycle" className="text-xs font-medium text-muted-foreground">Cycle</label>
+              <select id="tl-cycle" value={customCycle ? 'other' : cycleKey} onChange={e => {
+                if (e.target.value === 'other') { setCustomCycle(true); return; }
+                const choice = cycleChoices.find(c => getCycleKey(c) === e.target.value);
+                if (choice) changeCycle(choice);
+              }} className="block h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 text-base text-foreground sm:text-sm">
+                {cycleChoices.map(c => <option key={getCycleKey(c)} value={getCycleKey(c)}>{c.label}{getCycleKey(c) === getCycleKey(cycles[0]) ? ' (current)' : ''}</option>)}
+                <option value="other">Choose another cycle…</option>
+              </select>
+              {customCycle && <label className="block text-xs text-muted-foreground">Cycle start month<input aria-label="Cycle start month" type="month" defaultValue={cycleKey} onChange={e => { const next = cycleFromMonthKey(e.target.value); if (next) setCycle(next); }} className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 text-base text-foreground sm:text-sm" /><span className="mt-1 block">Showing {cycle.label}</span></label>}
+            </div>}
           </div>
-        </div>
+          {view === 'collectors' && suggestedCycle && getCycleKey(suggestedCycle.cycle) !== cycleKey && <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-3 text-sm"><span className="text-muted-foreground">This tab may be for {suggestedCycle.cycle.label}{suggestedCycle.inferredYear ? ' (year inferred)' : ''}.</span><button type="button" onClick={() => changeCycle(suggestedCycle.cycle)} className="font-medium text-primary hover:underline">Use this cycle</button></div>}
+        </section>
 
-        {/* Error Display */}
-        {(error || searchError) && (
-          <div className="mb-6">
-            <ErrorAlert
-              message={error || searchError || ''}
-              onDismiss={dismissError}
-            />
-          </div>
-        )}
+        {(error || searchError) && <div className="mb-5"><ErrorAlert message={error || searchError || ''} onDismiss={dismissError} /></div>}
 
-        {view === 'collectors' && <div className="mb-4 rounded-lg border bg-card p-3">
-          <div className="flex flex-wrap items-end gap-3"><label className="min-w-0 flex-1 text-xs text-muted-foreground sm:flex-none">Cycle
-            <select aria-label="Selected cycle" value={customCycle ? 'other' : cycleKey} onChange={e => {
-              if (e.target.value === 'other') { setCustomCycle(true); return; }
-              const choice = cycleChoices.find(c => getCycleKey(c) === e.target.value);
-              if (choice) changeCycle(choice);
-            }} className="mt-1 block h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground sm:min-w-64">
-              {cycleChoices.map(c => <option key={getCycleKey(c)} value={getCycleKey(c)}>{c.label}{getCycleKey(c) === getCycleKey(cycles[0]) ? ' (current)' : ''}</option>)}
-              <option value="other">Choose another cycle…</option>
-            </select>
-          </label>
-          {customCycle && <label className="text-xs text-muted-foreground">Cycle start month<input type="month" defaultValue={cycleKey} onChange={e => { const next = cycleFromMonthKey(e.target.value); if (next) setCycle(next); }} className="mt-1 block h-9 rounded-md border bg-background px-2 text-sm text-foreground" /></label>}
-          <p className="text-xs text-muted-foreground">Showing {cycle.label} · 16th to 15th</p></div>
-          {suggestedCycle && getCycleKey(suggestedCycle.cycle) !== cycleKey && <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md bg-amber-500/10 p-2 text-sm"><span>This tab's name suggests {suggestedCycle.cycle.label}{suggestedCycle.inferredYear ? ' (year inferred; please check)' : ''}.</span><Button variant="outline" size="sm" className="h-auto whitespace-normal" onClick={() => changeCycle(suggestedCycle.cycle)}>View {suggestedCycle.cycle.label}</Button></div>}
-        </div>}
-        <div className="mb-4 flex flex-wrap gap-2" aria-label="Dashboard view">
-          <Button size="sm" variant={view === 'collectors' ? 'default' : 'outline'} onClick={() => setView('collectors')}>Collectors</Button>
-          <Button size="sm" variant={view === 'bulk' ? 'default' : 'outline'} onClick={() => setView('bulk')}>Bulk search & deductions</Button>
+        <div className={view === 'collectors' ? '' : 'hidden'}>
+          {isSwitchingSpreadsheet || !sheetData || sheetData.sheetName !== activeSheet
+            ? isSwitchingSpreadsheet || isLoading ? <LoadingState message="Loading sheet data..." /> : <p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Sheet data unavailable. Select an available tab or refresh.</p>
+            : <CollectorDirectory key={`${selectedSpreadsheetId}:${activeSheet}`} data={sheetData} sourceLabel={selectedSource ? sourceLabel(selectedSource) : 'Selected spreadsheet'} source={selectedSource} sources={spreadsheetSources} cycle={cycle} onCycleChange={changeCycle} query={collectorQuery} onQueryChange={value => { setCollectorQuery(value); setFocusCollectorId(null); }} focusId={focusCollectorId} onSuggestSource={checkSuggestedSource} searchWorker={searchWorker} calculateBonus={calculateBonus} />}
         </div>
-        {view === 'collectors' && (isSwitchingSpreadsheet || !sheetData || sheetData.sheetName !== activeSheet
-          ? isSwitchingSpreadsheet || isLoading ? <LoadingState message="Loading sheet data..." /> : <p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Sheet data unavailable. Select an available tab or refresh.</p>
-          : <CollectorDirectory key={`${selectedSpreadsheetId}:${activeSheet}`} data={sheetData} sourceLabel={selectedSource ? sourceLabel(selectedSource) : 'Selected spreadsheet'} source={selectedSource} sources={spreadsheetSources} cycle={cycle} onCycleChange={changeCycle} query={collectorQuery} onQueryChange={value => { setCollectorQuery(value); setFocusCollectorId(null); }} focusId={focusCollectorId} onSuggestSource={checkSuggestedSource} searchWorker={searchWorker} calculateBonus={calculateBonus} />)}
 
         {view === 'bulk' && bulkStageHint && <div className="mb-4 rounded-lg border bg-amber-500/10 p-3 text-sm"><p>{bulkStageHint.id} looks like {bulkStageHint.stage}, but this source is labelled {selectedSource?.stage}. Results only use the selected spreadsheet.</p>{bulkStageHint.sources.length ? bulkStageHint.sources.map(source => <Button key={`${source.stage}:${source.spreadsheetId}`} variant="outline" size="sm" className="mt-2 mr-2 h-auto whitespace-normal text-left" onClick={() => void handleSpreadsheetChange(source.spreadsheetId)}>Check {source.stage}{source.label ? ` — ${source.label}` : ''} spreadsheet</Button>) : <p className="mt-2 text-xs">No enabled {bulkStageHint.stage} source was identified from the labels. Check the spreadsheet settings.</p>}<p className="mt-2 text-xs text-muted-foreground">The ID has not been checked in another spreadsheet yet.</p></div>}
         {/* Keep manual inputs mounted while switching between views or sources. */}
-        <div className={view === 'bulk' ? 'grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)]' : 'hidden'}>
+        <div className={view === 'bulk' ? 'grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[360px_minmax(0,1fr)]' : 'hidden'}>
           {/* Left Panel: Bulk Search - Sticky on desktop */}
-          <div className="min-w-0 lg:sticky lg:top-44 lg:self-start space-y-6">
+          <div className="min-w-0 lg:sticky lg:top-20 lg:self-start space-y-5">
             <BulkSearchPanel
               onSearch={handleBulkSearch}
               isLoading={isLoading || isSwitchingSpreadsheet}
@@ -417,7 +357,7 @@ const TL = () => {
           </div>
 
           {/* Right Panel: Results - Takes remaining space */}
-          <div className="space-y-6 min-w-0">
+          <div ref={bulkResultsRef} className="min-w-0 scroll-mt-20 space-y-5">
             {isSwitchingSpreadsheet || (isLoading && results.length === 0) ? (
               <LoadingState message="Loading sheet data..." />
             ) : (
@@ -450,10 +390,7 @@ const TL = () => {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t bg-card py-4 text-center text-sm text-muted-foreground mt-auto">
-        <p>TL Dashboard • Bulk Bonus Calculator with Deductions</p>
-      </footer>
+
     </div>
   );
 };

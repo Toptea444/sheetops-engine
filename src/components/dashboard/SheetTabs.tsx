@@ -13,6 +13,7 @@ interface SheetTabsProps {
   activeSheet: string;
   onSheetChange: (sheetName: string) => void;
   isLoading: boolean;
+  pickerOnly?: boolean;
 }
 
 interface SheetGroup {
@@ -38,7 +39,7 @@ function groupSheets(sheets: SheetInfo[]): SheetGroup[] {
   return groups;
 }
 
-export function SheetTabs({ sheets, activeSheet, onSheetChange, isLoading }: SheetTabsProps) {
+export function SheetTabs({ sheets, activeSheet, onSheetChange, isLoading, pickerOnly = false }: SheetTabsProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -68,12 +69,12 @@ export function SheetTabs({ sheets, activeSheet, onSheetChange, isLoading }: She
       return (
         <div role="status" aria-live="polite" aria-label="Loading sheets">
           <span className="sr-only">Loading sheets…</span>
-          <div aria-hidden="true" className="flex h-10 items-center gap-3 rounded-lg border bg-card px-3 md:hidden">
+          <div aria-hidden="true" className={cn("flex h-10 items-center gap-3 rounded-lg border bg-card px-3", !pickerOnly && "md:hidden")}>
             <Skeleton className="h-4 w-4 shrink-0 motion-reduce:animate-none" />
             <Skeleton className="h-4 w-36 max-w-[60%] motion-reduce:animate-none" />
             <Skeleton className="ml-auto h-4 w-4 shrink-0 motion-reduce:animate-none" />
           </div>
-          <div aria-hidden="true" className="hidden h-[46px] min-w-0 items-center gap-2 overflow-hidden rounded-lg border bg-card px-3 corporate-shadow md:flex">
+          <div aria-hidden="true" className={cn("hidden h-[46px] min-w-0 items-center gap-2 overflow-hidden rounded-lg border bg-card px-3 corporate-shadow", !pickerOnly && "md:flex")}>
             <Skeleton className="h-4 w-4 shrink-0 motion-reduce:animate-none" />
             <Skeleton className="h-8 w-32 shrink-0 motion-reduce:animate-none" />
             <Skeleton className="h-8 w-40 shrink-0 motion-reduce:animate-none" />
@@ -95,7 +96,7 @@ export function SheetTabs({ sheets, activeSheet, onSheetChange, isLoading }: She
 
   return (
     <>
-    <div className="min-w-0 md:hidden">
+    <div className={cn("min-w-0", !pickerOnly && "md:hidden")}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button type="button" variant="outline" role="combobox" aria-label="Choose sheet tab" aria-expanded={open} disabled={isLoading} className="w-full min-w-0 justify-between gap-2 font-normal">
@@ -125,7 +126,7 @@ export function SheetTabs({ sheets, activeSheet, onSheetChange, isLoading }: She
         </PopoverContent>
       </Popover>
     </div>
-    <div className="hidden min-w-0 items-center gap-1 rounded-lg border bg-card p-1.5 corporate-shadow md:flex">
+    <div className={cn("hidden min-w-0 items-center gap-1 rounded-lg border bg-card p-1.5 corporate-shadow", !pickerOnly && "md:flex")}>
       <Button
         type="button"
         variant="ghost"
