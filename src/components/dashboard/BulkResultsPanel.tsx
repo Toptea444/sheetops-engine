@@ -1,6 +1,5 @@
-import { Users, Calendar, Coins, AlertTriangle, ChevronDown, ChevronUp, FileSpreadsheet } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Users, Calendar, AlertTriangle, ChevronDown, ChevronUp, FileSpreadsheet } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -34,15 +33,11 @@ export function BulkResultsPanel({ results, sheetName }: BulkResultsPanelProps) 
 
   if (results.length === 0) {
     return (
-      <Card className="border-dashed border-2 border-muted-foreground/20 h-full">
-        <CardContent className="flex min-h-[300px] lg:min-h-[400px] flex-col items-center justify-center text-muted-foreground p-8">
-          <div className="rounded-full bg-muted p-6 mb-6">
-            <Users className="h-12 w-12 opacity-40" />
-          </div>
-          <h3 className="text-xl font-semibold mb-2 text-foreground">No Results Yet</h3>
-          <p className="text-center max-w-sm">
-            Choose a sheet, enter worker IDs, and select a date range to compare bonuses.
-          </p>
+      <Card className="h-full border-border/70 shadow-none">
+        <CardContent className="flex min-h-[260px] flex-col items-center justify-center p-8 text-center">
+          <Users className="mb-4 h-6 w-6 text-muted-foreground/60" />
+          <h3 className="text-sm font-medium">No results yet</h3>
+          <p className="mt-1 max-w-xs text-sm text-muted-foreground">Enter IDs and choose a date range to compare earnings.</p>
         </CardContent>
       </Card>
     );
@@ -80,34 +75,15 @@ export function BulkResultsPanel({ results, sheetName }: BulkResultsPanelProps) 
         </Alert>
       )}
 
-      {/* Summary Card */}
-      <Card className="overflow-hidden corporate-shadow">
-        <div className="corporate-gradient p-5 text-primary-foreground sm:p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <p className="text-sm text-white/70 mb-1">Combined Total</p>
-              <p className="break-all text-3xl font-bold tracking-tight sm:text-4xl">
-                {formatValue(grandTotal, valueType)}
-              </p>
-            </div>
-            <div className="rounded-xl bg-white/10 p-3">
-              <Coins className="h-8 w-8" />
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-4 text-sm text-white/80 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <Users className="h-4 w-4" />
-              <span>{results.length} worker{results.length !== 1 ? 's' : ''}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Calendar className="h-4 w-4" />
-              <span>{results[0]?.dateRange.start} — {results[0]?.dateRange.end}</span>
-            </div>
-            {sheetName && <div className="flex min-w-0 items-center gap-1.5"><FileSpreadsheet className="h-4 w-4 shrink-0" /><span className="break-all">{sheetName}</span></div>}
-            <Badge variant="secondary" className="bg-white/20 text-white border-0 hover:bg-white/30">
-              {totalDaysWithBonus} total earning days
-            </Badge>
+      <Card className="overflow-hidden border-border/70 shadow-none">
+        <div className="border-b border-border/70 px-5 py-6 sm:px-6">
+          <p className="text-sm text-muted-foreground">Combined total</p>
+          <p className="mt-2 break-words text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">{formatValue(grandTotal, valueType)}</p>
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />{results.length} worker{results.length !== 1 ? 's' : ''}</span>
+            <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{results[0]?.dateRange.start} — {results[0]?.dateRange.end}</span>
+            {sheetName && <span className="flex min-w-0 items-center gap-1.5"><FileSpreadsheet className="h-3.5 w-3.5 shrink-0" /><span className="break-words">{sheetName}</span></span>}
+            <span>{totalDaysWithBonus} earning days</span>
           </div>
         </div>
 
@@ -127,18 +103,12 @@ export function BulkResultsPanel({ results, sheetName }: BulkResultsPanelProps) 
                     index === 0 && "rounded-t-none"
                   )}>
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex shrink-0 items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm">
-                        {index + 1}
-                      </div>
+                      <span className="w-5 shrink-0 text-xs tabular-nums text-muted-foreground">{index + 1}</span>
                       <div className="min-w-0 text-left">
-                        <p className="break-all font-mono font-semibold">{result.workerId}</p>
+                        <p className="break-all font-medium">{result.workerId}</p>
                         <p className="break-words text-sm text-muted-foreground">{result.userName}</p>
                       </div>
-                      {result.stage !== 'N/A' && (
-                        <Badge variant="outline" className="hidden sm:inline-flex">
-                          {result.stage}
-                        </Badge>
-                      )}
+                      {result.stage !== 'N/A' && <span className="hidden text-xs text-muted-foreground sm:inline">{result.stage}</span>}
                       {result.dateWarning && (
                         <AlertTriangle className="h-4 w-4 text-amber-500" />
                       )}
@@ -146,8 +116,8 @@ export function BulkResultsPanel({ results, sheetName }: BulkResultsPanelProps) 
                     <div className="flex items-center gap-3">
                       <div className="text-right">
                         <p className={cn(
-                          "font-mono font-bold text-lg",
-                          result.totalBonus > 0 ? "text-success" : "text-muted-foreground"
+                          "font-semibold tabular-nums text-lg",
+                          result.totalBonus > 0 ? "text-foreground" : "text-muted-foreground"
                         )}>
                           {formatValue(result.totalBonus, valueType)}
                         </p>
@@ -195,7 +165,7 @@ export function BulkResultsPanel({ results, sheetName }: BulkResultsPanelProps) 
                           </div>
                           <span className={cn(
                             "font-mono",
-                            day.value > 0 ? "text-success font-medium" : "text-muted-foreground"
+                            day.value > 0 ? "font-medium" : "text-muted-foreground"
                           )}>
                             {day.value > 0 ? formatValue(day.value, valueType) : '—'}
                           </span>

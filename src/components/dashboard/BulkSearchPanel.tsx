@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Search, Users, Calendar, Plus, X, Trash2, FileSpreadsheet, ClipboardPaste } from 'lucide-react';
+import { Search, Users, Calendar, Plus, X, Trash2, ClipboardPaste } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { eachDayOfInterval, endOfMonth, endOfWeek, format, isAfter, isSameDay, startOfMonth, startOfWeek, subDays } from 'date-fns';
@@ -29,7 +28,7 @@ const datePresets: { label: string; value: DatePreset }[] = [
   { label: 'Custom', value: 'custom' },
 ];
 
-export function BulkSearchPanel({ onSearch, isLoading, hasData, sourceLabel, sheetName }: BulkSearchPanelProps) {
+export function BulkSearchPanel({ onSearch, isLoading, hasData }: BulkSearchPanelProps) {
   const [workerIds, setWorkerIds] = useState<string[]>(['']);
   const [showPaste, setShowPaste] = useState(false);
   const [pastedIds, setPastedIds] = useState('');
@@ -131,25 +130,12 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData, sourceLabel, she
   const selectedDates = [startDate, endDate].filter((date): date is Date => Boolean(date));
 
   return (
-    <Card className="corporate-shadow">
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-lg">
-            <Users className="h-5 w-5 text-primary" />
-            Bulk Search
-          </div>
-          {validWorkerIds.length > 0 && (
-            <Badge variant="secondary" className="font-normal">
-              {validWorkerIds.length} worker{validWorkerIds.length !== 1 ? 's' : ''}
-            </Badge>
-          )}
-        </CardTitle>
+    <Card className="border-border/70 shadow-none">
+      <CardHeader className="pb-5">
+        <CardTitle className="text-base font-semibold">Bulk search</CardTitle>
+        <p className="text-sm text-muted-foreground">Compare up to 10 IDs for a date range.</p>
       </CardHeader>
       <CardContent>
-        <div className="mb-4 flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-          <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-          <span className="min-w-0 break-words"><span className="font-medium text-foreground">Searching in: </span>{sourceLabel || 'Choose a source'}{sheetName ? ` / ${sheetName}` : ''}</span>
-        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Worker IDs Input */}
           <div className="space-y-2">
@@ -219,7 +205,7 @@ export function BulkSearchPanel({ onSearch, isLoading, hasData, sourceLabel, she
                 className="w-full gap-1"
               >
                 <Plus className="h-4 w-4" />
-                Add Another Worker
+                Add another ID
               </Button>
             )}
           </div>
