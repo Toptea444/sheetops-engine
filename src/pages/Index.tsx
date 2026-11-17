@@ -1,5 +1,5 @@
 import { findSwapAwayFrom } from '@/lib/idSwaps';
-import { findStageSheet, resolveStageSheet, sheetContainsWorker } from '@/lib/stageSheetResolver';
+import { resolveStageSheet, validateWorkerOnSheets } from '@/lib/stageSheetResolver';
 import { setActiveSpreadsheetId } from '@/lib/spreadsheetConfig';
 import { isExcludedT0Copy } from '@/lib/defaultSheetSelection';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
@@ -985,14 +985,9 @@ const Index = () => {
     try {
       // Resolve against the entered ID, not the default or a previous user's
       // active source. Do not change the active sheet until login completes.
-      const spreadsheetId = await findStageSheet(newUserId);
-      if (!spreadsheetId) {
-        setValidationError('Your ID was not found on an active stage sheet. Please ask your admin to check the Stage Sheets settings.');
-        return { valid: false };
-      }
-      const found = await sheetContainsWorker(spreadsheetId, newUserId);
+      const found = await validateWorkerOnSheets(newUserId);
       if (!found) {
-        setValidationError(`ID "${newUserId}" not found. Please check and try again.`);
+        setValidationError(`ID "${newUserId}" was not found on an enabled sheet. Check the ID and ask your TL to confirm the sheet and sharing settings.`);
         return { valid: false };
       }
       return { valid: true, userName: newUserId };
@@ -1061,15 +1056,9 @@ const Index = () => {
 
   // Side-effect-free lookup used by the self-swap modal
   const checkIdOnSheets = useCallback(async (id: string): Promise<{ valid: boolean; userName?: string }> => {
-    for (const sheet of sheets.filter(s => !s.disabled)) {
-      // Validate against current sheet data, not a potentially stale cached snapshot.
-      const data = await fetchSheetData(sheet.name);
-      if (!data) throw new Error('Could not load a sheet to validate the new ID.');
-      const worker = searchWorker(data, id);
-      if (worker) return { valid: true, userName: worker.userName || undefined };
-    }
-    return { valid: false };
-  }, [sheets, fetchSheetData, searchWorker]);
+    const found = await validateWorkerOnSheets(id);
+    return found ? { valid: true, userName: id } : { valid: false };
+  }, []);
 
   // After a user swaps their own ID: move them straight onto the new ID.
   // PIN was carried over server-side, so they stay logged in.

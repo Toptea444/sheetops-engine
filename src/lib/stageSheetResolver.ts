@@ -5,7 +5,7 @@ import {
   StageSheet,
   setActiveSpreadsheetId,
 } from '@/lib/spreadsheetConfig';
-import { normalizeStageToken, parseStageFromWorkerId } from '@/lib/workerIdStage';
+import { parseSourceStage, parseStageFromWorkerId, parseWorkerGeneration } from '@/lib/workerIdStage';
 import {
   DEFAULT_SHEET_STAGE_KEY,
   getEnabledStageSheets,
@@ -80,7 +80,9 @@ export async function sheetContainsWorker(spreadsheetId: string, workerId: strin
  * every other enabled entry is searched afterwards as a safety net. Falls
  * back to the default sheet when enabled, otherwise returns null.
  */
-export async function findStageSheet(workerId: string): Promise<string | null> {
+type SheetResolution = { spreadsheetId: string; confirmed: boolean };
+
+async function findStageSheetResolution(workerId: string): Promise<SheetResolution | null> {
   const all = await loadStageSheets();
 
   const defaultEnabled = isDefaultFallbackEnabled(all);
@@ -88,50 +90,54 @@ export async function findStageSheet(workerId: string): Promise<string | null> {
 
   if (registry.length === 0) {
     if (defaultEnabled) {
-      return SPREADSHEET_ID;
+      return { spreadsheetId: SPREADSHEET_ID, confirmed: false };
     }
     return null;
   }
 
   const parsedStage = parseStageFromWorkerId(workerId);
-  const token = parsedStage ? normalizeStageToken(parsedStage) : null;
-  const ordered = token
-    ? [
-        ...registry.filter((s) => normalizeStageToken(s.stage) === token),
-        ...registry.filter((s) => normalizeStageToken(s.stage) !== token),
-      ]
-    : registry;
+  const generation = parseWorkerGeneration(workerId);
+  // Prefer the labelled stage, and within it a matching New/Old source or
+  // unqualified source. An opposite-type source can still hold the ID.
+  const priority = (source: StageSheet) => {
+    const info = parseSourceStage(source.stage);
+    if (!parsedStage || info?.stage !== parsedStage) return 3;
+    if (!generation) return 0;
+    if (info.generation === generation) return 0;
+    return info.generation === null ? 1 : 2;
+  };
+  const ordered = [...registry].sort((a, b) => priority(a) - priority(b));
+  const searches = await Promise.all(ordered.map(async (source) => {
+    try {
+      return { source, found: await sheetContainsWorker(source.spreadsheetId, workerId), error: null as Error | null };
+    } catch (error) {
+      return { source, found: false, error: error instanceof Error ? error : new Error('Could not check a stage sheet.') };
+    }
+  }));
 
-  const searches = await Promise.all(
-    ordered.map(async (s) => {
-      try {
-        return { spreadsheetId: s.spreadsheetId, found: await sheetContainsWorker(s.spreadsheetId, workerId), error: null };
-      } catch (error) {
-        return { spreadsheetId: s.spreadsheetId, found: false, error: error instanceof Error ? error : new Error('Could not check a stage sheet.') };
-      }
-    }),
-  );
-  const stageSearches = token
-    ? searches.filter((_, index) => normalizeStageToken(ordered[index]?.stage || '') === token)
-    : [];
-  const stageMatch = stageSearches.find(search => search.found)?.spreadsheetId;
-  if (stageMatch) return stageMatch;
-  // Do not silently route to another source if the worker's configured stage
-  // could not be checked, even if the same ID occurs in another spreadsheet.
-  const stageSearchError = stageSearches.find(search => search.error)?.error;
-  if (stageSearchError) throw stageSearchError;
-  const match = searches.find((search) => search.found)?.spreadsheetId || null;
-  if (match) return match;
-  const searchError = searches.find((search) => search.error)?.error;
-  if (searchError) {
-    throw searchError;
+  // A matching stage source that could not be checked must not silently fall
+  // through to another source, even if the ID also occurs there.
+  for (const level of parsedStage ? [0, 1, 2] : []) {
+    const group = searches.filter(search => priority(search.source) === level);
+    const failure = group.find(search => search.error)?.error;
+    if (failure) throw failure;
+    const match = group.find(search => search.found);
+    if (match) return { spreadsheetId: match.source.spreadsheetId, confirmed: true };
   }
+  const match = searches.find(search => search.found);
+  if (match) return { spreadsheetId: match.source.spreadsheetId, confirmed: true };
+  const failure = searches.find(search => search.error)?.error;
+  if (failure) throw failure;
   if (defaultEnabled) {
-    return SPREADSHEET_ID;
+    return { spreadsheetId: SPREADSHEET_ID, confirmed: false };
   }
   // No match and the default sheet is disabled: block data loading rather
   // than silently reading the wrong file.
   return null;
+}
+
+export async function findStageSheet(workerId: string): Promise<string | null> {
+  return (await findStageSheetResolution(workerId))?.spreadsheetId ?? null;
 }
 
 /** Resolve and activate only for an established identity, never during login lookup. */
@@ -140,4 +146,13 @@ export async function resolveStageSheet(workerId: string): Promise<string | null
   const id = await findStageSheet(workerId);
   if (id) setActiveSpreadsheetId(id, workerId);
   return id;
+}
+
+/** Validate a newly entered ID without changing the active spreadsheet. */
+export async function validateWorkerOnSheets(workerId: string): Promise<boolean> {
+  const resolution = await findStageSheetResolution(workerId);
+  if (!resolution) return false;
+  // A registry match already proved presence. The default is an unchecked
+  // routing fallback, so it must still be inspected before accepting the ID.
+  return resolution.confirmed || sheetContainsWorker(resolution.spreadsheetId, workerId);
 }
